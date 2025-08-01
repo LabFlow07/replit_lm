@@ -6,6 +6,24 @@ import { Button } from "@/components/ui/button";
 export default function LicenseTable() {
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/licenses', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    }
   });
 
   const getStatusBadge = (status: string) => {
