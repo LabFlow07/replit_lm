@@ -1,0 +1,442 @@
+import { database } from "./database";
+import type { 
+  User, InsertUser, 
+  Company, InsertCompany,
+  Product, InsertProduct,
+  Module, InsertModule,
+  Client, InsertClient,
+  License, InsertLicense, LicenseWithDetails,
+  Transaction, InsertTransaction,
+  ActivationLog, InsertActivationLog,
+  AccessLog, InsertAccessLog,
+  DashboardStats, UserWithCompany
+} from "@shared/schema";
+import { randomUUID } from "crypto";
+import bcrypt from "bcrypt";
+
+export interface IStorage {
+  // User methods
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<UserWithCompany | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  // Company methods
+  getCompany(id: string): Promise<Company | undefined>;
+  getCompaniesByType(type: string): Promise<Company[]>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  
+  // Product methods
+  getProducts(): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  
+  // Module methods
+  getModulesByProduct(productId: string): Promise<Module[]>;
+  createModule(module: InsertModule): Promise<Module>;
+  
+  // Client methods
+  getClients(companyId?: string): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClientStatus(id: string, status: string): Promise<void>;
+  
+  // License methods
+  getLicenses(filters?: any): Promise<LicenseWithDetails[]>;
+  getLicense(id: string): Promise<LicenseWithDetails | undefined>;
+  getLicenseByActivationKey(key: string): Promise<LicenseWithDetails | undefined>;
+  createLicense(license: InsertLicense): Promise<License>;
+  updateLicense(id: string, updates: Partial<License>): Promise<void>;
+  activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License>;
+  validateLicense(activationKey: string, computerKey?: string): Promise<LicenseWithDetails | null>;
+  
+  // Transaction methods
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  getTransactionsByLicense(licenseId: string): Promise<Transaction[]>;
+  
+  // Logging methods
+  logActivation(log: InsertActivationLog): Promise<void>;
+  logAccess(log: InsertAccessLog): Promise<void>;
+  
+  // Statistics
+  getDashboardStats(userId: string, userRole: string): Promise<DashboardStats>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const rows = await database.query(
+      'SELECT * FROM users WHERE id = ? AND is_active = TRUE',
+      [id]
+    );
+    return rows[0];
+  }
+
+  async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
+    const rows = await database.query(`
+      SELECT u.*, c.name as company_name, c.type as company_type
+      FROM users u
+      LEFT JOIN companies c ON u.company_id = c.id
+      WHERE u.username = ? AND u.is_active = TRUE
+    `, [username]);
+    
+    if (rows[0]) {
+      const user = rows[0];
+      return {
+        ...user,
+        company: user.company_name ? {
+          id: user.company_id,
+          name: user.company_name,
+          type: user.company_type
+        } : undefined
+      };
+    }
+    return undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    
+    await database.query(`
+      INSERT INTO users (id, username, password, role, company_id, name, email, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
+    `, [id, insertUser.username, hashedPassword, insertUser.role, insertUser.companyId, insertUser.name, insertUser.email]);
+    
+    return { ...insertUser, id, password: hashedPassword, isActive: true, createdAt: new Date() };
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const rows = await database.query('SELECT * FROM companies WHERE id = ?', [id]);
+    return rows[0];
+  }
+
+  async getCompaniesByType(type: string): Promise<Company[]> {
+    const rows = await database.query('SELECT * FROM companies WHERE type = ? AND status = "active"', [type]);
+    return rows;
+  }
+
+  async createCompany(insertCompany: InsertCompany): Promise<Company> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO companies (id, name, type, parent_id, status, contact_info)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo)]);
+    
+    return { ...insertCompany, id, createdAt: new Date() };
+  }
+
+  async getProducts(): Promise<Product[]> {
+    const rows = await database.query('SELECT * FROM products ORDER BY name');
+    return rows.map(row => ({
+      ...row,
+      supportedLicenseTypes: JSON.parse(row.supported_license_types || '[]')
+    }));
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    if (rows[0]) {
+      return {
+        ...rows[0],
+        supportedLicenseTypes: JSON.parse(rows[0].supported_license_types || '[]')
+      };
+    }
+    return undefined;
+  }
+
+  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO products (id, name, version, description, supported_license_types)
+      VALUES (?, ?, ?, ?, ?)
+    `, [id, insertProduct.name, insertProduct.version, insertProduct.description, JSON.stringify(insertProduct.supportedLicenseTypes)]);
+    
+    return { ...insertProduct, id, createdAt: new Date() };
+  }
+
+  async getModulesByProduct(productId: string): Promise<Module[]> {
+    const rows = await database.query('SELECT * FROM modules WHERE product_id = ?', [productId]);
+    return rows;
+  }
+
+  async createModule(insertModule: InsertModule): Promise<Module> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO modules (id, product_id, name, description, base_price)
+      VALUES (?, ?, ?, ?, ?)
+    `, [id, insertModule.productId, insertModule.name, insertModule.description, insertModule.basePrice]);
+    
+    return { ...insertModule, id };
+  }
+
+  async getClients(companyId?: string): Promise<Client[]> {
+    let query = 'SELECT * FROM clients ORDER BY name';
+    let params: any[] = [];
+    
+    if (companyId) {
+      query = 'SELECT * FROM clients WHERE company_id = ? ORDER BY name';
+      params = [companyId];
+    }
+    
+    const rows = await database.query(query, params);
+    return rows.map(row => ({
+      ...row,
+      contactInfo: JSON.parse(row.contact_info || '{}')
+    }));
+  }
+
+  async getClient(id: string): Promise<Client | undefined> {
+    const rows = await database.query('SELECT * FROM clients WHERE id = ?', [id]);
+    if (rows[0]) {
+      return {
+        ...rows[0],
+        contactInfo: JSON.parse(rows[0].contact_info || '{}')
+      };
+    }
+    return undefined;
+  }
+
+  async createClient(insertClient: InsertClient): Promise<Client> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
+        JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
+    
+    return { ...insertClient, id, createdAt: new Date() };
+  }
+
+  async updateClientStatus(id: string, status: string): Promise<void> {
+    await database.query('UPDATE clients SET status = ? WHERE id = ?', [status, id]);
+  }
+
+  async getLicenses(filters?: any): Promise<LicenseWithDetails[]> {
+    let query = `
+      SELECT 
+        l.*,
+        c.name as client_name, c.email as client_email, c.status as client_status,
+        p.name as product_name, p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      JOIN clients c ON l.client_id = c.id
+      JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      ORDER BY l.created_at DESC
+    `;
+    
+    const rows = await database.query(query);
+    return rows.map(row => ({
+      id: row.id,
+      clientId: row.client_id,
+      productId: row.product_id,
+      activationKey: row.activation_key,
+      computerKey: row.computer_key,
+      activationDate: row.activation_date,
+      expiryDate: row.expiry_date,
+      licenseType: row.license_type,
+      status: row.status,
+      maxUsers: row.max_users,
+      maxDevices: row.max_devices,
+      price: row.price,
+      discount: row.discount,
+      activeModules: JSON.parse(row.active_modules || '[]'),
+      assignedCompany: row.assigned_company,
+      assignedAgent: row.assigned_agent,
+      createdAt: row.created_at,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        email: row.client_email,
+        status: row.client_status,
+        companyId: row.company_id,
+        contactInfo: {},
+        isMultiSite: false,
+        isMultiUser: false,
+        createdAt: new Date()
+      },
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        version: row.product_version,
+        description: '',
+        supportedLicenseTypes: [],
+        createdAt: new Date()
+      },
+      company: row.company_name ? {
+        id: row.assigned_company,
+        name: row.company_name,
+        type: '',
+        parentId: null,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    }));
+  }
+
+  async getLicense(id: string): Promise<LicenseWithDetails | undefined> {
+    const licenses = await this.getLicenses();
+    return licenses.find(l => l.id === id);
+  }
+
+  async getLicenseByActivationKey(key: string): Promise<LicenseWithDetails | undefined> {
+    const licenses = await this.getLicenses();
+    return licenses.find(l => l.activationKey === key);
+  }
+
+  async createLicense(insertLicense: InsertLicense): Promise<License> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO licenses (
+        id, client_id, product_id, activation_key, computer_key, activation_date,
+        expiry_date, license_type, status, max_users, max_devices, price, discount,
+        active_modules, assigned_company, assigned_agent
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, insertLicense.clientId, insertLicense.productId, insertLicense.activationKey,
+      insertLicense.computerKey, insertLicense.activationDate, insertLicense.expiryDate,
+      insertLicense.licenseType, insertLicense.status, insertLicense.maxUsers,
+      insertLicense.maxDevices, insertLicense.price, insertLicense.discount,
+      JSON.stringify(insertLicense.activeModules), insertLicense.assignedCompany,
+      insertLicense.assignedAgent
+    ]);
+    
+    return { ...insertLicense, id, createdAt: new Date() };
+  }
+
+  async updateLicense(id: string, updates: Partial<License>): Promise<void> {
+    const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'createdAt');
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = fields.map(field => updates[field as keyof License]);
+    
+    await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
+  }
+
+  async activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License> {
+    const license = await this.getLicenseByActivationKey(activationKey);
+    if (!license) {
+      throw new Error('License not found');
+    }
+
+    if (license.status === 'attiva') {
+      throw new Error('License already activated');
+    }
+
+    await this.updateLicense(license.id, {
+      computerKey,
+      activationDate: new Date(),
+      status: 'attiva'
+    });
+
+    await this.logActivation({
+      licenseId: license.id,
+      keyType: 'activation',
+      deviceInfo,
+      ipAddress: '',
+      userAgent: '',
+      result: 'success'
+    });
+
+    return license;
+  }
+
+  async validateLicense(activationKey: string, computerKey?: string): Promise<LicenseWithDetails | null> {
+    const license = await this.getLicenseByActivationKey(activationKey);
+    
+    if (!license) {
+      return null;
+    }
+
+    if (license.status !== 'attiva') {
+      return null;
+    }
+
+    if (computerKey && license.computerKey !== computerKey) {
+      return null;
+    }
+
+    if (license.expiryDate && new Date() > new Date(license.expiryDate)) {
+      await this.updateLicense(license.id, { status: 'scaduta' });
+      return null;
+    }
+
+    return license;
+  }
+
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [id, insertTransaction.licenseId, insertTransaction.type, insertTransaction.amount,
+        insertTransaction.paymentMethod, insertTransaction.status, insertTransaction.notes]);
+    
+    return { ...insertTransaction, id, createdAt: new Date() };
+  }
+
+  async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
+    const rows = await database.query(
+      'SELECT * FROM transactions WHERE license_id = ? ORDER BY created_at DESC',
+      [licenseId]
+    );
+    return rows;
+  }
+
+  async logActivation(log: InsertActivationLog): Promise<void> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO activation_logs (id, license_id, key_type, device_info, ip_address, user_agent, result, error_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id, log.licenseId, log.keyType, JSON.stringify(log.deviceInfo), log.ipAddress, log.userAgent, log.result, log.errorMessage]);
+  }
+
+  async logAccess(log: InsertAccessLog): Promise<void> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO access_logs (id, user_id, action, resource, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [id, log.userId, log.action, log.resource, log.ipAddress, log.userAgent]);
+  }
+
+  async getDashboardStats(userId: string, userRole: string): Promise<DashboardStats> {
+    // Get basic stats
+    const [activeLicenses] = await database.query(
+      'SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"'
+    );
+    
+    const [demoLicenses] = await database.query(
+      'SELECT COUNT(*) as count FROM licenses WHERE license_type = "trial" AND status IN ("attiva", "demo")'
+    );
+    
+    const [totalClients] = await database.query(
+      'SELECT COUNT(*) as count FROM clients WHERE status = "convalidato"'
+    );
+    
+    const [monthlyRevenue] = await database.query(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM transactions 
+      WHERE status = "completed" 
+      AND MONTH(created_at) = MONTH(CURRENT_DATE())
+      AND YEAR(created_at) = YEAR(CURRENT_DATE())
+    `);
+
+    const [todayActivations] = await database.query(`
+      SELECT COUNT(*) as count 
+      FROM licenses 
+      WHERE DATE(activation_date) = CURDATE()
+    `);
+
+    return {
+      activeLicenses: activeLicenses[0]?.count || 0,
+      demoLicenses: demoLicenses[0]?.count || 0,
+      totalClients: totalClients[0]?.count || 0,
+      monthlyRevenue: parseFloat(monthlyRevenue[0]?.total || '0'),
+      todayActivations: todayActivations[0]?.count || 0,
+      demoConversions: 8, // TODO: Calculate properly
+      expiringRenewals: 47, // TODO: Calculate properly
+      dailyRevenue: 1250 // TODO: Calculate properly
+    };
+  }
+}
+
+export const storage = new DatabaseStorage();
