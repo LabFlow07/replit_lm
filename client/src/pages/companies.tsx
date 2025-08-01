@@ -42,12 +42,12 @@ export default function CompaniesPage() {
   }
 
   const getCompanyHierarchy = () => {
-    const parentCompanies = companies.filter((c: any) => !c.parentCompanyId);
-    const childCompanies = companies.filter((c: any) => c.parentCompanyId);
+    const parentCompanies = companies.filter((c: any) => !c.parentId);
+    const childCompanies = companies.filter((c: any) => c.parentId);
     
     return parentCompanies.map((parent: any) => ({
       ...parent,
-      children: childCompanies.filter((child: any) => child.parentCompanyId === parent.id)
+      children: childCompanies.filter((child: any) => child.parentId === parent.id)
     }));
   };
 
@@ -96,7 +96,7 @@ export default function CompaniesPage() {
 
       <div>
         <Label htmlFor="parent-company">Azienda Madre (opzionale)</Label>
-        <Select defaultValue={company?.parentCompanyId || ''}>
+        <Select defaultValue={company?.parentId || ''}>
           <SelectTrigger>
             <SelectValue placeholder="Seleziona azienda madre" />
           </SelectTrigger>

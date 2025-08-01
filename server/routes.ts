@@ -90,6 +90,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       contactInfo: { phone: '+39 011 5554321', address: 'Corso Francia 78, Torino' }
     });
 
+    const testCompany4 = await storage.createCompany({
+      name: 'South Italy Distributors',
+      type: 'distributore',
+      parentId: testCompany2.id,
+      status: 'active',
+      contactInfo: { phone: '+39 081 3334455', address: 'Via Partenope 22, Napoli' }
+    });
+
+    const testCompany5 = await storage.createCompany({
+      name: 'NorthEast Tech',
+      type: 'agente',
+      parentId: testCompany1.id,
+      status: 'active',
+      contactInfo: { phone: '+39 045 9876543', address: 'Viale Europa 15, Verona' }
+    });
+
+    const testCompany6 = await storage.createCompany({
+      name: 'Sicilia Software House',
+      type: 'azienda',
+      parentId: testCompany4.id,
+      status: 'active',
+      contactInfo: { phone: '+39 091 2223344', address: 'Via Libertà 88, Palermo' }
+    });
+
+    const testCompany7 = await storage.createCompany({
+      name: 'Toscana IT Solutions',
+      type: 'azienda',
+      parentId: testCompany1.id,
+      status: 'active',
+      contactInfo: { phone: '+39 055 7788990', address: 'Piazza Duomo 12, Firenze' }
+    });
+
     // Create test products
     const product1 = await storage.createProduct({
       name: 'QLM Professional',
@@ -183,6 +215,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       email: 'marco.blu@enterprise.com',
       status: 'sospeso',
       contactInfo: { phone: '+39 02 77788899', company: 'Enterprise Corp' },
+      isMultiSite: true,
+      isMultiUser: true
+    });
+
+    const client7 = await storage.createClient({
+      companyId: testCompany4.id,
+      name: 'Giuseppe Napoli',
+      email: 'g.napoli@southdist.it',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 081 5556677', company: 'Southern Tech SRL' },
+      isMultiSite: false,
+      isMultiUser: true
+    });
+
+    const client8 = await storage.createClient({
+      companyId: testCompany5.id,
+      name: 'Elena Verdi',
+      email: 'elena.verdi@northeast.com',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 045 1112233', company: 'Verdi Systems' },
+      isMultiSite: true,
+      isMultiUser: false
+    });
+
+    const client9 = await storage.createClient({
+      companyId: testCompany6.id,
+      name: 'Salvatore Sicilia',
+      email: 's.sicilia@siciliasoft.it',
+      status: 'in_attesa',
+      contactInfo: { phone: '+39 091 4445566', company: 'Sicilia Software' },
+      isMultiSite: false,
+      isMultiUser: true
+    });
+
+    const client10 = await storage.createClient({
+      companyId: testCompany7.id,
+      name: 'Chiara Fiorentina',
+      email: 'chiara@toscana-it.com',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 055 9998877', company: 'Toscana Digital' },
       isMultiSite: true,
       isMultiUser: true
     });
