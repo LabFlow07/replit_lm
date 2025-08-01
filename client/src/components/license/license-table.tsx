@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export default function LicenseTable() {
+  const [, setLocation] = useLocation();
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
     refetchOnWindowFocus: false,
@@ -102,28 +104,37 @@ export default function LicenseTable() {
                       {license.activationKey}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
+                      <button
+                        onClick={() => setLocation('/products')}
+                        className="flex items-center text-left hover:text-blue-600 hover:underline transition-colors"
+                      >
                         <i className="fas fa-box text-blue-500 mr-2"></i>
                         <div>
                           <div className="font-medium">{license.product?.name || 'N/A'}</div>
                           <div className="text-xs text-gray-500">{license.product?.version || ''}</div>
                         </div>
-                      </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
+                      <button
+                        onClick={() => setLocation('/clients')}
+                        className="flex items-center text-left hover:text-green-600 hover:underline transition-colors"
+                      >
                         <i className="fas fa-user text-green-500 mr-2"></i>
                         <div>
                           <div className="font-medium">{license.client?.name || 'N/A'}</div>
                           <div className="text-xs text-gray-500">{license.client?.email || ''}</div>
                         </div>
-                      </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center">
+                      <button
+                        onClick={() => setLocation('/companies')}
+                        className="flex items-center text-left hover:text-purple-600 hover:underline transition-colors"
+                      >
                         <i className="fas fa-building text-gray-400 mr-2"></i>
                         {license.company?.name || 'N/A'}
-                      </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getTypeBadge(license.licenseType)}
