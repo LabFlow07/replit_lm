@@ -21,10 +21,11 @@ export default function ClientsPage() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['/api/clients'],
     enabled: !!user,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     staleTime: 0,
+    cacheTime: 0,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('qlm_token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -41,6 +42,9 @@ export default function ClientsPage() {
       
       const data = await response.json();
       console.log('Clients data received:', data);
+      console.log('Number of clients:', data.length);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       return data;
     }
   });
