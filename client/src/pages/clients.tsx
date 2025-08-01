@@ -94,7 +94,7 @@ export default function ClientsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Elenco Clienti</CardTitle>
+              <CardTitle>Elenco Clienti ({clients.length} trovati)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -115,33 +115,36 @@ export default function ClientsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {clients.map((client: any) => (
-                        <tr key={client.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {client.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {client.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(client.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {client.isMultiSite ? 'Sì' : 'No'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(client.createdAt).toLocaleDateString('it-IT')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Button variant="ghost" size="sm" className="mr-2">
-                              <i className="fas fa-eye"></i>
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <i className="fas fa-edit"></i>
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                      {clients.map((client: any, index: number) => {
+                        console.log(`Rendering client ${index + 1}:`, client);
+                        return (
+                          <tr key={client.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {client.name || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {client.email || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getStatusBadge(client.status || 'unknown')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {client.isMultiSite ? 'Sì' : 'No'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {client.createdAt ? new Date(client.createdAt).toLocaleDateString('it-IT') : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <Button variant="ghost" size="sm" className="mr-2">
+                                <i className="fas fa-eye"></i>
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <i className="fas fa-edit"></i>
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   
