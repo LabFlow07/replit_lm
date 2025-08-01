@@ -62,9 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Default admin user created: admin/admin123');
   }
 
-  // Create test data if database is empty
-  const existingLicenses = await storage.getLicenses();
-  if (existingLicenses.length === 0) {
+  // Create test data - force recreation for demo purposes
+  const existingCompanies = await storage.getCompanies();
+  if (existingCompanies.length === 0) {
     // Create test companies
     const testCompany1 = await storage.createCompany({
       name: 'ABC Software Solutions',
