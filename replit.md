@@ -37,6 +37,7 @@ The system uses a relational database structure with the following key entities:
 - **Licenses**: Core license records with activation keys and device binding
 - **Transactions**: Financial transaction tracking for renewals and purchases
 - **Logs**: Activity and access logging for audit trails
+- **Agents**: Company representatives/salespeople with roles, territories, and permissions (sub-entity of companies)
 
 ### Key Features
 - **Multi-tier Role System**: Supports superadmin, resellers, agents, and end clients with appropriate data visibility
@@ -45,6 +46,10 @@ The system uses a relational database structure with the following key entities:
 - **Bulk Operations**: Mass license generation and management capabilities
 - **Dashboard Analytics**: Real-time statistics and alerts for license expiry, conversions, and revenue
 - **Activation System**: Online and offline license activation with computer key generation
+- **Hierarchical Company Tree**: Visual tree structure showing parent-child company relationships with expandable nodes
+- **Agent Management**: Company-specific agents as sub-entities with roles and territories
+- **Cross-Entity Navigation**: Clickable elements throughout UI enabling seamless navigation between related sections
+- **Advanced Filtering**: Real-time search and filtering across all entity types (clients, companies, products, licenses)
 
 ### Security Considerations
 - JWT-based authentication with configurable secret

@@ -79,6 +79,22 @@ class Database {
       `);
 
       await this.query(`
+        CREATE TABLE IF NOT EXISTS agents (
+          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          company_id VARCHAR(36) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          phone VARCHAR(50),
+          role VARCHAR(100) DEFAULT 'agente',
+          is_active BOOLEAN DEFAULT TRUE,
+          permissions JSON,
+          territory TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+      `);
+
+      await this.query(`
         CREATE TABLE IF NOT EXISTS products (
           id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
           name VARCHAR(255) NOT NULL,

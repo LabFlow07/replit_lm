@@ -27,6 +27,20 @@ export const companies = pgTable("companies", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Agents - company representatives/salespeople
+export const agents = pgTable("agents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  role: text("role").default('agente'), // agente, responsabile_vendite, account_manager
+  isActive: boolean("is_active").default(true),
+  permissions: json("permissions"), // permissions for various operations
+  territory: text("territory"), // geographical or client territory
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Products/Applications
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -123,6 +137,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 export const insertCompanySchema = createInsertSchema(companies).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertAgentSchema = createInsertSchema(agents).omit({ 
   id: true, 
   createdAt: true 
 });
