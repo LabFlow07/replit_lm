@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,20 +71,66 @@ export default function CompaniesPage() {
     );
   };
 
+  const createCompanyMutation = useMutation({
+    mutationFn: async (companyData: any) => {
+      const response = await apiRequest('POST', '/api/companies', companyData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      setIsCreateDialogOpen(false);
+    },
+  });
+
+  const updateCompanyMutation = useMutation({
+    mutationFn: async ({ id, ...companyData }: any) => {
+      const response = await apiRequest('PUT', `/api/companies/${id}`, companyData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      setSelectedCompany(null);
+    },
+  });
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    
+    const companyData = {
+      name: formData.get('company-name') as string,
+      type: formData.get('company-type') as string,
+      parentId: formData.get('parent-company') === 'none' ? null : formData.get('parent-company') as string,
+      contactInfo: {
+        email: formData.get('company-email') as string,
+        phone: formData.get('company-phone') as string,
+        address: formData.get('company-address') as string,
+      }
+    };
+
+    if (selectedCompany) {
+      updateCompanyMutation.mutate({ id: selectedCompany.id, ...companyData });
+    } else {
+      createCompanyMutation.mutate(companyData);
+    }
+  };
+
   const CompanyForm = ({ company, isEdit = false }: { company?: any, isEdit?: boolean }) => (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="company-name">Nome Azienda</Label>
         <Input 
           id="company-name" 
+          name="company-name"
           defaultValue={company?.name} 
           placeholder="Inserisci nome azienda" 
+          required
         />
       </div>
 
       <div>
         <Label htmlFor="company-type">Tipo Azienda</Label>
-        <Select defaultValue={company?.type || 'azienda'}>
+        <Select name="company-type" defaultValue={company?.type || 'azienda'}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -96,12 +144,12 @@ export default function CompaniesPage() {
 
       <div>
         <Label htmlFor="parent-company">Azienda Madre (opzionale)</Label>
-        <Select defaultValue={company?.parentId || ''}>
+        <Select name="parent-company" defaultValue={company?.parentId || 'none'}>
           <SelectTrigger>
             <SelectValue placeholder="Seleziona azienda madre" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Nessuna (Azienda principale)</SelectItem>
+            <SelectItem value="none">Nessuna (Azienda principale)</SelectItem>
             {companies
               .filter((c: any) => c.id !== company?.id)
               .map((c: any) => (
@@ -117,8 +165,9 @@ export default function CompaniesPage() {
         <Label htmlFor="company-email">Email Aziendale</Label>
         <Input 
           id="company-email" 
+          name="company-email"
           type="email"
-          defaultValue={company?.email} 
+          defaultValue={company?.contactInfo?.email} 
           placeholder="email@azienda.com" 
         />
       </div>
@@ -127,7 +176,8 @@ export default function CompaniesPage() {
         <Label htmlFor="company-phone">Telefono</Label>
         <Input 
           id="company-phone" 
-          defaultValue={company?.phone} 
+          name="company-phone"
+          defaultValue={company?.contactInfo?.phone} 
           placeholder="+39 123 456 7890" 
         />
       </div>
@@ -136,21 +186,33 @@ export default function CompaniesPage() {
         <Label htmlFor="company-address">Indirizzo</Label>
         <Input 
           id="company-address" 
-          defaultValue={company?.address} 
+          name="company-address"
+          defaultValue={company?.contactInfo?.address} 
           placeholder="Via, Città, CAP" 
         />
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
-        <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={() => {
+            setIsCreateDialogOpen(false);
+            setSelectedCompany(null);
+          }}
+        >
           Annulla
         </Button>
-        <Button className="bg-primary hover:bg-blue-700">
+        <Button 
+          type="submit" 
+          className="bg-primary hover:bg-blue-700"
+          disabled={createCompanyMutation.isPending || updateCompanyMutation.isPending}
+        >
           <i className="fas fa-save mr-2"></i>
           {isEdit ? 'Aggiorna' : 'Crea'} Azienda
         </Button>
       </div>
-    </div>
+    </form>
   );
 
   return (
