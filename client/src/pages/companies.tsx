@@ -684,12 +684,15 @@ export default function CompaniesPage() {
 
             <div>
               <Label htmlFor="parentId">Azienda Madre (opzionale)</Label>
-              <Select value={formData.parentId} onValueChange={(value) => setFormData({ ...formData, parentId: value })}>
+              <Select 
+                value={formData.parentId || "none"} 
+                onValueChange={(value) => setFormData({ ...formData, parentId: value === "none" ? "" : value })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona azienda madre" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nessuna (azienda principale)</SelectItem>
+                  <SelectItem value="none">Nessuna (azienda principale)</SelectItem>
                   {(companies as any[]).map((company: any) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
