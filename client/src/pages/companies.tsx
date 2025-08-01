@@ -22,8 +22,30 @@ export default function CompaniesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'rivenditore',
+    parentId: '',
+    status: 'active',
+    contactInfo: { email: '', phone: '', address: '' }
+  });
+  const [agentFormData, setAgentFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'agente',
+    territory: ''
+  });
+  const [userFormData, setUserFormData] = useState({
+    username: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'cliente'
+  });
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -104,12 +126,70 @@ export default function CompaniesPage() {
     return rootCompanies;
   };
 
-  // Filtered companies
+  // Filter companies based on user permissions
+  const getAccessibleCompanies = () => {
+    if (!user) return [];
+    
+    // Superadmin vede tutto
+    if (user.role === 'superadmin') {
+      return companies;
+    }
+    
+    // Rivenditore vede se stesso e le sue sotto-aziende
+    if (user.role === 'rivenditore') {
+      return (companies as any[]).filter((company: any) => 
+        company.id === user.companyId || 
+        company.parent_id === user.companyId ||
+        company.parentId === user.companyId
+      );
+    }
+    
+    // Agente vede solo la sua azienda
+    if (user.role === 'agente') {
+      return (companies as any[]).filter((company: any) => 
+        company.id === user.companyId
+      );
+    }
+    
+    // Cliente vede solo la sua azienda
+    if (user.role === 'cliente') {
+      return (companies as any[]).filter((company: any) => 
+        company.id === user.companyId
+      );
+    }
+    
+    return companies; // Default fallback
+  };
+
+  // Filtered companies with permission check
   const filteredHierarchy = useMemo(() => {
-    const hierarchy = getCompanyHierarchy();
+    const accessibleCompanies = getAccessibleCompanies();
+    
+    // Create hierarchy from accessible companies only
+    const companyMap = new Map();
+    const rootCompanies: any[] = [];
+
+    // Create company map
+    accessibleCompanies.forEach((company: any) => {
+      companyMap.set(company.id, { ...company, children: [] });
+    });
+
+    // Build hierarchy
+    accessibleCompanies.forEach((company: any) => {
+      if (company.parent_id || company.parentId) {
+        const parent = companyMap.get(company.parent_id || company.parentId);
+        if (parent) {
+          parent.children.push(companyMap.get(company.id));
+        } else {
+          rootCompanies.push(companyMap.get(company.id));
+        }
+      } else {
+        rootCompanies.push(companyMap.get(company.id));
+      }
+    });
     
     if (!searchTerm && typeFilter === "all") {
-      return hierarchy;
+      return rootCompanies;
     }
 
     const filterCompany = (company: any): any => {
@@ -130,8 +210,96 @@ export default function CompaniesPage() {
       return null;
     };
 
-    return hierarchy.map(filterCompany).filter(Boolean);
-  }, [companies, clients, searchTerm, typeFilter]);
+    return rootCompanies.map(filterCompany).filter(Boolean);
+  }, [companies, clients, searchTerm, typeFilter, user]);
+
+  // Mutations for CRUD operations
+  const createCompanyMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/companies', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to create company');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      setIsCreateDialogOpen(false);
+      setFormData({ name: '', type: 'rivenditore', parentId: '', status: 'active', contactInfo: { email: '', phone: '', address: '' } });
+      toast({ title: "Azienda creata con successo" });
+    }
+  });
+
+  const updateCompanyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string, data: any }) => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch(`/api/companies/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to update company');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      setIsEditDialogOpen(false);
+      toast({ title: "Azienda aggiornata con successo" });
+    }
+  });
+
+  const createAgentMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ...data, companyId: selectedCompany?.id })
+      });
+      if (!response.ok) throw new Error('Failed to create agent');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      setIsCreateAgentOpen(false);
+      setAgentFormData({ name: '', email: '', phone: '', role: 'agente', territory: '' });
+      toast({ title: "Agente creato con successo" });
+    }
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ...data, companyId: selectedCompany?.id })
+      });
+      if (!response.ok) throw new Error('Failed to create user');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      setIsCreateUserOpen(false);
+      setUserFormData({ username: '', name: '', email: '', password: '', role: 'cliente' });
+      toast({ title: "Utente creato con successo" });
+    }
+  });
 
   const toggleExpand = (companyId: string) => {
     const newExpanded = new Set(expandedCompanies);
@@ -141,6 +309,37 @@ export default function CompaniesPage() {
       newExpanded.add(companyId);
     }
     setExpandedCompanies(newExpanded);
+  };
+
+  const handleEditCompany = (company: any) => {
+    setSelectedCompany(company);
+    setFormData({
+      name: company.name || '',
+      type: company.type || 'rivenditore',
+      parentId: company.parent_id || company.parentId || '',
+      status: company.status || 'active',
+      contactInfo: company.contact_info || company.contactInfo || { email: '', phone: '', address: '' }
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSubmitCompany = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditDialogOpen && selectedCompany) {
+      updateCompanyMutation.mutate({ id: selectedCompany.id, data: formData });
+    } else {
+      createCompanyMutation.mutate(formData);
+    }
+  };
+
+  const handleSubmitAgent = (e: React.FormEvent) => {
+    e.preventDefault();
+    createAgentMutation.mutate(agentFormData);
+  };
+
+  const handleSubmitUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    createUserMutation.mutate(userFormData);
   };
 
   const getStatusColor = (status: string) => {
@@ -217,29 +416,47 @@ export default function CompaniesPage() {
                 </div>
 
                 <div className="flex space-x-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCompany(company);
-                      setIsCreateAgentOpen(true);
-                    }}
-                    title="Aggiungi Agente"
-                  >
-                    <i className="fas fa-user-plus text-blue-600"></i>
-                  </Button>
+                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCompany(company);
+                        setIsCreateUserOpen(true);
+                      }}
+                      title="Nuovo Utente"
+                    >
+                      <i className="fas fa-user-plus text-green-600"></i>
+                    </Button>
+                  )}
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCompany(company);
-                      setIsEditDialogOpen(true);
-                    }}
-                    title="Modifica Azienda"
-                  >
-                    <i className="fas fa-edit text-gray-600"></i>
-                  </Button>
+                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCompany(company);
+                        setIsCreateAgentOpen(true);
+                      }}
+                      title="Nuovo Agente"
+                    >
+                      <i className="fas fa-user-tie text-blue-600"></i>
+                    </Button>
+                  )}
+                  
+                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditCompany(company)}
+                      title="Modifica Azienda"
+                    >
+                      <i className="fas fa-edit text-gray-600"></i>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -334,16 +551,22 @@ export default function CompaniesPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Aziende</h1>
-              <p className="text-gray-600">Visualizza la struttura gerarchica delle aziende con agenti e clienti</p>
+              <p className="text-gray-600">
+                {user?.role === 'superadmin' ? 'Visualizza la struttura gerarchica completa delle aziende' :
+                 user?.role === 'rivenditore' ? 'Gestisci la tua rete di sotto-aziende e agenti' :
+                 'Visualizza i dettagli della tua azienda'}
+              </p>
             </div>
             
-            <Button 
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="bg-primary hover:bg-blue-700"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Nuova Azienda
-            </Button>
+            {(user?.role === 'superadmin' || user?.role === 'rivenditore') && (
+              <Button 
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="bg-primary hover:bg-blue-700"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                Nuova Azienda
+              </Button>
+            )}
           </div>
 
           {/* Filters */}
@@ -419,25 +642,258 @@ export default function CompaniesPage() {
         </div>
       </main>
 
+      {/* Create/Edit Company Dialog */}
+      <Dialog open={isCreateDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsCreateDialogOpen(false);
+          setIsEditDialogOpen(false);
+          setFormData({ name: '', type: 'rivenditore', parentId: '', status: 'active', contactInfo: { email: '', phone: '', address: '' } });
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditDialogOpen ? `Modifica ${selectedCompany?.name}` : 'Nuova Azienda'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCompany} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nome Azienda</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="type">Tipo</Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rivenditore">Rivenditore</SelectItem>
+                  <SelectItem value="sottoazienda">Sotto-azienda</SelectItem>
+                  <SelectItem value="agente">Agente</SelectItem>
+                  <SelectItem value="cliente">Cliente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="parentId">Azienda Madre (opzionale)</Label>
+              <Select value={formData.parentId} onValueChange={(value) => setFormData({ ...formData, parentId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona azienda madre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna (azienda principale)</SelectItem>
+                  {(companies as any[]).map((company: any) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.contactInfo.email}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  contactInfo: { ...formData.contactInfo, email: e.target.value }
+                })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="phone">Telefono</Label>
+              <Input
+                id="phone"
+                value={formData.contactInfo.phone}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  contactInfo: { ...formData.contactInfo, phone: e.target.value }
+                })}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  setIsEditDialogOpen(false);
+                }}
+              >
+                Annulla
+              </Button>
+              <Button type="submit" disabled={createCompanyMutation.isPending || updateCompanyMutation.isPending}>
+                {createCompanyMutation.isPending || updateCompanyMutation.isPending ? 'Salvando...' : 
+                 isEditDialogOpen ? 'Aggiorna' : 'Crea'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Agent Dialog */}
       <Dialog open={isCreateAgentOpen} onOpenChange={setIsCreateAgentOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               Nuovo Agente per {selectedCompany?.name}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Funzionalità di creazione agenti in sviluppo. 
-              Gli agenti sono rappresentanti commerciali collegati all'azienda.
-            </p>
+          <form onSubmit={handleSubmitAgent} className="space-y-4">
+            <div>
+              <Label htmlFor="agentName">Nome Completo</Label>
+              <Input
+                id="agentName"
+                value={agentFormData.name}
+                onChange={(e) => setAgentFormData({ ...agentFormData, name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="agentEmail">Email</Label>
+              <Input
+                id="agentEmail"
+                type="email"
+                value={agentFormData.email}
+                onChange={(e) => setAgentFormData({ ...agentFormData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="agentPhone">Telefono</Label>
+              <Input
+                id="agentPhone"
+                value={agentFormData.phone}
+                onChange={(e) => setAgentFormData({ ...agentFormData, phone: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="agentRole">Ruolo</Label>
+              <Select value={agentFormData.role} onValueChange={(value) => setAgentFormData({ ...agentFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agente">Agente</SelectItem>
+                  <SelectItem value="responsabile_vendite">Responsabile Vendite</SelectItem>
+                  <SelectItem value="account_manager">Account Manager</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="territory">Territorio (opzionale)</Label>
+              <Input
+                id="territory"
+                value={agentFormData.territory}
+                onChange={(e) => setAgentFormData({ ...agentFormData, territory: e.target.value })}
+                placeholder="es. Nord Italia, Lombardia, etc."
+              />
+            </div>
+
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setIsCreateAgentOpen(false)}>
-                Chiudi
+              <Button type="button" variant="outline" onClick={() => setIsCreateAgentOpen(false)}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={createAgentMutation.isPending}>
+                {createAgentMutation.isPending ? 'Creando...' : 'Crea Agente'}
               </Button>
             </div>
-          </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Nuovo Utente per {selectedCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitUser} className="space-y-4">
+            <div>
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={userFormData.username}
+                onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="userName">Nome Completo</Label>
+              <Input
+                id="userName"
+                value={userFormData.name}
+                onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="userEmail">Email</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                value={userFormData.email}
+                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="userRole">Ruolo</Label>
+              <Select value={userFormData.role} onValueChange={(value) => setUserFormData({ ...userFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cliente">Cliente</SelectItem>
+                  <SelectItem value="agente">Agente</SelectItem>
+                  <SelectItem value="rivenditore">Rivenditore</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsCreateUserOpen(false)}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending ? 'Creando...' : 'Crea Utente'}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
