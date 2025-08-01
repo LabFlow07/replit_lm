@@ -19,6 +19,7 @@ export default function CompaniesPage() {
   const [, setLocation] = useLocation();
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -398,7 +399,11 @@ export default function CompaniesPage() {
                     </div>
 
                     <div className="pt-4 space-y-2">
-                      <Button variant="outline" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setIsEditDialogOpen(true)}
+                      >
                         <i className="fas fa-edit mr-2"></i>
                         Modifica Azienda
                       </Button>
@@ -425,6 +430,16 @@ export default function CompaniesPage() {
               )}
             </div>
           </div>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Modifica Azienda</DialogTitle>
+              </DialogHeader>
+              <CompanyForm company={selectedCompany} isEdit={true} />
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>

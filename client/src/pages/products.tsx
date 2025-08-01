@@ -18,6 +18,8 @@ export default function ProductsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [newProduct, setNewProduct] = useState({
     name: '',
     version: '',
@@ -279,7 +281,14 @@ export default function ProductsPage() {
                         Creato il {new Date(product.createdAt).toLocaleDateString('it-IT')}
                       </span>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setIsEditModalOpen(true);
+                          }}
+                        >
                           <i className="fas fa-edit mr-1"></i>
                           Modifica
                         </Button>
@@ -310,6 +319,75 @@ export default function ProductsPage() {
             </Card>
           )}
         </div>
+
+        {/* Edit Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Modifica Prodotto</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome Prodotto *</Label>
+                <Input
+                  id="edit-name"
+                  defaultValue={selectedProduct?.name || ''}
+                  placeholder="es. QLM Professional"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-version">Versione *</Label>
+                <Input
+                  id="edit-version"
+                  defaultValue={selectedProduct?.version || ''}
+                  placeholder="es. 2024.1"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrizione</Label>
+                <Input
+                  id="edit-description"
+                  defaultValue={selectedProduct?.description || ''}
+                  placeholder="Descrivi il prodotto..."
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Tipi di licenza supportati</Label>
+                <div className="flex flex-wrap gap-2">
+                  {['permanente', 'trial', 'abbonamento'].map((type) => (
+                    <div key={type} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`edit-${type}`}
+                        defaultChecked={selectedProduct?.supportedLicenseTypes?.includes(type)}
+                        className="rounded border-gray-300"
+                      />
+                      <Label htmlFor={`edit-${type}`} className="text-sm capitalize">
+                        {type}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Annulla
+                </Button>
+                <Button className="bg-primary hover:bg-blue-700">
+                  <i className="fas fa-save mr-2"></i>
+                  Aggiorna Prodotto
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

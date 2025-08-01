@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -7,10 +7,16 @@ import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ClientsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -142,7 +148,14 @@ export default function ClientsPage() {
                               <Button variant="ghost" size="sm" className="mr-2">
                                 <i className="fas fa-eye"></i>
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedClient(client);
+                                  setIsEditModalOpen(true);
+                                }}
+                              >
                                 <i className="fas fa-edit"></i>
                               </Button>
                             </td>
@@ -162,6 +175,87 @@ export default function ClientsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Edit Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Modifica Cliente</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-name">Nome Cliente *</Label>
+                <Input
+                  id="edit-client-name"
+                  defaultValue={selectedClient?.name || ''}
+                  placeholder="Nome completo del cliente"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-email">Email *</Label>
+                <Input
+                  id="edit-client-email"
+                  type="email"
+                  defaultValue={selectedClient?.email || ''}
+                  placeholder="email@esempio.com"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-status">Stato</Label>
+                <Select defaultValue={selectedClient?.status || 'in_attesa'}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in_attesa">In Attesa</SelectItem>
+                    <SelectItem value="convalidato">Convalidato</SelectItem>
+                    <SelectItem value="sospeso">Sospeso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-multi-site"
+                    defaultChecked={selectedClient?.isMultiSite}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="edit-multi-site" className="text-sm">
+                    Multi-Sede
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-multi-user"
+                    defaultChecked={selectedClient?.isMultiUser}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="edit-multi-user" className="text-sm">
+                    Multi-Utente
+                  </Label>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Annulla
+                </Button>
+                <Button className="bg-primary hover:bg-blue-700">
+                  <i className="fas fa-save mr-2"></i>
+                  Aggiorna Cliente
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
