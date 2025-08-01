@@ -36,6 +36,24 @@ export default function ProductsPage() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['/api/products'],
     enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/products', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    }
   });
 
   const createProductMutation = useMutation({
