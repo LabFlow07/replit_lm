@@ -62,6 +62,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Default admin user created: admin/admin123');
   }
 
+  // Create test data if database is empty
+  const existingLicenses = await storage.getLicenses();
+  if (existingLicenses.length === 0) {
+    // Create test company
+    const testCompany = await storage.createCompany({
+      name: 'ABC Software Solutions',
+      type: 'rivenditore',
+      parentId: null,
+      status: 'active',
+      contactInfo: { phone: '+39 02 12345678', address: 'Via Roma 123, Milano' }
+    });
+
+    // Create test product
+    const testProduct = await storage.createProduct({
+      name: 'QLM Professional',
+      version: '2024.1',
+      description: 'Piattaforma completa di gestione licenze',
+      supportedLicenseTypes: ['permanente', 'trial', 'abbonamento']
+    });
+
+    // Create test client
+    const testClient = await storage.createClient({
+      companyId: testCompany.id,
+      name: 'Mario Rossi',
+      email: 'mario.rossi@company.com',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 02 87654321' },
+      isMultiSite: false,
+      isMultiUser: true
+    });
+
+    // Create test licenses
+    await storage.createLicense({
+      clientId: testClient.id,
+      productId: testProduct.id,
+      activationKey: 'LIC-2024-ACTIVE-001',
+      computerKey: 'COMP-12345678',
+      activationDate: new Date(),
+      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      licenseType: 'permanente',
+      status: 'attiva',
+      maxUsers: 5,
+      maxDevices: 3,
+      price: 1500,
+      discount: 0,
+      activeModules: ['core', 'reports', 'api'],
+      assignedCompany: testCompany.id,
+      assignedAgent: null
+    });
+
+    await storage.createLicense({
+      clientId: testClient.id,
+      productId: testProduct.id,
+      activationKey: 'LIC-2024-DEMO-002',
+      computerKey: null,
+      activationDate: null,
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      licenseType: 'trial',
+      status: 'demo',
+      maxUsers: 1,
+      maxDevices: 1,
+      price: 0,
+      discount: 0,
+      activeModules: ['core'],
+      assignedCompany: testCompany.id,
+      assignedAgent: null
+    });
+
+    await storage.createLicense({
+      clientId: testClient.id,
+      productId: testProduct.id,
+      activationKey: 'LIC-2024-PENDING-003',
+      computerKey: null,
+      activationDate: null,
+      expiryDate: null,
+      licenseType: 'permanente',
+      status: 'in_attesa_convalida',
+      maxUsers: 10,
+      maxDevices: 5,
+      price: 2500,
+      discount: 10,
+      activeModules: [],
+      assignedCompany: testCompany.id,
+      assignedAgent: null
+    });
+
+    console.log('Test data created successfully');
+  }
+
   // Authentication endpoints
   app.post('/api/auth/login', async (req, res) => {
     try {
@@ -100,8 +189,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Protected routes
-  app.use('/api', authenticateToken, logAccess);
+  // Protected routes - exclude auth endpoints
+  app.use('/api', (req, res, next) => {
+    if (req.path.includes('/auth/')) {
+      return next();
+    }
+    authenticateToken(req, res, next);
+  }, logAccess);
 
   // Dashboard stats
   app.get('/api/dashboard/stats', async (req, res) => {
