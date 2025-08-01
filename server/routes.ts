@@ -371,6 +371,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/products', async (req, res) => {
+    try {
+      const productData = req.body;
+      const product = await storage.createProduct(productData);
+      res.status(201).json(product);
+    } catch (error) {
+      console.error('Create product error:', error);
+      res.status(500).json({ message: 'Failed to create product' });
+    }
+  });
+
   // Transaction endpoints
   app.get('/api/transactions', async (req, res) => {
     try {

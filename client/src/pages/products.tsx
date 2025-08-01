@@ -1,15 +1,31 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProductsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    version: '',
+    description: '',
+    supportedLicenseTypes: [] as string[]
+  });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -21,6 +37,62 @@ export default function ProductsPage() {
     queryKey: ['/api/products'],
     enabled: !!user,
   });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (productData: typeof newProduct) => {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(productData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create product');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      setIsCreateModalOpen(false);
+      setNewProduct({ name: '', version: '', description: '', supportedLicenseTypes: [] });
+      toast({
+        title: "Successo",
+        description: "Prodotto creato con successo!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Errore nella creazione del prodotto",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleCreateProduct = () => {
+    if (!newProduct.name || !newProduct.version) {
+      toast({
+        title: "Errore",
+        description: "Nome e versione sono obbligatori",
+        variant: "destructive",
+      });
+      return;
+    }
+    createProductMutation.mutate(newProduct);
+  };
+
+  const handleLicenseTypeToggle = (type: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      supportedLicenseTypes: prev.supportedLicenseTypes.includes(type)
+        ? prev.supportedLicenseTypes.filter(t => t !== type)
+        : [...prev.supportedLicenseTypes, type]
+    }));
+  };
 
   if (loading) {
     return (
@@ -47,10 +119,82 @@ export default function ProductsPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Prodotti</h1>
               <p className="text-gray-600">Visualizza e gestisci tutti i prodotti software</p>
             </div>
-            <Button className="bg-primary hover:bg-blue-700">
-              <i className="fas fa-plus mr-2"></i>
-              Nuovo Prodotto
-            </Button>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-blue-700">
+                  <i className="fas fa-plus mr-2"></i>
+                  Nuovo Prodotto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Crea Nuovo Prodotto</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome Prodotto *</Label>
+                    <Input
+                      id="name"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="es. QLM Professional"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="version">Versione *</Label>
+                    <Input
+                      id="version"
+                      value={newProduct.version}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, version: e.target.value }))}
+                      placeholder="es. 2024.1"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrizione</Label>
+                    <Textarea
+                      id="description"
+                      value={newProduct.description}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Descrizione del prodotto software..."
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Tipi di Licenza Supportati</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {['permanente', 'trial', 'abbonamento'].map((type) => (
+                        <Badge
+                          key={type}
+                          variant={newProduct.supportedLicenseTypes.includes(type) ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => handleLicenseTypeToggle(type)}
+                        >
+                          {type}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsCreateModalOpen(false)}
+                    >
+                      Annulla
+                    </Button>
+                    <Button 
+                      onClick={handleCreateProduct}
+                      disabled={createProductMutation.isPending}
+                    >
+                      {createProductMutation.isPending ? 'Creazione...' : 'Crea Prodotto'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -127,7 +271,10 @@ export default function ProductsPage() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun prodotto trovato</h3>
                 <p className="text-gray-500 mb-4">Inizia creando il tuo primo prodotto software</p>
-                <Button className="bg-primary hover:bg-blue-700">
+                <Button 
+                  className="bg-primary hover:bg-blue-700"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
                   <i className="fas fa-plus mr-2"></i>
                   Crea Primo Prodotto
                 </Button>
