@@ -2,21 +2,32 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const navigationItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', active: true },
-  { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245' },
-  { id: 'clients', label: 'Clienti', icon: 'fas fa-users' },
-  { id: 'products', label: 'Prodotti', icon: 'fas fa-box' },
-  { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line' },
-  { id: 'settings', label: 'Impostazioni', icon: 'fas fa-cog', separator: true },
-  { id: 'logs', label: 'Log Attività', icon: 'fas fa-file-alt' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
+  { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245', route: '/licenses' },
+  { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
+  { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
+  { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
+  { id: 'settings', label: 'Impostazioni', icon: 'fas fa-cog', separator: true, route: '/settings' },
+  { id: 'logs', label: 'Log Attività', icon: 'fas fa-file-alt', route: '/logs' },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeRole, setActiveRole] = useState(user?.role || 'superadmin');
-  const [activeItem, setActiveItem] = useState('dashboard');
+  
+  // Determine active item based on current route
+  const getActiveItem = () => {
+    const currentPath = location.pathname;
+    const activeNavItem = navigationItems.find(item => item.route === currentPath);
+    return activeNavItem ? activeNavItem.id : 'dashboard';
+  };
+  
+  const activeItem = getActiveItem();
 
   const handleRoleChange = (role: string) => {
     setActiveRole(role);
@@ -66,7 +77,7 @@ export default function Sidebar() {
           <div key={item.id}>
             {item.separator && <div className="pt-4 border-t border-gray-200" />}
             <button
-              onClick={() => setActiveItem(item.id)}
+              onClick={() => navigate(item.route)}
               className={`flex items-center space-x-3 px-3 py-2 rounded-lg w-full text-left transition-colors ${
                 activeItem === item.id
                   ? 'bg-primary text-white'
