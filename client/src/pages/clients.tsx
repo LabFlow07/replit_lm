@@ -21,6 +21,8 @@ export default function ClientsPage() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['/api/clients'],
     enabled: !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
     queryFn: async () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -37,7 +39,9 @@ export default function ClientsPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log('Clients data received:', data);
+      return data;
     }
   });
 

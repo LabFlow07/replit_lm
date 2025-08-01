@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 export default function LicenseTable() {
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
+    refetchOnWindowFocus: false,
+    staleTime: 0,
     queryFn: async () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -22,7 +24,9 @@ export default function LicenseTable() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log('Licenses data received:', data);
+      return data;
     }
   });
 

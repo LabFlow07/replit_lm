@@ -36,6 +36,8 @@ export default function ProductsPage() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['/api/products'],
     enabled: !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
     queryFn: async () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -52,7 +54,9 @@ export default function ProductsPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log('Products data received:', data);
+      return data;
     }
   });
 
