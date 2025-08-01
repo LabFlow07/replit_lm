@@ -42,44 +42,77 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('qlm_token');
-    const userData = localStorage.getItem('qlm_user');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-      } catch (error) {
-        localStorage.removeItem('qlm_token');
-        localStorage.removeItem('qlm_user');
-      }
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Validate token with a simple API call
+      fetch('/api/dashboard/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          // Token is valid, try to get user info from JWT payload
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            setUser({
+              id: payload.id,
+              username: payload.username,
+              role: payload.role,
+              name: payload.username,
+              email: `${payload.username}@qlm.com`
+            });
+          } catch (e) {
+            console.error('Error parsing token:', e);
+            localStorage.removeItem('token');
+          }
+        } else {
+          // Token is invalid
+          localStorage.removeItem('token');
+          setUser(null);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        setUser(null);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/login', {
-        username,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
       });
-      
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Invalid credentials');
+      }
+
       const data = await response.json();
-      
-      localStorage.setItem('qlm_token', data.token);
-      localStorage.setItem('qlm_user', JSON.stringify(data.user));
+      localStorage.setItem('token', data.token);
       setUser(data.user);
-      setLocation('/');
-    } catch (error: any) {
-      throw new Error(error.message || 'Login failed');
+      setLoading(false);
+      console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
+    } catch (error) {
+      console.error('Login error:', error);
+      setUser(null);
+      setLoading(false);
+      throw error;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('qlm_token');
-    localStorage.removeItem('qlm_user');
+    localStorage.removeItem('token');
     setUser(null);
     setLocation('/login');
   };

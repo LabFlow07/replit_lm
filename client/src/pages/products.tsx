@@ -40,17 +40,23 @@ export default function ProductsPage() {
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: typeof newProduct) => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(productData)
       });
       
       if (!response.ok) {
-        throw new Error('Failed to create product');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       return response.json();
