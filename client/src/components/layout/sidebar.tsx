@@ -8,6 +8,7 @@ const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
   { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245', route: '/licenses' },
   { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
+  { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
   { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
   { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
   { id: 'settings', label: 'Impostazioni', icon: 'fas fa-cog', separator: true, route: '/settings' },

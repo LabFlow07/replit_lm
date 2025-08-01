@@ -675,6 +675,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company endpoints
+  app.get('/api/companies', async (req, res) => {
+    try {
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error('Get companies error:', error);
+      res.status(500).json({ message: 'Failed to fetch companies' });
+    }
+  });
+
+  app.post('/api/companies', async (req, res) => {
+    try {
+      const companyData = req.body;
+      const company = await storage.createCompany(companyData);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error('Create company error:', error);
+      res.status(500).json({ message: 'Failed to create company' });
+    }
+  });
+
+  app.put('/api/companies/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const companyData = req.body;
+      const company = await storage.updateCompany(id, companyData);
+      res.json(company);
+    } catch (error) {
+      console.error('Update company error:', error);
+      res.status(500).json({ message: 'Failed to update company' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

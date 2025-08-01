@@ -22,8 +22,10 @@ export interface IStorage {
   
   // Company methods
   getCompany(id: string): Promise<Company | undefined>;
+  getCompanies(): Promise<Company[]>;
   getCompaniesByType(type: string): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: string, updates: Partial<Company>): Promise<Company>;
   
   // Product methods
   getProducts(): Promise<Product[]>;
@@ -114,6 +116,16 @@ export class DatabaseStorage implements IStorage {
     return rows;
   }
 
+  async getCompanies(): Promise<Company[]> {
+    const rows = await database.query('SELECT * FROM companies ORDER BY name ASC');
+    return rows.map((row: any) => ({
+      ...row,
+      parentId: row.parent_id,
+      contactInfo: row.contact_info ? JSON.parse(row.contact_info) : null,
+      createdAt: row.created_at
+    }));
+  }
+
   async createCompany(insertCompany: InsertCompany): Promise<Company> {
     const id = randomUUID();
     await database.query(`
@@ -122,6 +134,41 @@ export class DatabaseStorage implements IStorage {
     `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo)]);
     
     return { ...insertCompany, id, createdAt: new Date() };
+  }
+
+  async updateCompany(id: string, updates: Partial<Company>): Promise<Company> {
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (updates.name) {
+      updateFields.push('name = ?');
+      updateValues.push(updates.name);
+    }
+    if (updates.type) {
+      updateFields.push('type = ?');
+      updateValues.push(updates.type);
+    }
+    if (updates.parentId !== undefined) {
+      updateFields.push('parent_id = ?');
+      updateValues.push(updates.parentId);
+    }
+    if (updates.status) {
+      updateFields.push('status = ?');
+      updateValues.push(updates.status);
+    }
+    if (updates.contactInfo) {
+      updateFields.push('contact_info = ?');
+      updateValues.push(JSON.stringify(updates.contactInfo));
+    }
+    
+    updateValues.push(id);
+    
+    await database.query(`
+      UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?
+    `, updateValues);
+    
+    const updatedCompany = await this.getCompany(id);
+    return updatedCompany!;
   }
 
   async getProducts(): Promise<Product[]> {

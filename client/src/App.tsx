@@ -9,6 +9,7 @@ import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import LicensesPage from "@/pages/licenses";
 import ClientsPage from "@/pages/clients";
+import CompaniesPage from "@/pages/companies";
 import ProductsPage from "@/pages/products";
 import TransactionsPage from "@/pages/transactions";
 import SettingsPage from "@/pages/settings";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/licenses" component={LicensesPage} />
       <Route path="/clients" component={ClientsPage} />
+      <Route path="/companies" component={CompaniesPage} />
       <Route path="/products" component={ProductsPage} />
       <Route path="/transactions" component={TransactionsPage} />
       <Route path="/settings" component={SettingsPage} />
