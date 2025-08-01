@@ -29,6 +29,19 @@ export default function CompaniesPage() {
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ['/api/companies'],
     enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
   });
 
   if (loading) {
