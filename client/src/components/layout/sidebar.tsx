@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate, useLocation } from "react-router-dom";
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
@@ -16,13 +16,12 @@ const navigationItems = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [location, setLocation] = useLocation();
   const [activeRole, setActiveRole] = useState(user?.role || 'superadmin');
   
   // Determine active item based on current route
   const getActiveItem = () => {
-    const currentPath = location.pathname;
+    const currentPath = location;
     const activeNavItem = navigationItems.find(item => item.route === currentPath);
     return activeNavItem ? activeNavItem.id : 'dashboard';
   };
@@ -77,7 +76,7 @@ export default function Sidebar() {
           <div key={item.id}>
             {item.separator && <div className="pt-4 border-t border-gray-200" />}
             <button
-              onClick={() => navigate(item.route)}
+              onClick={() => setLocation(item.route)}
               className={`flex items-center space-x-3 px-3 py-2 rounded-lg w-full text-left transition-colors ${
                 activeItem === item.id
                   ? 'bg-primary text-white'
