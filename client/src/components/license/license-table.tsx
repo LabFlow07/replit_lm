@@ -88,6 +88,7 @@ export default function LicenseTable() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Chiave Licenza</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prodotto</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Azienda</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scadenza</th>
@@ -101,10 +102,28 @@ export default function LicenseTable() {
                       {license.activationKey}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {license.product?.name || 'N/A'}
+                      <div className="flex items-center">
+                        <i className="fas fa-box text-blue-500 mr-2"></i>
+                        <div>
+                          <div className="font-medium">{license.product?.name || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{license.product?.version || ''}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {license.client?.name || 'N/A'}
+                      <div className="flex items-center">
+                        <i className="fas fa-user text-green-500 mr-2"></i>
+                        <div>
+                          <div className="font-medium">{license.client?.name || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{license.client?.email || ''}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <i className="fas fa-building text-gray-400 mr-2"></i>
+                        {license.company?.name || 'N/A'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getTypeBadge(license.licenseType)}

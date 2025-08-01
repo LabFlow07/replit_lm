@@ -55,6 +55,45 @@ export default function ClientsPage() {
     }
   });
 
+  const { data: companies = [] } = useQuery({
+    queryKey: ['/api/companies'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
+  });
+
+  const { data: licenses = [] } = useQuery({
+    queryKey: ['/api/licenses'],
+    enabled: !!user,
+  });
+
+  // Function to get company name by ID
+  const getCompanyName = (companyId: string) => {
+    const company = companies.find((c: any) => c.id === companyId);
+    return company ? company.name : 'N/A';
+  };
+
+  // Function to get client licenses count
+  const getClientLicensesCount = (clientId: string) => {
+    return licenses.filter((license: any) => license.clientId === clientId).length;
+  };
+
+  // Function to get client's licensed products
+  const getClientProducts = (clientId: string) => {
+    const clientLicenses = licenses.filter((license: any) => license.clientId === clientId);
+    const products = clientLicenses.map((license: any) => license.product?.name).filter(Boolean);
+    return [...new Set(products)]; // Remove duplicates
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -118,15 +157,19 @@ export default function ClientsPage() {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Azienda</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Multi-Sede</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Creazione</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Licenze</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prodotti</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {clients.map((client: any, index: number) => {
                         console.log(`Rendering client ${index + 1}:`, client);
+                        const clientProducts = getClientProducts(client.id);
+                        const licensesCount = getClientLicensesCount(client.id);
+                        
                         return (
                           <tr key={client.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -135,14 +178,38 @@ export default function ClientsPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {client.email || 'N/A'}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <i className="fas fa-building text-gray-400 mr-2"></i>
+                                {getCompanyName(client.company_id || client.companyId)}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {getStatusBadge(client.status || 'unknown')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {client.isMultiSite ? 'Sì' : 'No'}
+                              <div className="flex items-center">
+                                <i className="fas fa-key text-blue-500 mr-2"></i>
+                                <span className="font-medium">{licensesCount}</span>
+                              </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {client.createdAt ? new Date(client.createdAt).toLocaleDateString('it-IT') : 'N/A'}
+                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                              {clientProducts.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {clientProducts.slice(0, 2).map((product, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                      {product}
+                                    </span>
+                                  ))}
+                                  {clientProducts.length > 2 && (
+                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                      +{clientProducts.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">Nessun prodotto</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <Button variant="ghost" size="sm" className="mr-2">
