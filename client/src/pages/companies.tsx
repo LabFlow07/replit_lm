@@ -138,23 +138,23 @@ export default function CompaniesPage() {
     // Rivenditore vede se stesso e le sue sotto-aziende
     if (user.role === 'rivenditore') {
       return (companies as any[]).filter((company: any) => 
-        company.id === user.companyId || 
-        company.parent_id === user.companyId ||
-        company.parentId === user.companyId
+        company.id === user.company || 
+        company.parent_id === user.company ||
+        company.parentId === user.company
       );
     }
     
     // Agente vede solo la sua azienda
     if (user.role === 'agente') {
       return (companies as any[]).filter((company: any) => 
-        company.id === user.companyId
+        company.id === user.company
       );
     }
     
     // Cliente vede solo la sua azienda
     if (user.role === 'cliente') {
       return (companies as any[]).filter((company: any) => 
-        company.id === user.companyId
+        company.id === user.company
       );
     }
     
@@ -273,6 +273,7 @@ export default function CompaniesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       setIsCreateAgentOpen(false);
       setAgentFormData({ name: '', email: '', phone: '', role: 'agente', territory: '' });
       toast({ title: "Agente creato con successo" });
@@ -295,6 +296,8 @@ export default function CompaniesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       setIsCreateUserOpen(false);
       setUserFormData({ username: '', name: '', email: '', password: '', role: 'cliente' });
       toast({ title: "Utente creato con successo" });
@@ -417,7 +420,7 @@ export default function CompaniesPage() {
 
                 <div className="flex space-x-1">
                   {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    (user?.role === 'agente' && company.id === user?.company)) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -432,7 +435,7 @@ export default function CompaniesPage() {
                   )}
                   
                   {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    (user?.role === 'agente' && company.id === user?.company)) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -447,7 +450,7 @@ export default function CompaniesPage() {
                   )}
                   
                   {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.companyId)) && (
+                    (user?.role === 'agente' && company.id === user?.company)) && (
                     <Button
                       variant="ghost"
                       size="sm"
