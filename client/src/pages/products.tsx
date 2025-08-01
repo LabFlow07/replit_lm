@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,11 @@ export default function ProductsPage() {
     description: '',
     supportedLicenseTypes: [] as string[]
   });
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [licenseTypeFilter, setLicenseTypeFilter] = useState("all");
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -61,6 +66,37 @@ export default function ProductsPage() {
       return data;
     }
   });
+
+  const { data: licenses = [] } = useQuery({
+    queryKey: ['/api/licenses'],
+    enabled: !!user,
+  });
+
+  // Function to get license count for a product
+  const getProductLicenseCount = (productId: string) => {
+    return (licenses as any[]).filter((license: any) => license.productId === productId).length;
+  };
+
+  // Function to get clients for a product
+  const getProductClients = (productId: string) => {
+    const productLicenses = (licenses as any[]).filter((license: any) => license.productId === productId);
+    const clients = productLicenses.map((license: any) => license.client?.name).filter(Boolean);
+    return Array.from(new Set(clients)); // Remove duplicates
+  };
+
+  // Filtered products
+  const filteredProducts = useMemo(() => {
+    return products.filter((product: any) => {
+      const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.version?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesLicenseType = licenseTypeFilter === "all" || 
+                                 product.supportedLicenseTypes?.includes(licenseTypeFilter);
+      
+      return matchesSearch && matchesLicenseType;
+    });
+  }, [products, searchTerm, licenseTypeFilter]);
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: typeof newProduct) => {
@@ -227,6 +263,36 @@ export default function ProductsPage() {
             </Dialog>
           </div>
 
+          {/* Search and Filter Section */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <CardTitle>Prodotti ({filteredProducts.length} di {products.length})</CardTitle>
+                
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                  <Input
+                    placeholder="Cerca per nome, versione o descrizione..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="md:w-80"
+                  />
+                  
+                  <Select value={licenseTypeFilter} onValueChange={setLicenseTypeFilter}>
+                    <SelectTrigger className="md:w-48">
+                      <SelectValue placeholder="Tipo licenza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i tipi</SelectItem>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="abbonamento">Abbonamento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
@@ -236,8 +302,25 @@ export default function ProductsPage() {
                   </CardContent>
                 </Card>
               ))
+            ) : filteredProducts.length === 0 && products.length > 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500 mb-4">Nessun prodotto trovato con i filtri selezionati</p>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setLicenseTypeFilter("all");
+                  }}
+                >
+                  Rimuovi filtri
+                </Button>
+              </div>
             ) : (
-              products.map((product: any) => (
+              filteredProducts.map((product: any) => {
+                const licenseCount = getProductLicenseCount(product.id);
+                const clients = getProductClients(product.id);
+                
+                return (
                 <Card key={product.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -258,22 +341,60 @@ export default function ProductsPage() {
                       {product.description || 'Nessuna descrizione disponibile'}
                     </p>
                     
-                    <div className="space-y-2">
-                      <div className="text-sm">
-                        <span className="font-medium text-gray-700">Tipi licenza supportati:</span>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-700">Tipi licenza supportati:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {product.supportedLicenseTypes?.map((type: string, index: number) => (
+                            <span 
+                              key={index}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                            >
+                              {type}
+                            </span>
+                          )) || (
+                            <span className="text-xs text-gray-500">Nessun tipo specificato</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {product.supportedLicenseTypes?.map((type: string, index: number) => (
-                          <span 
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-4">
+                          <button
+                            onClick={() => setLocation('/licenses')}
+                            className="flex items-center text-blue-600 hover:text-blue-800 hover:underline"
                           >
-                            {type}
-                          </span>
-                        )) || (
-                          <span className="text-xs text-gray-500">Nessun tipo specificato</span>
-                        )}
+                            <i className="fas fa-key mr-1"></i>
+                            <span className="font-medium">{licenseCount}</span> licenze
+                          </button>
+                          
+                          <button
+                            onClick={() => setLocation('/clients')}
+                            className="flex items-center text-green-600 hover:text-green-800 hover:underline"
+                          >
+                            <i className="fas fa-users mr-1"></i>
+                            <span className="font-medium">{clients.length}</span> clienti
+                          </button>
+                        </div>
                       </div>
+                      
+                      {clients.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-gray-500">Clienti:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {clients.slice(0, 3).map((client, idx) => (
+                              <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                {client}
+                              </span>
+                            ))}
+                            {clients.length > 3 && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                +{clients.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
@@ -296,7 +417,8 @@ export default function ProductsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+                );
+              })
             )}
           </div>
 

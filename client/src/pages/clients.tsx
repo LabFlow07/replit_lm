@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +17,11 @@ export default function ClientsPage() {
   const [, setLocation] = useLocation();
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -94,6 +99,19 @@ export default function ClientsPage() {
     return [...new Set(products)]; // Remove duplicates
   };
 
+  // Filtered clients
+  const filteredClients = useMemo(() => {
+    return clients.filter((client: any) => {
+      const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           client.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || client.status === statusFilter;
+      const matchesCompany = companyFilter === "all" || 
+                            (client.company_id || client.companyId) === companyFilter;
+      
+      return matchesSearch && matchesStatus && matchesCompany;
+    });
+  }, [clients, searchTerm, statusFilter, companyFilter]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -141,9 +159,47 @@ export default function ClientsPage() {
             </Button>
           </div>
 
+          {/* Search and Filter Section */}
           <Card>
-            <CardHeader>
-              <CardTitle>Elenco Clienti ({clients.length} trovati)</CardTitle>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <CardTitle>Elenco Clienti ({filteredClients.length} di {clients.length})</CardTitle>
+                
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                  <Input
+                    placeholder="Cerca per nome o email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="md:w-64"
+                  />
+                  
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="md:w-40">
+                      <SelectValue placeholder="Stato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti gli stati</SelectItem>
+                      <SelectItem value="convalidato">Convalidato</SelectItem>
+                      <SelectItem value="in_attesa">In Attesa</SelectItem>
+                      <SelectItem value="sospeso">Sospeso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                    <SelectTrigger className="md:w-48">
+                      <SelectValue placeholder="Azienda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutte le aziende</SelectItem>
+                      {companies.map((company: any) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -165,7 +221,7 @@ export default function ClientsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {clients.map((client: any, index: number) => {
+                      {filteredClients.map((client: any, index: number) => {
                         console.log(`Rendering client ${index + 1}:`, client);
                         const clientProducts = getClientProducts(client.id);
                         const licensesCount = getClientLicensesCount(client.id);
@@ -181,7 +237,12 @@ export default function ClientsPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center">
                                 <i className="fas fa-building text-gray-400 mr-2"></i>
-                                {getCompanyName(client.company_id || client.companyId)}
+                                <button
+                                  onClick={() => setLocation('/companies')}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  {getCompanyName(client.company_id || client.companyId)}
+                                </button>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -190,21 +251,33 @@ export default function ClientsPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center">
                                 <i className="fas fa-key text-blue-500 mr-2"></i>
-                                <span className="font-medium">{licensesCount}</span>
+                                <button
+                                  onClick={() => setLocation('/licenses')}
+                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  {licensesCount}
+                                </button>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
                               {clientProducts.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {clientProducts.slice(0, 2).map((product, idx) => (
-                                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                    <button
+                                      key={idx}
+                                      onClick={() => setLocation('/products')}
+                                      className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200 transition-colors"
+                                    >
                                       {product}
-                                    </span>
+                                    </button>
                                   ))}
                                   {clientProducts.length > 2 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                    <button
+                                      onClick={() => setLocation('/products')}
+                                      className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200 transition-colors"
+                                    >
                                       +{clientProducts.length - 2}
-                                    </span>
+                                    </button>
                                   )}
                                 </div>
                               ) : (
@@ -231,6 +304,23 @@ export default function ClientsPage() {
                       })}
                     </tbody>
                   </table>
+                  
+                  {filteredClients.length === 0 && clients.length > 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">Nessun cliente trovato con i filtri selezionati</p>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setStatusFilter("all");
+                          setCompanyFilter("all");
+                        }}
+                        className="mt-2"
+                      >
+                        Rimuovi filtri
+                      </Button>
+                    </div>
+                  )}
                   
                   {clients.length === 0 && (
                     <div className="text-center py-12">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -20,6 +20,10 @@ export default function CompaniesPage() {
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
     if (!loading && !user) {
