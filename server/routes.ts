@@ -62,9 +62,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Default admin user created: admin/admin123');
   }
 
-  // Create test data - force recreation for demo purposes
-  const existingCompanies = await storage.getCompanies();
-  if (existingCompanies.length === 0) {
+  // Create test data - always ensure demo data exists
+  try {
+    const existingCompanies = await storage.getCompanies();
+    console.log(`Found ${existingCompanies.length} existing companies`);
+    
+    // Force creation of demo data if we have less than 5 companies
+    if (existingCompanies.length < 5) {
     // Create test companies
     const testCompany1 = await storage.createCompany({
       name: 'ABC Software Solutions',
@@ -448,6 +452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     console.log('Extended demo data created successfully with multiple clients, products and licenses');
+    }
+  } catch (error) {
+    console.error('Error creating demo data:', error);
   }
 
   // Authentication endpoints
