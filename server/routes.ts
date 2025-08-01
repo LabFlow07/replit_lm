@@ -65,8 +65,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create test data if database is empty
   const existingLicenses = await storage.getLicenses();
   if (existingLicenses.length === 0) {
-    // Create test company
-    const testCompany = await storage.createCompany({
+    // Create test companies
+    const testCompany1 = await storage.createCompany({
       name: 'ABC Software Solutions',
       type: 'rivenditore',
       parentId: null,
@@ -74,30 +74,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       contactInfo: { phone: '+39 02 12345678', address: 'Via Roma 123, Milano' }
     });
 
-    // Create test product
-    const testProduct = await storage.createProduct({
+    const testCompany2 = await storage.createCompany({
+      name: 'Tech Innovation SpA',
+      type: 'rivenditore',
+      parentId: null,
+      status: 'active',
+      contactInfo: { phone: '+39 06 98765432', address: 'Via Veneto 45, Roma' }
+    });
+
+    const testCompany3 = await storage.createCompany({
+      name: 'Digital Systems Ltd',
+      type: 'agente',
+      parentId: testCompany1.id,
+      status: 'active',
+      contactInfo: { phone: '+39 011 5554321', address: 'Corso Francia 78, Torino' }
+    });
+
+    // Create test products
+    const product1 = await storage.createProduct({
       name: 'QLM Professional',
       version: '2024.1',
-      description: 'Piattaforma completa di gestione licenze',
+      description: 'Piattaforma completa di gestione licenze software con funzionalità avanzate',
       supportedLicenseTypes: ['permanente', 'trial', 'abbonamento']
     });
 
-    // Create test client
-    const testClient = await storage.createClient({
-      companyId: testCompany.id,
+    const product2 = await storage.createProduct({
+      name: 'QLM Enterprise',
+      version: '2024.2',
+      description: 'Soluzione enterprise per la gestione di licenze software su larga scala',
+      supportedLicenseTypes: ['permanente', 'abbonamento']
+    });
+
+    const product3 = await storage.createProduct({
+      name: 'QLM Starter',
+      version: '2024.1',
+      description: 'Versione base per piccole aziende e sviluppatori indipendenti',
+      supportedLicenseTypes: ['permanente', 'trial']
+    });
+
+    const product4 = await storage.createProduct({
+      name: 'DataGuard Pro',
+      version: '3.5.2',
+      description: 'Software di protezione e backup dati aziendali',
+      supportedLicenseTypes: ['permanente', 'trial', 'abbonamento']
+    });
+
+    const product5 = await storage.createProduct({
+      name: 'WebSecure Suite',
+      version: '1.8.0',
+      description: 'Suite completa per la sicurezza web e protezione da malware',
+      supportedLicenseTypes: ['abbonamento', 'trial']
+    });
+
+    // Create test clients
+    const client1 = await storage.createClient({
+      companyId: testCompany1.id,
       name: 'Mario Rossi',
       email: 'mario.rossi@company.com',
       status: 'convalidato',
-      contactInfo: { phone: '+39 02 87654321' },
+      contactInfo: { phone: '+39 02 87654321', company: 'Rossi Consulting SRL' },
       isMultiSite: false,
       isMultiUser: true
     });
 
-    // Create test licenses
+    const client2 = await storage.createClient({
+      companyId: testCompany1.id,
+      name: 'Giulia Bianchi',
+      email: 'giulia.bianchi@techcorp.it',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 02 55512345', company: 'TechCorp Italia' },
+      isMultiSite: true,
+      isMultiUser: true
+    });
+
+    const client3 = await storage.createClient({
+      companyId: testCompany2.id,
+      name: 'Francesco Verde',
+      email: 'f.verde@innovate.com',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 06 44556677', company: 'Innovate Solutions' },
+      isMultiSite: false,
+      isMultiUser: false
+    });
+
+    const client4 = await storage.createClient({
+      companyId: testCompany2.id,
+      name: 'Anna Neri',
+      email: 'anna.neri@startup.io',
+      status: 'in_attesa',
+      contactInfo: { phone: '+39 06 33344455', company: 'StartupTech' },
+      isMultiSite: false,
+      isMultiUser: true
+    });
+
+    const client5 = await storage.createClient({
+      companyId: testCompany3.id,
+      name: 'Luca Ferrari',
+      email: 'luca@ferrari-dev.com',
+      status: 'convalidato',
+      contactInfo: { phone: '+39 011 2233445', company: 'Ferrari Development' },
+      isMultiSite: false,
+      isMultiUser: false
+    });
+
+    const client6 = await storage.createClient({
+      companyId: testCompany1.id,
+      name: 'Marco Blu',
+      email: 'marco.blu@enterprise.com',
+      status: 'sospeso',
+      contactInfo: { phone: '+39 02 77788899', company: 'Enterprise Corp' },
+      isMultiSite: true,
+      isMultiUser: true
+    });
+
+    // Create test licenses for different products and clients
+    // QLM Professional licenses
     await storage.createLicense({
-      clientId: testClient.id,
-      productId: testProduct.id,
-      activationKey: 'LIC-2024-ACTIVE-001',
+      clientId: client1.id,
+      productId: product1.id,
+      activationKey: 'LIC-2024-QLMP-001',
       computerKey: 'COMP-12345678',
       activationDate: new Date(),
       expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
@@ -108,14 +203,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       price: 1500,
       discount: 0,
       activeModules: ['core', 'reports', 'api'],
-      assignedCompany: testCompany.id,
+      assignedCompany: testCompany1.id,
       assignedAgent: null
     });
 
     await storage.createLicense({
-      clientId: testClient.id,
-      productId: testProduct.id,
-      activationKey: 'LIC-2024-DEMO-002',
+      clientId: client2.id,
+      productId: product1.id,
+      activationKey: 'LIC-2024-QLMP-002',
+      computerKey: 'COMP-87654321',
+      activationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      expiryDate: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000),
+      licenseType: 'abbonamento',
+      status: 'attiva',
+      maxUsers: 10,
+      maxDevices: 5,
+      price: 2500,
+      discount: 15,
+      activeModules: ['core', 'reports', 'api', 'advanced'],
+      assignedCompany: testCompany1.id,
+      assignedAgent: null
+    });
+
+    // QLM Enterprise licenses
+    await storage.createLicense({
+      clientId: client3.id,
+      productId: product2.id,
+      activationKey: 'LIC-2024-QLME-001',
+      computerKey: 'COMP-ENTER001',
+      activationDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      expiryDate: new Date(Date.now() + 305 * 24 * 60 * 60 * 1000),
+      licenseType: 'permanente',
+      status: 'attiva',
+      maxUsers: 50,
+      maxDevices: 25,
+      price: 8500,
+      discount: 20,
+      activeModules: ['core', 'reports', 'api', 'advanced', 'enterprise'],
+      assignedCompany: testCompany2.id,
+      assignedAgent: null
+    });
+
+    // QLM Starter licenses
+    await storage.createLicense({
+      clientId: client5.id,
+      productId: product3.id,
+      activationKey: 'LIC-2024-QLMS-001',
+      computerKey: 'COMP-START001',
+      activationDate: new Date(),
+      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      licenseType: 'permanente',
+      status: 'attiva',
+      maxUsers: 2,
+      maxDevices: 1,
+      price: 499,
+      discount: 0,
+      activeModules: ['core'],
+      assignedCompany: testCompany3.id,
+      assignedAgent: null
+    });
+
+    // DataGuard Pro licenses
+    await storage.createLicense({
+      clientId: client2.id,
+      productId: product4.id,
+      activationKey: 'LIC-2024-DGP-001',
+      computerKey: 'COMP-GUARD001',
+      activationDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+      expiryDate: new Date(Date.now() + 275 * 24 * 60 * 60 * 1000),
+      licenseType: 'abbonamento',
+      status: 'attiva',
+      maxUsers: 15,
+      maxDevices: 10,
+      price: 1899,
+      discount: 10,
+      activeModules: ['backup', 'encryption', 'monitoring'],
+      assignedCompany: testCompany1.id,
+      assignedAgent: null
+    });
+
+    // Demo/Trial licenses
+    await storage.createLicense({
+      clientId: client4.id,
+      productId: product1.id,
+      activationKey: 'LIC-2024-DEMO-001',
       computerKey: null,
       activationDate: null,
       expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -126,29 +297,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       price: 0,
       discount: 0,
       activeModules: ['core'],
-      assignedCompany: testCompany.id,
+      assignedCompany: testCompany2.id,
       assignedAgent: null
     });
 
     await storage.createLicense({
-      clientId: testClient.id,
-      productId: testProduct.id,
-      activationKey: 'LIC-2024-PENDING-003',
+      clientId: client4.id,
+      productId: product5.id,
+      activationKey: 'LIC-2024-DEMO-002',
+      computerKey: null,
+      activationDate: null,
+      expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      licenseType: 'trial',
+      status: 'demo',
+      maxUsers: 1,
+      maxDevices: 1,
+      price: 0,
+      discount: 0,
+      activeModules: ['basic_scan'],
+      assignedCompany: testCompany2.id,
+      assignedAgent: null
+    });
+
+    // Pending licenses
+    await storage.createLicense({
+      clientId: client1.id,
+      productId: product2.id,
+      activationKey: 'LIC-2024-PEND-001',
       computerKey: null,
       activationDate: null,
       expiryDate: null,
       licenseType: 'permanente',
       status: 'in_attesa_convalida',
-      maxUsers: 10,
-      maxDevices: 5,
-      price: 2500,
-      discount: 10,
+      maxUsers: 25,
+      maxDevices: 15,
+      price: 6500,
+      discount: 25,
       activeModules: [],
-      assignedCompany: testCompany.id,
+      assignedCompany: testCompany1.id,
       assignedAgent: null
     });
 
-    console.log('Test data created successfully');
+    await storage.createLicense({
+      clientId: client6.id,
+      productId: product4.id,
+      activationKey: 'LIC-2024-SUSP-001',
+      computerKey: 'COMP-SUSP001',
+      activationDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
+      expiryDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      licenseType: 'abbonamento',
+      status: 'scaduta',
+      maxUsers: 20,
+      maxDevices: 10,
+      price: 2299,
+      discount: 5,
+      activeModules: ['backup', 'encryption'],
+      assignedCompany: testCompany1.id,
+      assignedAgent: null
+    });
+
+    // WebSecure Suite license
+    await storage.createLicense({
+      clientId: client3.id,
+      productId: product5.id,
+      activationKey: 'LIC-2024-WS-001',
+      computerKey: 'COMP-SECURE01',
+      activationDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      expiryDate: new Date(Date.now() + 350 * 24 * 60 * 60 * 1000),
+      licenseType: 'abbonamento',
+      status: 'attiva',
+      maxUsers: 8,
+      maxDevices: 5,
+      price: 1299,
+      discount: 0,
+      activeModules: ['web_protection', 'malware_scan', 'firewall'],
+      assignedCompany: testCompany2.id,
+      assignedAgent: null
+    });
+
+    console.log('Extended demo data created successfully with multiple clients, products and licenses');
   }
 
   // Authentication endpoints
