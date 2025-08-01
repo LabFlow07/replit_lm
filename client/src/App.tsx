@@ -33,8 +33,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 ml-64 overflow-auto">
+      <main className="flex-1 overflow-auto">
         {children}
       </main>
     </div>
