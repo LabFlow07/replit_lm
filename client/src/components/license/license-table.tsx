@@ -21,11 +21,11 @@ export default function LicenseTable() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Licenses data received:', data);
       return data;
@@ -71,10 +71,6 @@ export default function LicenseTable() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Elenco Licenze</CardTitle>
-          <Button className="bg-primary hover:bg-blue-700">
-            <i className="fas fa-plus mr-2"></i>
-            Nuova Licenza
-          </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -162,7 +158,7 @@ export default function LicenseTable() {
                 ))}
               </tbody>
             </table>
-            
+
             {licenses.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -170,10 +166,6 @@ export default function LicenseTable() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna licenza trovata</h3>
                 <p className="text-gray-500 mb-4">Inizia creando la tua prima licenza</p>
-                <Button className="bg-primary hover:bg-blue-700">
-                  <i className="fas fa-plus mr-2"></i>
-                  Crea Prima Licenza
-                </Button>
               </div>
             )}
           </div>
