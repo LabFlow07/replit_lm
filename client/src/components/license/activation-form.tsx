@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,69 +58,71 @@ export default function ActivationForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
+    <Card className="h-fit">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center space-x-2 text-base">
           <i className="fas fa-key text-primary"></i>
           <span>Attivazione Licenza</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div>
-          <Label htmlFor="activation-key">Chiave di Attivazione</Label>
+          <Label htmlFor="activation-key" className="text-sm">Chiave di Attivazione</Label>
           <Input
             id="activation-key"
             value={activationKey}
             onChange={(e) => setActivationKey(e.target.value)}
-            placeholder="Inserisci la chiave di attivazione"
-            className="font-mono"
+            placeholder="Inserisci la chiave"
+            className="font-mono text-sm mt-1"
           />
         </div>
 
         <div>
-          <Label htmlFor="computer-key">Chiave Computer</Label>
-          <div className="flex space-x-2">
+          <Label htmlFor="computer-key" className="text-sm">Chiave Computer</Label>
+          <div className="flex space-x-2 mt-1">
             <Input
               id="computer-key"
               value={computerKey}
               onChange={(e) => setComputerKey(e.target.value)}
-              placeholder="Genera o inserisci manualmente"
-              className="font-mono flex-1"
+              placeholder="Genera o inserisci"
+              className="font-mono text-sm flex-1"
             />
             <Button
               type="button"
               variant="outline"
               onClick={generateComputerKey}
               size="sm"
+              className="px-3"
             >
-              <i className="fas fa-refresh"></i>
+              <i className="fas fa-refresh text-xs"></i>
             </Button>
           </div>
         </div>
 
         <div>
-          <Label htmlFor="activation-info">Informazioni Dispositivo</Label>
+          <Label htmlFor="activation-info" className="text-sm">Info Dispositivo</Label>
           <Textarea
             id="activation-info"
-            placeholder="Informazioni aggiuntive sul dispositivo (opzionale)"
-            rows={3}
+            placeholder="Informazioni aggiuntive (opzionale)"
+            rows={2}
+            className="text-sm mt-1 resize-none"
           />
         </div>
 
-        <div className="pt-4 space-y-2">
+        <div className="pt-2 space-y-2">
           <Button
             onClick={handleActivation}
             disabled={isLoading}
-            className="w-full bg-primary hover:bg-blue-700"
+            className="w-full bg-primary hover:bg-blue-700 text-sm"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
                 Attivazione...
               </>
             ) : (
               <>
-                <i className="fas fa-check mr-2"></i>
+                <i className="fas fa-check mr-2 text-xs"></i>
                 Attiva Licenza
               </>
             )}
@@ -127,26 +130,28 @@ export default function ActivationForm() {
 
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full text-sm"
             onClick={() => {
               setActivationKey("");
               setComputerKey("");
             }}
           >
-            <i className="fas fa-times mr-2"></i>
-            Annulla
+            <i className="fas fa-times mr-2 text-xs"></i>
+            Reset
           </Button>
         </div>
 
-        <div className="pt-4 border-t border-gray-200">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Attivazione Offline</h4>
-          <p className="text-xs text-gray-500 mb-2">
-            Se non hai connessione internet, puoi attivare offline.
-          </p>
-          <Button variant="outline" size="sm" className="w-full">
-            <i className="fas fa-download mr-2"></i>
-            Scarica File Attivazione
-          </Button>
+        <div className="pt-3 border-t border-gray-200">
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-gray-900">Attivazione Offline</h4>
+            <p className="text-xs text-gray-500">
+              Se non hai connessione internet, puoi attivare offline.
+            </p>
+            <Button variant="outline" size="sm" className="w-full text-xs">
+              <i className="fas fa-download mr-2"></i>
+              Scarica File Offline
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

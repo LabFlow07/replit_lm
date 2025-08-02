@@ -77,14 +77,15 @@ export default function LicensesPage() {
       <main className="flex-1 ml-64 bg-surface">
         <TopBar />
 
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="p-4 md:p-6 space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
               <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <Button 
-              className="bg-primary hover:bg-blue-700"
+              className="bg-primary hover:bg-blue-700 w-full sm:w-auto"
               onClick={() => setIsNewLicenseModalOpen(true)}
             >
               <i className="fas fa-plus mr-2"></i>
@@ -98,55 +99,59 @@ export default function LicensesPage() {
               <CardTitle>Filtri Licenze</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col gap-4">
                 <Input
                   placeholder="Cerca per chiave licenza, cliente o prodotto..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1"
+                  className="w-full"
                 />
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="md:w-48">
-                    <SelectValue placeholder="Stato" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti gli stati</SelectItem>
-                    <SelectItem value="attiva">Attiva</SelectItem>
-                    <SelectItem value="trial">Trial</SelectItem>
-                    <SelectItem value="demo">Demo</SelectItem>
-                    <SelectItem value="scaduta">Scaduta</SelectItem>
-                    <SelectItem value="sospesa">Sospesa</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Stato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti gli stati</SelectItem>
+                      <SelectItem value="attiva">Attiva</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="demo">Demo</SelectItem>
+                      <SelectItem value="scaduta">Scaduta</SelectItem>
+                      <SelectItem value="sospesa">Sospesa</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="md:w-48">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti i tipi</SelectItem>
-                    <SelectItem value="permanent">Permanente</SelectItem>
-                    <SelectItem value="trial">Trial</SelectItem>
-                    <SelectItem value="subscription">Abbonamento</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i tipi</SelectItem>
+                      <SelectItem value="permanent">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="subscription">Abbonamento</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setStatusFilter("all");
-                    setTypeFilter("all");
-                  }}
-                >
-                  Reset
-                </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("all");
+                      setTypeFilter("all");
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    Reset
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 gap-6">
+          {/* Main Content Grid */}
+          <div className="space-y-6">
             {/* Licenze in scadenza */}
             <Card>
               <CardHeader>
@@ -160,13 +165,16 @@ export default function LicensesPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <LicenseTable />
-              </div>
-
-              <div>
+            {/* Two column layout for desktop, single column for mobile */}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+              {/* Activation Form - Full width on mobile, 1 column on desktop */}
+              <div className="xl:col-span-1">
                 <ActivationForm />
+              </div>
+              
+              {/* License Table - Full width on mobile, 3 columns on desktop */}
+              <div className="xl:col-span-3">
+                <LicenseTable />
               </div>
             </div>
           </div>
@@ -174,7 +182,7 @@ export default function LicensesPage() {
 
         {/* New License Modal */}
         <Dialog open={isNewLicenseModalOpen} onOpenChange={setIsNewLicenseModalOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nuova Licenza</DialogTitle>
             </DialogHeader>
@@ -214,7 +222,7 @@ export default function LicensesPage() {
               }
             }}>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-license-client">Cliente *</Label>
                     <Select name="clientId" required>
@@ -248,7 +256,7 @@ export default function LicensesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-license-type">Tipo Licenza *</Label>
                     <Select name="licenseType" required>
@@ -276,7 +284,7 @@ export default function LicensesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-license-users">Max Utenti</Label>
                     <Input
@@ -313,15 +321,16 @@ export default function LicensesPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
                   <Button 
                     type="button"
                     variant="outline" 
                     onClick={() => setIsNewLicenseModalOpen(false)}
+                    className="w-full sm:w-auto"
                   >
                     Annulla
                   </Button>
-                  <Button type="submit" className="bg-primary hover:bg-blue-700">
+                  <Button type="submit" className="bg-primary hover:bg-blue-700 w-full sm:w-auto">
                     <i className="fas fa-save mr-2"></i>
                     Crea Licenza
                   </Button>
