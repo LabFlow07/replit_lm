@@ -517,7 +517,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // License endpoints
   app.get('/api/licenses', async (req, res) => {
     try {
-      const licenses = await storage.getLicenses(req.query);
+      let licenses;
+      
+      // If user is admin (not superadmin), filter by their company hierarchy
+      if (req.user.role === 'admin' && req.user.company?.id) {
+        licenses = await storage.getLicensesByCompanyHierarchy(req.user.company.id);
+      } else if (req.user.role === 'superadmin') {
+        // Superadmin can see all licenses
+        licenses = await storage.getLicenses(req.query);
+      } else {
+        // Other roles get basic filtering
+        licenses = await storage.getLicenses(req.query);
+      }
+      
+      console.log(`GET /api/licenses - User: ${req.user.username} (${req.user.role}) - Company: ${req.user.company?.name} - Returning ${licenses.length} licenses`);
       res.json(licenses);
     } catch (error) {
       console.error('Get licenses error:', error);
@@ -644,7 +657,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client endpoints
   app.get('/api/clients', async (req, res) => {
     try {
-      const clients = await storage.getClients(req.query.companyId as string);
+      let clients;
+      
+      // If user is admin (not superadmin), filter by their company hierarchy
+      if (req.user.role === 'admin' && req.user.company?.id) {
+        clients = await storage.getClientsByCompanyAndSubcompanies(req.user.company.id);
+      } else if (req.user.role === 'superadmin') {
+        // Superadmin can see all clients
+        clients = await storage.getClients(req.query.companyId as string);
+      } else {
+        // Other roles get filtered by their company only
+        clients = await storage.getClients(req.user.company?.id);
+      }
+      
+      console.log(`GET /api/clients - User: ${req.user.username} (${req.user.role}) - Company: ${req.user.company?.name} - Returning ${clients.length} clients`);
       res.json(clients);
     } catch (error) {
       console.error('Get clients error:', error);
@@ -790,9 +816,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
-      console.log('GET /api/companies - User:', req.user?.username, req.user?.role);
-      const companies = await storage.getCompanies();
-      console.log(`GET /api/companies - Returning ${companies.length} companies`);
+      console.log('GET /api/companies - User:', req.user?.username, req.user?.role, 'Company:', req.user?.company?.name);
+      
+      let companies;
+      if (req.user.role === 'admin' && req.user.company?.id) {
+        // Admin can only see their company hierarchy
+        const companyIds = await storage.getCompanyHierarchy(req.user.company.id);
+        const allCompanies = await storage.getCompanies();
+        companies = allCompanies.filter(c => companyIds.includes(c.id));
+      } else {
+        // Superadmin can see all companies
+        companies = await storage.getCompanies();
+      }
+      
+      console.log(`GET /api/companies - Returning ${companies.length} companies for ${req.user.role} ${req.user.username}`);
       res.json(companies);
     } catch (error) {
       console.error('Get companies error:', error);

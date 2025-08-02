@@ -251,6 +251,36 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
+    // Get all company IDs including subcompanies
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
+    const rows = await database.query(query, companyIds);
+    
+    return rows.map(row => ({
+      ...row,
+      contactInfo: JSON.parse(row.contact_info || '{}')
+    }));
+  }
+
+  async getCompanyHierarchy(companyId: string): Promise<string[]> {
+    const allCompanies = await this.getCompanies();
+    const hierarchy: string[] = [companyId];
+    
+    const findSubcompanies = (parentId: string) => {
+      const subcompanies = allCompanies.filter(c => c.parent_id === parentId);
+      subcompanies.forEach(sub => {
+        hierarchy.push(sub.id);
+        findSubcompanies(sub.id);
+      });
+    };
+    
+    findSubcompanies(companyId);
+    return hierarchy;
+  }
+
   async getClient(id: string): Promise<Client | undefined> {
     const rows = await database.query('SELECT * FROM clients WHERE id = ?', [id]);
     if (rows[0]) {
@@ -281,7 +311,7 @@ export class DatabaseStorage implements IStorage {
     let query = `
       SELECT 
         l.*,
-        c.name as client_name, c.email as client_email, c.status as client_status,
+        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
         p.name as product_name, p.version as product_version,
         comp.name as company_name
       FROM licenses l
@@ -349,6 +379,74 @@ export class DatabaseStorage implements IStorage {
   async getLicenseByActivationKey(key: string): Promise<LicenseWithDetails | undefined> {
     const licenses = await this.getLicenses();
     return licenses.find(l => l.activationKey === key);
+  }
+
+  async getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const query = `
+      SELECT 
+        l.*,
+        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
+        p.name as product_name, p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      JOIN clients c ON l.client_id = c.id
+      JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      WHERE c.company_id IN (${placeholders})
+      ORDER BY l.created_at DESC
+    `;
+
+    const rows = await database.query(query, companyIds);
+    return rows.map(row => ({
+      id: row.id,
+      clientId: row.client_id,
+      productId: row.product_id,
+      activationKey: row.activation_key,
+      computerKey: row.computer_key,
+      activationDate: row.activation_date,
+      expiryDate: row.expiry_date,
+      licenseType: row.license_type,
+      status: row.status,
+      maxUsers: row.max_users,
+      maxDevices: row.max_devices,
+      price: row.price,
+      discount: row.discount,
+      activeModules: JSON.parse(row.active_modules || '[]'),
+      assignedCompany: row.assigned_company,
+      assignedAgent: row.assigned_agent,
+      createdAt: row.created_at,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        email: row.client_email,
+        status: row.client_status,
+        companyId: row.company_id,
+        contactInfo: {},
+        isMultiSite: false,
+        isMultiUser: false,
+        createdAt: new Date()
+      },
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        version: row.product_version,
+        description: '',
+        supportedLicenseTypes: [],
+        createdAt: new Date()
+      },
+      company: row.company_name ? {
+        id: row.assigned_company,
+        name: row.company_name,
+        type: '',
+        parentId: null,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    }));
   }
 
   async createLicense(insertLicense: InsertLicense): Promise<License> {
