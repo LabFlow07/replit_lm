@@ -23,6 +23,9 @@ export default function CompaniesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  const [isManageUsersOpen, setIsManageUsersOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [formData, setFormData] = useState({
@@ -45,6 +48,14 @@ export default function CompaniesPage() {
     email: '',
     password: '',
     role: 'cliente'
+  });
+  const [editUserFormData, setEditUserFormData] = useState({
+    username: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'cliente',
+    status: 'active'
   });
   
   const { toast } = useToast();
@@ -87,6 +98,23 @@ export default function CompaniesPage() {
       // For now return empty array, will implement API later
       return [];
     },
+  });
+
+  // Fetch users for credential management
+  const { data: users = [] } = useQuery({
+    queryKey: ['/api/users'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    }
   });
 
   // Helper functions
@@ -304,6 +332,27 @@ export default function CompaniesPage() {
     }
   });
 
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string, data: any }) => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch(`/api/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      setIsEditUserOpen(false);
+      toast({ title: "Credenziali utente aggiornate con successo" });
+    }
+  });
+
   const toggleExpand = (companyId: string) => {
     const newExpanded = new Set(expandedCompanies);
     if (newExpanded.has(companyId)) {
@@ -343,6 +392,29 @@ export default function CompaniesPage() {
   const handleSubmitUser = (e: React.FormEvent) => {
     e.preventDefault();
     createUserMutation.mutate(userFormData);
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setEditUserFormData({
+      username: user.username || '',
+      name: user.name || '',
+      email: user.email || '',
+      password: '', // Leave empty for security
+      role: user.role || 'cliente',
+      status: user.status || 'active'
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleSubmitEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updateData = { ...editUserFormData };
+    // Only include password if it's provided
+    if (!updateData.password) {
+      delete updateData.password;
+    }
+    updateUserMutation.mutate({ id: selectedUser.id, data: updateData });
   };
 
   const getStatusColor = (status: string) => {
@@ -421,17 +493,31 @@ export default function CompaniesPage() {
                 <div className="flex space-x-1">
                   {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
                     (user?.role === 'agente' && company.id === user?.company)) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCompany(company);
-                        setIsCreateUserOpen(true);
-                      }}
-                      title="Nuovo Utente"
-                    >
-                      <i className="fas fa-user-plus text-green-600"></i>
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCompany(company);
+                          setIsManageUsersOpen(true);
+                        }}
+                        title="Gestisci Credenziali"
+                      >
+                        <i className="fas fa-key text-purple-600"></i>
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCompany(company);
+                          setIsCreateUserOpen(true);
+                        }}
+                        title="Nuovo Utente"
+                      >
+                        <i className="fas fa-user-plus text-green-600"></i>
+                      </Button>
+                    </>
                   )}
                   
                   {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
@@ -819,6 +905,177 @@ export default function CompaniesPage() {
               </Button>
               <Button type="submit" disabled={createAgentMutation.isPending}>
                 {createAgentMutation.isPending ? 'Creando...' : 'Crea Agente'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Users Dialog */}
+      <Dialog open={isManageUsersOpen} onOpenChange={setIsManageUsersOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Gestione Credenziali - {selectedCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600 mb-4">
+              Gestisci le credenziali di accesso degli utenti dell'azienda. 
+              Puoi modificare username, password e ruoli.
+            </div>
+            
+            {/* Users Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 border-b">
+                <h3 className="font-medium text-gray-900">Utenti Azienda</h3>
+              </div>
+              <div className="divide-y">
+                {(users as any[])
+                  .filter((user: any) => user.company === selectedCompany?.id)
+                  .map((user: any) => (
+                    <div key={user.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{user.name}</h4>
+                            <p className="text-sm text-gray-600">@{user.username}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                          <div className="text-center">
+                            <Badge className={user.role === 'superadmin' ? 'bg-red-100 text-red-800' :
+                                           user.role === 'rivenditore' ? 'bg-blue-100 text-blue-800' :
+                                           user.role === 'agente' ? 'bg-green-100 text-green-800' :
+                                           'bg-gray-100 text-gray-800'}>
+                              {user.role}
+                            </Badge>
+                          </div>
+                          <div className="text-center">
+                            <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
+                              {user.status || 'active'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(user)}
+                        >
+                          <i className="fas fa-edit mr-2"></i>
+                          Modifica
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                
+                {(users as any[]).filter((user: any) => user.company === selectedCompany?.id).length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    <i className="fas fa-users text-2xl mb-2"></i>
+                    <p>Nessun utente trovato per questa azienda</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button variant="outline" onClick={() => setIsManageUsersOpen(false)}>
+                Chiudi
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Credentials Dialog */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Modifica Credenziali - {selectedUser?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitEditUser} className="space-y-4">
+            <div>
+              <Label htmlFor="editUsername">Username</Label>
+              <Input
+                id="editUsername"
+                value={editUserFormData.username}
+                onChange={(e) => setEditUserFormData({ ...editUserFormData, username: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="editName">Nome Completo</Label>
+              <Input
+                id="editName"
+                value={editUserFormData.name}
+                onChange={(e) => setEditUserFormData({ ...editUserFormData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="editEmail">Email</Label>
+              <Input
+                id="editEmail"
+                type="email"
+                value={editUserFormData.email}
+                onChange={(e) => setEditUserFormData({ ...editUserFormData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="editPassword">Nuova Password (lascia vuoto per mantenere)</Label>
+              <Input
+                id="editPassword"
+                type="password"
+                value={editUserFormData.password}
+                onChange={(e) => setEditUserFormData({ ...editUserFormData, password: e.target.value })}
+                placeholder="Lascia vuoto per non modificare"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="editRole">Ruolo</Label>
+              <Select value={editUserFormData.role} onValueChange={(value) => setEditUserFormData({ ...editUserFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cliente">Cliente</SelectItem>
+                  <SelectItem value="agente">Agente</SelectItem>
+                  <SelectItem value="rivenditore">Rivenditore</SelectItem>
+                  {user?.role === 'superadmin' && (
+                    <SelectItem value="admin">Admin</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="editStatus">Stato</Label>
+              <Select value={editUserFormData.status} onValueChange={(value) => setEditUserFormData({ ...editUserFormData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Attivo</SelectItem>
+                  <SelectItem value="inactive">Inattivo</SelectItem>
+                  <SelectItem value="suspended">Sospeso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsEditUserOpen(false)}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={updateUserMutation.isPending}>
+                {updateUserMutation.isPending ? 'Salvando...' : 'Salva Modifiche'}
               </Button>
             </div>
           </form>
