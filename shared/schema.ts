@@ -47,7 +47,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   version: text("version").notNull(),
   description: text("description"),
-  supportedLicenseTypes: json("supported_license_types"), // permanente, demo, abbonamento
+  supportedLicenseTypes: json("supported_license_types"), // permanente, demo, abbonamento_mensile, abbonamento_annuale
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -82,7 +82,7 @@ export const licenses = pgTable("licenses", {
   computerKey: text("computer_key"),
   activationDate: timestamp("activation_date"),
   expiryDate: timestamp("expiry_date"),
-  licenseType: text("license_type").notNull(), // permanente, trial, abbonamento
+  licenseType: text("license_type").notNull(), // permanente, trial, abbonamento_mensile, abbonamento_annuale
   status: text("status").default('pending'), // attiva, scaduta, sospesa, demo, in_attesa_convalida
   maxUsers: integer("max_users").default(1),
   maxDevices: integer("max_devices").default(1),

@@ -131,14 +131,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       name: 'QLM Professional',
       version: '2024.1',
       description: 'Piattaforma completa di gestione licenze software con funzionalità avanzate',
-      supportedLicenseTypes: ['permanente', 'trial', 'abbonamento']
+      supportedLicenseTypes: ['permanente', 'trial', 'abbonamento_mensile', 'abbonamento_annuale']
     });
 
     const product2 = await storage.createProduct({
       name: 'QLM Enterprise',
       version: '2024.2',
       description: 'Soluzione enterprise per la gestione di licenze software su larga scala',
-      supportedLicenseTypes: ['permanente', 'abbonamento']
+      supportedLicenseTypes: ['permanente', 'abbonamento_mensile', 'abbonamento_annuale']
     });
 
     const product3 = await storage.createProduct({
@@ -289,15 +289,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       activationKey: 'LIC-2024-QLMP-002',
       computerKey: 'COMP-87654321',
       activationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      expiryDate: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000),
-      licenseType: 'abbonamento',
+      expiryDate: null, // Verrà calcolata automaticamente
+      licenseType: 'abbonamento_mensile',
       status: 'attiva',
       maxUsers: 10,
       maxDevices: 5,
-      price: 2500,
+      price: 250,
       discount: 15,
       activeModules: ['core', 'reports', 'api', 'advanced'],
       assignedCompany: testCompany1.id,
+      assignedAgent: null
+    });
+
+    // Aggiungi licenza con abbonamento annuale
+    await storage.createLicense({
+      clientId: client7.id,
+      productId: product2.id,
+      activationKey: 'LIC-2024-QLME-002',
+      computerKey: 'COMP-ANNUAL01',
+      activationDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      expiryDate: null, // Verrà calcolata automaticamente
+      licenseType: 'abbonamento_annuale',
+      status: 'attiva',
+      maxUsers: 50,
+      maxDevices: 25,
+      price: 7500,
+      discount: 10,
+      activeModules: ['core', 'reports', 'api', 'advanced', 'enterprise'],
+      assignedCompany: testCompany4.id,
       assignedAgent: null
     });
 
@@ -515,6 +534,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Dashboard stats error:', error);
       res.status(500).json({ message: 'Failed to fetch dashboard stats' });
+    }
+  });
+
+  // Endpoint per licenze in scadenza ordinate per data
+  app.get('/api/licenses/expiring', async (req, res) => {
+    try {
+      const licenses = await storage.getLicensesExpiringByDate();
+      res.json(licenses);
+    } catch (error) {
+      console.error('Get expiring licenses error:', error);
+      res.status(500).json({ message: 'Failed to fetch expiring licenses' });
     }
   });
 

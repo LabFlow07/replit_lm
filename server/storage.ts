@@ -330,7 +330,7 @@ export class DatabaseStorage implements IStorage {
       JOIN clients c ON l.client_id = c.id
       JOIN products p ON l.product_id = p.id
       LEFT JOIN companies comp ON l.assigned_company = comp.id
-      ORDER BY l.created_at DESC
+      ORDER BY l.expiry_date ASC, l.created_at DESC
     `;
 
     const rows = await database.query(query);
@@ -463,6 +463,17 @@ export class DatabaseStorage implements IStorage {
 
   async createLicense(insertLicense: InsertLicense): Promise<License> {
     const id = randomUUID();
+    
+    // Calcola automaticamente la data di scadenza per gli abbonamenti
+    let expiryDate = insertLicense.expiryDate;
+    if (insertLicense.licenseType === 'abbonamento_mensile') {
+      const now = new Date();
+      expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    } else if (insertLicense.licenseType === 'abbonamento_annuale') {
+      const now = new Date();
+      expiryDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    }
+    
     await database.query(`
       INSERT INTO licenses (
         id, client_id, product_id, activation_key, computer_key, activation_date,
@@ -471,14 +482,14 @@ export class DatabaseStorage implements IStorage {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, insertLicense.clientId, insertLicense.productId, insertLicense.activationKey,
-      insertLicense.computerKey, insertLicense.activationDate, insertLicense.expiryDate,
+      insertLicense.computerKey, insertLicense.activationDate, expiryDate,
       insertLicense.licenseType, insertLicense.status, insertLicense.maxUsers,
       insertLicense.maxDevices, insertLicense.price, insertLicense.discount,
       JSON.stringify(insertLicense.activeModules), insertLicense.assignedCompany,
       insertLicense.assignedAgent
     ]);
 
-    return { ...insertLicense, id, createdAt: new Date() };
+    return { ...insertLicense, id, expiryDate, createdAt: new Date() };
   }
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
@@ -573,6 +584,72 @@ export class DatabaseStorage implements IStorage {
       INSERT INTO access_logs (id, user_id, action, resource, ip_address, user_agent)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [id, log.userId, log.action, log.resource, log.ipAddress, log.userAgent]);
+  }
+
+  async getLicensesExpiringByDate(): Promise<LicenseWithDetails[]> {
+    const query = `
+      SELECT 
+        l.*,
+        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
+        p.name as product_name, p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      JOIN clients c ON l.client_id = c.id
+      JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      WHERE l.expiry_date IS NOT NULL 
+      AND l.status = 'attiva'
+      ORDER BY l.expiry_date ASC
+    `;
+
+    const rows = await database.query(query);
+    return rows.map(row => ({
+      id: row.id,
+      clientId: row.client_id,
+      productId: row.product_id,
+      activationKey: row.activation_key,
+      computerKey: row.computer_key,
+      activationDate: row.activation_date,
+      expiryDate: row.expiry_date,
+      licenseType: row.license_type,
+      status: row.status,
+      maxUsers: row.max_users,
+      maxDevices: row.max_devices,
+      price: row.price,
+      discount: row.discount,
+      activeModules: JSON.parse(row.active_modules || '[]'),
+      assignedCompany: row.assigned_company,
+      assignedAgent: row.assigned_agent,
+      createdAt: row.created_at,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        email: row.client_email,
+        status: row.client_status,
+        companyId: row.company_id,
+        contactInfo: {},
+        isMultiSite: false,
+        isMultiUser: false,
+        createdAt: new Date()
+      },
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        version: row.product_version,
+        description: '',
+        supportedLicenseTypes: [],
+        createdAt: new Date()
+      },
+      company: row.company_name ? {
+        id: row.assigned_company,
+        name: row.company_name,
+        type: '',
+        parentId: null,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    }));
   }
 
   async getDashboardStats(userId: string, userRole: string, userCompanyId?: string): Promise<DashboardStats> {

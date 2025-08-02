@@ -66,6 +66,26 @@ export default function LicenseTable() {
     );
   };
 
+  const getLicenseTypeBadge = (type: string) => {
+    const colors = {
+      'permanente': 'bg-green-100 text-green-800',
+      'trial': 'bg-yellow-100 text-yellow-800',
+      'abbonamento_mensile': 'bg-blue-100 text-blue-800',
+      'abbonamento_annuale': 'bg-indigo-100 text-indigo-800'
+    };
+    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getLicenseTypeLabel = (type: string) => {
+    const labels = {
+      'permanente': 'Permanente',
+      'trial': 'Trial',
+      'abbonamento_mensile': 'Mensile',
+      'abbonamento_annuale': 'Annuale'
+    };
+    return labels[type as keyof typeof labels] || type;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -133,7 +153,8 @@ export default function LicenseTable() {
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getTypeBadge(license.licenseType)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getLicenseTypeBadge(license.licenseType)}`}>
+                        {getLicenseTypeLabel(license.licenseType)}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(license.status)}

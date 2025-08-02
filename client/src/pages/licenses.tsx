@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import ActivationForm from "@/components/license/activation-form";
+import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
 
 export default function LicensesPage() {
   const { user, loading } = useAuth();
@@ -144,13 +145,28 @@ export default function LicensesPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <LicenseTable />
-            </div>
+          <div className="grid grid-cols-1 gap-6">
+            {/* Licenze in scadenza */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <i className="fas fa-clock text-orange-500"></i>
+                  Licenze in Scadenza
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ExpiringLicensesList />
+              </CardContent>
+            </Card>
 
-            <div>
-              <ActivationForm />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <LicenseTable />
+              </div>
+
+              <div>
+                <ActivationForm />
+              </div>
             </div>
           </div>
         </div>
@@ -241,7 +257,8 @@ export default function LicensesPage() {
                       <SelectContent>
                         <SelectItem value="permanente">Permanente</SelectItem>
                         <SelectItem value="trial">Trial</SelectItem>
-                        <SelectItem value="abbonamento">Abbonamento</SelectItem>
+                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
