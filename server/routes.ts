@@ -754,6 +754,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User endpoints
+  app.get('/api/users', async (req, res) => {
+    try {
+      // TODO: Implement getUsers method in storage
+      res.json([]);
+    } catch (error) {
+      console.error('Get users error:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  app.post('/api/users', async (req, res) => {
+    try {
+      const userData = req.body;
+      console.log('Creating user:', userData);
+      
+      const user = await storage.createUser({
+        username: userData.username,
+        password: userData.password,
+        role: userData.role,
+        name: userData.name,
+        email: userData.email,
+        companyId: userData.companyId
+      });
+      
+      console.log('User created successfully:', user.id);
+      res.status(201).json(user);
+    } catch (error) {
+      console.error('Create user error:', error);
+      res.status(500).json({ message: 'Failed to create user' });
+    }
+  });
+
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
