@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -24,21 +25,7 @@ export default function LicensesPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      setLocation('/login');
-    }
-  }, [user, loading, setLocation]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Get clients and products for the new license form
+  // Always call useQuery hooks - they will be disabled when user is not available
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
     enabled: !!user,
@@ -64,6 +51,20 @@ export default function LicensesPage() {
       return response.json();
     }
   });
+
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation('/login');
+    }
+  }, [user, loading, setLocation]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;
