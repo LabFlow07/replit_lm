@@ -86,9 +86,8 @@ function LicenseModal({ license, isOpen, onClose, onEdit }: { license: any, isOp
 
 export default function LicenseTable() {
   const [, setLocation] = useLocation();
-  const [isViewModalOpen, setViewModalOpen] = useState(false);
+  const [isModalOpen, setModalOpen] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
@@ -170,22 +169,14 @@ export default function LicenseTable() {
     return labels[type as keyof typeof labels] || type;
   };
 
-  const openViewModal = (license: any) => {
-    setSelectedLicense(license);
-    setIsEditMode(false);
-    setViewModalOpen(true);
-  };
-
   const openEditModal = (license: any) => {
     setSelectedLicense(license);
-    setIsEditMode(true);
-    setViewModalOpen(true);
+    setModalOpen(true);
   };
 
   const closeModal = () => {
     setSelectedLicense(null);
-    setViewModalOpen(false);
-    setIsEditMode(false);
+    setModalOpen(false);
   };
 
   const handleLicenseAction = async (license: any, action: string) => {
@@ -291,16 +282,8 @@ export default function LicenseTable() {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => openViewModal(license)}
-                          title="Visualizza dettagli"
-                        >
-                          <i className="fas fa-eye text-blue-600"></i>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
                           onClick={() => openEditModal(license)}
-                          title="Modifica licenza"
+                          title="Visualizza/Modifica licenza"
                         >
                           <i className="fas fa-edit text-green-600"></i>
                         </Button>
@@ -338,9 +321,9 @@ export default function LicenseTable() {
 
       <LicenseModal
         license={selectedLicense}
-        isOpen={isViewModalOpen}
+        isOpen={isModalOpen}
         onClose={closeModal}
-        isEditMode={isEditMode}
+        isEditMode={true}
       />
     </Card>
   );
