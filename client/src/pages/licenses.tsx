@@ -165,18 +165,31 @@ export default function LicensesPage() {
               </CardContent>
             </Card>
 
-            {/* Two column layout for desktop, single column for mobile */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-              {/* Activation Form - Full width on mobile, 1 column on desktop */}
-              <div className="xl:col-span-1">
+            {/* Activation Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <i className="fas fa-key text-blue-500"></i>
+                  Attivazione Licenza
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <ActivationForm />
-              </div>
-              
-              {/* License Table - Full width on mobile, 3 columns on desktop */}
-              <div className="xl:col-span-3">
+              </CardContent>
+            </Card>
+
+            {/* License Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <i className="fas fa-list text-green-500"></i>
+                  Elenco Licenze
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <LicenseTable />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
