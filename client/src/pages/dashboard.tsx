@@ -25,7 +25,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Fetch recent activity data
+  // Fetch recent activity data - filtered by user role and company
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
     enabled: !!user,

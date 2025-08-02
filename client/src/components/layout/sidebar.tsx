@@ -4,21 +4,33 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const navigationItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
-  { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245', route: '/licenses' },
-  { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
-  { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
-  { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
-  { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
-  { id: 'settings', label: 'Impostazioni', icon: 'fas fa-cog', separator: true, route: '/settings' },
-  { id: 'logs', label: 'Log Attività', icon: 'fas fa-file-alt', route: '/logs' },
-];
+const getNavigationItems = (userRole: string) => {
+  const baseItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
+    { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245', route: '/licenses' },
+    { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
+    { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
+    { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
+    { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
+  ];
+
+  // Only superadmin can access settings and logs
+  if (userRole === 'superadmin') {
+    baseItems.push(
+      { id: 'settings', label: 'Impostazioni', icon: 'fas fa-cog', separator: true, route: '/settings' },
+      { id: 'logs', label: 'Log Attività', icon: 'fas fa-file-alt', route: '/logs' }
+    );
+  }
+
+  return baseItems;
+};
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeRole, setActiveRole] = useState(user?.role || 'superadmin');
+  
+  const navigationItems = getNavigationItems(user?.role || 'superadmin');
   
   // Determine active item based on current route
   const getActiveItem = () => {
@@ -53,23 +65,34 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Role Selector */}
-      <div className="p-4 border-b border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Ruolo Attivo
-        </label>
-        <Select value={activeRole} onValueChange={handleRoleChange}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="superadmin">Superadmin</SelectItem>
-            <SelectItem value="rivenditore">Rivenditore</SelectItem>
-            <SelectItem value="agente">Agente</SelectItem>
-            <SelectItem value="cliente">Cliente</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Role Selector - Only for superadmin */}
+      {user?.role === 'superadmin' && (
+        <div className="p-4 border-b border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ruolo Attivo
+          </label>
+          <Select value={activeRole} onValueChange={handleRoleChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="superadmin">Superadmin</SelectItem>
+              <SelectItem value="rivenditore">Rivenditore</SelectItem>
+              <SelectItem value="agente">Agente</SelectItem>
+              <SelectItem value="cliente">Cliente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Company Info for non-superadmin users */}
+      {user?.role !== 'superadmin' && user?.company && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">Azienda</div>
+          <div className="font-medium text-gray-900">{user.company.name}</div>
+          <div className="text-xs text-gray-500 capitalize">{user.role}</div>
+        </div>
+      )}
 
       {/* Navigation Menu */}
       <nav className="p-4 space-y-2">

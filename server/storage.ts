@@ -575,8 +575,65 @@ export class DatabaseStorage implements IStorage {
     `, [id, log.userId, log.action, log.resource, log.ipAddress, log.userAgent]);
   }
 
-  async getDashboardStats(userId: string, userRole: string): Promise<DashboardStats> {
-    // Get basic stats
+  async getDashboardStats(userId: string, userRole: string, userCompanyId?: string): Promise<DashboardStats> {
+    // If user is admin (not superadmin), filter by company hierarchy
+    if (userRole === 'admin' && userCompanyId) {
+      const companyIds = await this.getCompanyHierarchy(userCompanyId);
+      const placeholders = companyIds.map(() => '?').join(',');
+      
+      const [activeLicenses] = await database.query(
+        `SELECT COUNT(*) as count FROM licenses l 
+         JOIN clients c ON l.client_id = c.id 
+         WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
+        companyIds
+      );
+
+      const [demoLicenses] = await database.query(
+        `SELECT COUNT(*) as count FROM licenses l 
+         JOIN clients c ON l.client_id = c.id 
+         WHERE l.license_type = "trial" AND l.status IN ("attiva", "demo") 
+         AND c.company_id IN (${placeholders})`,
+        companyIds
+      );
+
+      const [totalClients] = await database.query(
+        `SELECT COUNT(*) as count FROM clients 
+         WHERE status = "convalidato" AND company_id IN (${placeholders})`,
+        companyIds
+      );
+
+      const [monthlyRevenue] = await database.query(`
+        SELECT COALESCE(SUM(t.amount), 0) as total 
+        FROM transactions t
+        JOIN licenses l ON t.license_id = l.id
+        JOIN clients c ON l.client_id = c.id
+        WHERE t.status = "completed" 
+        AND MONTH(t.created_at) = MONTH(CURRENT_DATE())
+        AND YEAR(t.created_at) = YEAR(CURRENT_DATE())
+        AND c.company_id IN (${placeholders})
+      `, companyIds);
+
+      const [todayActivations] = await database.query(`
+        SELECT COUNT(*) as count 
+        FROM licenses l
+        JOIN clients c ON l.client_id = c.id
+        WHERE DATE(l.activation_date) = CURDATE()
+        AND c.company_id IN (${placeholders})
+      `, companyIds);
+
+      return {
+        activeLicenses: activeLicenses[0]?.count || 0,
+        demoLicenses: demoLicenses[0]?.count || 0,
+        totalClients: totalClients[0]?.count || 0,
+        monthlyRevenue: parseFloat(monthlyRevenue[0]?.total || '0'),
+        todayActivations: todayActivations[0]?.count || 0,
+        demoConversions: 0,
+        expiringRenewals: 0,
+        dailyRevenue: 0
+      };
+    }
+
+    // For superadmin, get all stats
     const [activeLicenses] = await database.query(
       'SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"'
     );

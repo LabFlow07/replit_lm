@@ -486,6 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: user.name,
           email: user.email,
           role: user.role,
+          companyId: user.companyId,
           company: user.company
         }
       });
@@ -506,7 +507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get('/api/dashboard/stats', async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats(req.user.id, req.user.role);
+      const stats = await storage.getDashboardStats(req.user.id, req.user.role, req.user.companyId);
       res.json(stats);
     } catch (error) {
       console.error('Dashboard stats error:', error);
