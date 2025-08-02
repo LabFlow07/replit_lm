@@ -17,6 +17,7 @@ export default function ClientsPage() {
   const [, setLocation] = useLocation();
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,7 +154,10 @@ export default function ClientsPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Clienti</h1>
               <p className="text-gray-600">Visualizza e gestisci tutti i clienti del sistema</p>
             </div>
-            <Button className="bg-primary hover:bg-blue-700">
+            <Button 
+              className="bg-primary hover:bg-blue-700"
+              onClick={() => setIsNewModalOpen(true)}
+            >
               <i className="fas fa-plus mr-2"></i>
               Nuovo Cliente
             </Button>
@@ -332,6 +336,148 @@ export default function ClientsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* New Client Modal */}
+        <Dialog open={isNewModalOpen} onOpenChange={setIsNewModalOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Nuovo Cliente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              
+              try {
+                const token = localStorage.getItem('qlm_token');
+                const response = await fetch('/api/clienti/registrazione', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    companyId: formData.get('companyId'),
+                    status: 'convalidato',
+                    isMultiSite: formData.get('multiSite') === 'on',
+                    isMultiUser: formData.get('multiUser') === 'on',
+                    contactInfo: {
+                      phone: formData.get('phone'),
+                      company: formData.get('company')
+                    }
+                  })
+                });
+
+                if (response.ok) {
+                  setIsNewModalOpen(false);
+                  // Refresh clients list
+                  window.location.reload();
+                } else {
+                  console.error('Failed to create client');
+                }
+              } catch (error) {
+                console.error('Error creating client:', error);
+              }
+            }}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-client-name">Nome Cliente *</Label>
+                  <Input
+                    id="new-client-name"
+                    name="name"
+                    required
+                    placeholder="Nome completo del cliente"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-client-email">Email *</Label>
+                  <Input
+                    id="new-client-email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="email@esempio.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-client-company-select">Azienda *</Label>
+                  <Select name="companyId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona azienda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company: any) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-client-phone">Telefono</Label>
+                  <Input
+                    id="new-client-phone"
+                    name="phone"
+                    placeholder="+39 123 456 7890"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-client-company">Nome Azienda Cliente</Label>
+                  <Input
+                    id="new-client-company"
+                    name="company"
+                    placeholder="Nome dell'azienda del cliente"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="new-multi-site"
+                      name="multiSite"
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="new-multi-site" className="text-sm">
+                      Multi-Sede
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="new-multi-user"
+                      name="multiUser"
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="new-multi-user" className="text-sm">
+                      Multi-Utente
+                    </Label>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    onClick={() => setIsNewModalOpen(false)}
+                  >
+                    Annulla
+                  </Button>
+                  <Button type="submit" className="bg-primary hover:bg-blue-700">
+                    <i className="fas fa-save mr-2"></i>
+                    Crea Cliente
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import ActivationForm from "@/components/license/activation-form";
 
 export default function LicensesPage() {
@@ -19,6 +21,7 @@ export default function LicensesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,6 +37,33 @@ export default function LicensesPage() {
     );
   }
 
+  // Get clients and products for the new license form
+  const { data: clients = [] } = useQuery({
+    queryKey: ['/api/clients'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/clients', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    }
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['/api/products'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/products', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch products');
+      return response.json();
+    }
+  });
+
   if (!user) {
     return null;
   }
@@ -46,9 +76,18 @@ export default function LicensesPage() {
         <TopBar />
         
         <div className="p-6 space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
-            <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
+              <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
+            </div>
+            <Button 
+              className="bg-primary hover:bg-blue-700"
+              onClick={() => setIsNewLicenseModalOpen(true)}
+            >
+              <i className="fas fa-plus mr-2"></i>
+              Nuova Licenza
+            </Button>
           </div>
 
           {/* Filters Section */}
@@ -115,6 +154,164 @@ export default function LicensesPage() {
             </div>
           </div>
         </div>
+
+        {/* New License Modal */}
+        <Dialog open={isNewLicenseModalOpen} onOpenChange={setIsNewLicenseModalOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nuova Licenza</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              
+              try {
+                const token = localStorage.getItem('qlm_token');
+                const response = await fetch('/api/licenses', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    clientId: formData.get('clientId'),
+                    productId: formData.get('productId'),
+                    licenseType: formData.get('licenseType'),
+                    maxUsers: parseInt(formData.get('maxUsers') as string) || 1,
+                    maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
+                    price: parseFloat(formData.get('price') as string) || 0,
+                    discount: parseFloat(formData.get('discount') as string) || 0,
+                    status: 'in_attesa_convalida',
+                    activeModules: ['core']
+                  })
+                });
+
+                if (response.ok) {
+                  setIsNewLicenseModalOpen(false);
+                  window.location.reload();
+                } else {
+                  console.error('Failed to create license');
+                }
+              } catch (error) {
+                console.error('Error creating license:', error);
+              }
+            }}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-client">Cliente *</Label>
+                    <Select name="clientId" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client: any) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name} - {client.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-product">Prodotto *</Label>
+                    <Select name="productId" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona prodotto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product: any) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - {product.version}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-type">Tipo Licenza *</Label>
+                    <Select name="licenseType" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="permanente">Permanente</SelectItem>
+                        <SelectItem value="trial">Trial</SelectItem>
+                        <SelectItem value="abbonamento">Abbonamento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-price">Prezzo €</Label>
+                    <Input
+                      id="new-license-price"
+                      name="price"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-users">Max Utenti</Label>
+                    <Input
+                      id="new-license-users"
+                      name="maxUsers"
+                      type="number"
+                      defaultValue="1"
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-devices">Max Dispositivi</Label>
+                    <Input
+                      id="new-license-devices"
+                      name="maxDevices"
+                      type="number"
+                      defaultValue="1"
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-license-discount">Sconto %</Label>
+                    <Input
+                      id="new-license-discount"
+                      name="discount"
+                      type="number"
+                      step="0.01"
+                      defaultValue="0"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    onClick={() => setIsNewLicenseModalOpen(false)}
+                  >
+                    Annulla
+                  </Button>
+                  <Button type="submit" className="bg-primary hover:bg-blue-700">
+                    <i className="fas fa-save mr-2"></i>
+                    Crea Licenza
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
