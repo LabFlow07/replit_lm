@@ -177,10 +177,36 @@ export default function CompaniesPage() {
       return companies as any[];
     }
     
-    // Admin vede la sua azienda e le sue sotto-aziende (il filtering è già fatto dal backend)
+    // Admin vede la sua azienda e le sue sotto-aziende
     if (user.role === 'admin') {
-      console.log('Admin: returning backend-filtered companies');
-      return companies as any[];
+      const userCompanyId = user.company?.id;
+      if (!userCompanyId) {
+        console.log('Admin without company ID: returning empty array');
+        return [];
+      }
+      
+      // Trova l'azienda dell'admin e tutte le sue sotto-aziende (ricorsivamente)
+      const getCompanyHierarchy = (companyId: string): string[] => {
+        const result = [companyId];
+        const children = (companies as any[]).filter((c: any) => 
+          c.parent_id === companyId || c.parentId === companyId
+        );
+        
+        children.forEach(child => {
+          result.push(...getCompanyHierarchy(child.id));
+        });
+        
+        return result;
+      };
+      
+      const accessibleIds = getCompanyHierarchy(userCompanyId);
+      const filtered = (companies as any[]).filter((company: any) => 
+        accessibleIds.includes(company.id)
+      );
+      
+      console.log(`Admin: user company ${userCompanyId}, hierarchy IDs:`, accessibleIds);
+      console.log(`Admin: filtered ${filtered.length} companies from ${companies.length}`);
+      return filtered;
     }
     
     // Rivenditore vede se stesso e le sue sotto-aziende
