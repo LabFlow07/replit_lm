@@ -14,6 +14,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React, { useState } from 'react';
 
 function LicenseModal({ license, isOpen, onClose, onEdit }: { license: any, isOpen: boolean, onClose: () => void, onEdit?: () => void }) {
@@ -88,6 +89,11 @@ export default function LicenseTable() {
   const [, setLocation] = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState(null);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
@@ -203,9 +209,62 @@ export default function LicenseTable() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
-          <CardTitle>Elenco Licenze</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <i className="fas fa-list text-green-500"></i>
+            Elenco Licenze
+          </CardTitle>
+        </div>
+        
+        {/* Filtri */}
+        <div className="flex flex-col gap-4">
+          <Input
+            placeholder="Cerca per chiave licenza, cliente o prodotto..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
+                <SelectItem value="attiva">Attiva</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="demo">Demo</SelectItem>
+                <SelectItem value="scaduta">Scaduta</SelectItem>
+                <SelectItem value="sospesa">Sospesa</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti i tipi</SelectItem>
+                <SelectItem value="permanent">Permanente</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="subscription">Abbonamento</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+                setTypeFilter("all");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Reset
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">

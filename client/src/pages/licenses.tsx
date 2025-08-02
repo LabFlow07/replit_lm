@@ -93,62 +93,7 @@ export default function LicensesPage() {
             </Button>
           </div>
 
-          {/* Filters Section */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle>Filtri Licenze</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4">
-                <Input
-                  placeholder="Cerca per chiave licenza, cliente o prodotto..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full"
-                />
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue placeholder="Stato" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti gli stati</SelectItem>
-                      <SelectItem value="attiva">Attiva</SelectItem>
-                      <SelectItem value="trial">Trial</SelectItem>
-                      <SelectItem value="demo">Demo</SelectItem>
-                      <SelectItem value="scaduta">Scaduta</SelectItem>
-                      <SelectItem value="sospesa">Sospesa</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i tipi</SelectItem>
-                      <SelectItem value="permanent">Permanente</SelectItem>
-                      <SelectItem value="trial">Trial</SelectItem>
-                      <SelectItem value="subscription">Abbonamento</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      setSearchTerm("");
-                      setStatusFilter("all");
-                      setTypeFilter("all");
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
 
           {/* Main Content Grid */}
           <div className="space-y-6">
@@ -179,17 +124,7 @@ export default function LicensesPage() {
             </Card>
 
             {/* License Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-list text-green-500"></i>
-                  Elenco Licenze
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <LicenseTable />
-              </CardContent>
-            </Card>
+            <LicenseTable />
           </div>
         </div>
 
