@@ -540,7 +540,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint per licenze in scadenza ordinate per data
   app.get('/api/licenses/expiring', async (req, res) => {
     try {
-      const licenses = await storage.getLicensesExpiringByDate();
+      // Get fresh user data with company info
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
+      let licenses;
+
+      // If user is admin (not superadmin), filter by their company hierarchy
+      if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
+        licenses = await storage.getLicensesExpiringByCompanyHierarchy(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} filtering expiring licenses for company hierarchy starting from:`, userWithCompany.companyId);
+      } else if (userWithCompany?.role === 'superadmin') {
+        // Superadmin can see all expiring licenses
+        licenses = await storage.getLicensesExpiringByDate();
+      } else {
+        // Other roles get basic filtering
+        licenses = await storage.getLicensesExpiringByDate();
+      }
+
       res.json(licenses);
     } catch (error) {
       console.error('Get expiring licenses error:', error);

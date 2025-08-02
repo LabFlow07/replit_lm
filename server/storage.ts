@@ -610,7 +610,35 @@ export class DatabaseStorage implements IStorage {
       WHERE l.expiry_date IS NOT NULL 
       AND l.status = 'attiva'
       ORDER BY l.expiry_date ASC
-    `;
+    `
+
+    const rows = await database.query(query);
+    return this.mapLicenseRows(rows);
+  }
+
+  async getLicensesExpiringByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const query = `
+      SELECT 
+        l.*,
+        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
+        p.name as product_name, p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      JOIN clients c ON l.client_id = c.id
+      JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      WHERE l.expiry_date IS NOT NULL 
+      AND l.status = 'attiva'
+      AND c.company_id IN (${placeholders})
+      ORDER BY l.expiry_date ASC
+    `
+
+    const rows = await database.query(query, companyIds);
+    return this.mapLicenseRows(rows);
+  };
 
     const rows = await database.query(query);
     return rows.map(row => ({
