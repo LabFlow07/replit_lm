@@ -159,45 +159,59 @@ export default function CompaniesPage() {
 
   // Filter companies based on user permissions
   const getAccessibleCompanies = () => {
-    if (!user) return [];
+    if (!user) {
+      console.log('No user found');
+      return [];
+    }
+    
+    console.log('User role:', user.role);
+    console.log('Companies array length:', companies.length);
     
     // Superadmin vede tutto
     if (user.role === 'superadmin') {
-      return companies;
+      console.log('Superadmin: returning all companies');
+      return companies as any[];
     }
     
     // Rivenditore vede se stesso e le sue sotto-aziende
     if (user.role === 'rivenditore') {
-      return (companies as any[]).filter((company: any) => 
+      const filtered = (companies as any[]).filter((company: any) => 
         company.id === user.company || 
         company.parent_id === user.company ||
         company.parentId === user.company
       );
+      console.log('Rivenditore: filtered companies:', filtered);
+      return filtered;
     }
     
     // Agente vede solo la sua azienda
     if (user.role === 'agente') {
-      return (companies as any[]).filter((company: any) => 
+      const filtered = (companies as any[]).filter((company: any) => 
         company.id === user.company
       );
+      console.log('Agente: filtered companies:', filtered);
+      return filtered;
     }
     
     // Cliente vede solo la sua azienda
     if (user.role === 'cliente') {
-      return (companies as any[]).filter((company: any) => 
+      const filtered = (companies as any[]).filter((company: any) => 
         company.id === user.company
       );
+      console.log('Cliente: filtered companies:', filtered);
+      return filtered;
     }
     
-    return companies; // Default fallback
+    console.log('Default fallback: returning all companies');
+    return companies as any[]; // Default fallback
   };
 
   // Filtered companies with permission check
   const filteredHierarchy = useMemo(() => {
     const accessibleCompanies = getAccessibleCompanies();
-    console.log('User:', user);
-    console.log('All companies:', companies);
-    console.log('Accessible companies:', accessibleCompanies);
+    console.log('filteredHierarchy: User role:', user?.role);
+    console.log('filteredHierarchy: All companies count:', companies.length);
+    console.log('filteredHierarchy: Accessible companies count:', accessibleCompanies.length);
     
     // Create hierarchy from accessible companies only
     const companyMap = new Map();

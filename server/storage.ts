@@ -117,14 +117,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCompanies(): Promise<Company[]> {
-    const rows = await database.query('SELECT * FROM companies ORDER BY name ASC');
-    return rows.map((row: any) => ({
-      ...row,
-      parentId: row.parent_id,
-      parent_id: row.parent_id, // Mantieni entrambi per compatibilità
-      contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
-      createdAt: row.created_at
-    }));
+    try {
+      const rows = await database.query('SELECT * FROM companies ORDER BY name ASC');
+      console.log(`getCompanies: Found ${rows.length} companies in database`);
+      
+      const mapped = rows.map((row: any) => ({
+        ...row,
+        parentId: row.parent_id,
+        parent_id: row.parent_id, // Mantieni entrambi per compatibilità
+        contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
+        createdAt: row.created_at
+      }));
+      
+      console.log('getCompanies: Mapped companies:', mapped.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })));
+      return mapped;
+    } catch (error) {
+      console.error('Error in getCompanies:', error);
+      throw error;
+    }
   }
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {

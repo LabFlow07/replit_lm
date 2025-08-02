@@ -757,7 +757,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
+      console.log('GET /api/companies - User:', req.user?.username, req.user?.role);
       const companies = await storage.getCompanies();
+      console.log(`GET /api/companies - Returning ${companies.length} companies`);
       res.json(companies);
     } catch (error) {
       console.error('Get companies error:', error);
