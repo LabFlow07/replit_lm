@@ -638,9 +638,9 @@ export class DatabaseStorage implements IStorage {
 
     const rows = await database.query(query, companyIds);
     return this.mapLicenseRows(rows);
-  };
+  }
 
-    const rows = await database.query(query);
+  private mapLicenseRows(rows: any[]): LicenseWithDetails[] {
     return rows.map(row => ({
       id: row.id,
       clientId: row.client_id,
