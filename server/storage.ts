@@ -83,11 +83,23 @@ export class DatabaseStorage implements IStorage {
     if (rows[0]) {
       const user = rows[0];
       return {
-        ...user,
-        company: user.company_name ? {
+        id: user.id,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+        companyId: user.company_id,
+        name: user.name,
+        email: user.email,
+        isActive: user.is_active,
+        createdAt: user.created_at,
+        company: user.company_id ? {
           id: user.company_id,
           name: user.company_name,
-          type: user.company_type
+          type: user.company_type,
+          parentId: null,
+          status: 'active',
+          contactInfo: null,
+          createdAt: new Date()
         } : undefined
       };
     }

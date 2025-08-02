@@ -168,6 +168,7 @@ export default function CompaniesPage() {
     }
     
     console.log('User role:', user.role);
+    console.log('User company ID:', user.company?.id);
     console.log('Companies array length:', companies.length);
     
     // Superadmin vede tutto
@@ -176,12 +177,18 @@ export default function CompaniesPage() {
       return companies as any[];
     }
     
+    // Admin vede la sua azienda e le sue sotto-aziende (il filtering è già fatto dal backend)
+    if (user.role === 'admin') {
+      console.log('Admin: returning backend-filtered companies');
+      return companies as any[];
+    }
+    
     // Rivenditore vede se stesso e le sue sotto-aziende
     if (user.role === 'rivenditore') {
       const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company || 
-        company.parent_id === user.company ||
-        company.parentId === user.company
+        company.id === user.company?.id || 
+        company.parent_id === user.company?.id ||
+        company.parentId === user.company?.id
       );
       console.log('Rivenditore: filtered companies:', filtered);
       return filtered;
@@ -190,7 +197,7 @@ export default function CompaniesPage() {
     // Agente vede solo la sua azienda
     if (user.role === 'agente') {
       const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company
+        company.id === user.company?.id
       );
       console.log('Agente: filtered companies:', filtered);
       return filtered;
@@ -199,7 +206,7 @@ export default function CompaniesPage() {
     // Cliente vede solo la sua azienda
     if (user.role === 'cliente') {
       const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company
+        company.id === user.company?.id
       );
       console.log('Cliente: filtered companies:', filtered);
       return filtered;

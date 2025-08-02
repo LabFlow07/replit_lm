@@ -520,8 +520,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let licenses;
       
       // If user is admin (not superadmin), filter by their company hierarchy
-      if (req.user.role === 'admin' && req.user.company?.id) {
-        licenses = await storage.getLicensesByCompanyHierarchy(req.user.company.id);
+      if (req.user.role === 'admin' && req.user.companyId) {
+        licenses = await storage.getLicensesByCompanyHierarchy(req.user.companyId);
       } else if (req.user.role === 'superadmin') {
         // Superadmin can see all licenses
         licenses = await storage.getLicenses(req.query);
@@ -660,14 +660,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let clients;
       
       // If user is admin (not superadmin), filter by their company hierarchy
-      if (req.user.role === 'admin' && req.user.company?.id) {
-        clients = await storage.getClientsByCompanyAndSubcompanies(req.user.company.id);
+      if (req.user.role === 'admin' && req.user.companyId) {
+        clients = await storage.getClientsByCompanyAndSubcompanies(req.user.companyId);
       } else if (req.user.role === 'superadmin') {
         // Superadmin can see all clients
         clients = await storage.getClients(req.query.companyId as string);
       } else {
         // Other roles get filtered by their company only
-        clients = await storage.getClients(req.user.company?.id);
+        clients = await storage.getClients(req.user.companyId);
       }
       
       console.log(`GET /api/clients - User: ${req.user.username} (${req.user.role}) - Company: ${req.user.company?.name} - Returning ${clients.length} clients`);
@@ -816,12 +816,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
-      console.log('GET /api/companies - User:', req.user?.username, req.user?.role, 'Company:', req.user?.company?.name);
+      console.log('GET /api/companies - User:', req.user?.username, req.user?.role, 'Company ID:', req.user?.companyId, 'Company:', req.user?.company?.name);
       
       let companies;
-      if (req.user.role === 'admin' && req.user.company?.id) {
+      if (req.user.role === 'admin' && req.user.companyId) {
         // Admin can only see their company hierarchy
-        const companyIds = await storage.getCompanyHierarchy(req.user.company.id);
+        const companyIds = await storage.getCompanyHierarchy(req.user.companyId);
         const allCompanies = await storage.getCompanies();
         companies = allCompanies.filter(c => companyIds.includes(c.id));
       } else {
