@@ -668,29 +668,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new license
-  app.post('/api/licenses', async (req, res) => {
-    try {
-      const licenseData = req.body;
-
-      // Generate activation key
-      const timestamp = Date.now().toString(36).toUpperCase();
-      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const activationKey = `LIC-${timestamp}-${random}`;
-
-      const license = await storage.createLicense({
-        ...licenseData,
-        activationKey,
-        status: 'pending'
-      });
-
-      res.status(201).json(license);
-    } catch (error) {
-      console.error('Create license error:', error);
-      res.status(500).json({ message: 'Failed to create license' });
-    }
-  });
-
   // Client endpoints
   app.get('/api/clients', async (req, res) => {
     try {
@@ -856,7 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
-      // Get fresh user data with company info
+      //      // Get fresh user data with company info
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       console.log('GET /api/companies - User:', userWithCompany?.username, userWithCompany?.role, 'Company ID:', userWithCompany?.companyId, 'Company:', userWithCompany?.company?.name);
 
@@ -910,16 +887,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/licenses', async (req, res) => {
     try {
       const licenseData = req.body;
+      console.log('License creation data:', licenseData);
 
       // Generate activation key
       const timestamp = Date.now().toString(36).toUpperCase();
       const random = Math.random().toString(36).substring(2, 8).toUpperCase();
       const activationKey = `LIC-${timestamp}-${random}`;
 
+      // Get user's company for assignment
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
+
       const license = await storage.createLicense({
-        ...licenseData,
+        clientId: licenseData.clientId,
+        productId: licenseData.productId,
         activationKey,
-        status: 'pending'
+        computerKey: null,
+        activationDate: null,
+        expiryDate: null,
+        licenseType: licenseData.licenseType,
+        status: 'in_attesa_convalida',
+        maxUsers: parseInt(licenseData.maxUsers) || 1,
+        maxDevices: parseInt(licenseData.maxDevices) || 1,
+        price: parseFloat(licenseData.price) || 0,
+        discount: parseFloat(licenseData.discount) || 0,
+        activeModules: [],
+        assignedCompany: userWithCompany?.companyId || null,
+        assignedAgent: null
       });
 
       res.status(201).json(license);

@@ -481,12 +481,22 @@ export class DatabaseStorage implements IStorage {
         active_modules, assigned_company, assigned_agent
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, insertLicense.clientId, insertLicense.productId, insertLicense.activationKey,
-      insertLicense.computerKey, insertLicense.activationDate, expiryDate,
-      insertLicense.licenseType, insertLicense.status, insertLicense.maxUsers,
-      insertLicense.maxDevices, insertLicense.price, insertLicense.discount,
-      JSON.stringify(insertLicense.activeModules), insertLicense.assignedCompany,
-      insertLicense.assignedAgent
+      id, 
+      insertLicense.clientId, 
+      insertLicense.productId, 
+      insertLicense.activationKey,
+      insertLicense.computerKey || null, 
+      insertLicense.activationDate || null, 
+      expiryDate || null,
+      insertLicense.licenseType, 
+      insertLicense.status || 'pending', 
+      insertLicense.maxUsers || 1,
+      insertLicense.maxDevices || 1, 
+      insertLicense.price || 0, 
+      insertLicense.discount || 0,
+      JSON.stringify(insertLicense.activeModules || []), 
+      insertLicense.assignedCompany || null,
+      insertLicense.assignedAgent || null
     ]);
 
     return { ...insertLicense, id, expiryDate, createdAt: new Date() };
