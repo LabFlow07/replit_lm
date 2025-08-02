@@ -140,7 +140,10 @@ export default function CompaniesPage() {
     // Build hierarchy
     companies.forEach((company: any) => {
       const parentId = company.parent_id || company.parentId;
-      if (parentId) {
+      // Check if parentId is null, undefined, 0, '0', or empty string
+      const isRoot = !parentId || parentId === '0' || parentId === 0 || parentId === '';
+      
+      if (!isRoot) {
         const parent = companyMap.get(parentId);
         if (parent) {
           parent.children.push(companyMap.get(company.id));

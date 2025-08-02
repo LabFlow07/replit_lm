@@ -19,29 +19,29 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<UserWithCompany | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Company methods
   getCompany(id: string): Promise<Company | undefined>;
   getCompanies(): Promise<Company[]>;
   getCompaniesByType(type: string): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<Company>): Promise<Company>;
-  
+
   // Product methods
   getProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
-  
+
   // Module methods
   getModulesByProduct(productId: string): Promise<Module[]>;
   createModule(module: InsertModule): Promise<Module>;
-  
+
   // Client methods
   getClients(companyId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClientStatus(id: string, status: string): Promise<void>;
-  
+
   // License methods
   getLicenses(filters?: any): Promise<LicenseWithDetails[]>;
   getLicense(id: string): Promise<LicenseWithDetails | undefined>;
@@ -50,15 +50,15 @@ export interface IStorage {
   updateLicense(id: string, updates: Partial<License>): Promise<void>;
   activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License>;
   validateLicense(activationKey: string, computerKey?: string): Promise<LicenseWithDetails | null>;
-  
+
   // Transaction methods
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransactionsByLicense(licenseId: string): Promise<Transaction[]>;
-  
+
   // Logging methods
   logActivation(log: InsertActivationLog): Promise<void>;
   logAccess(log: InsertAccessLog): Promise<void>;
-  
+
   // Statistics
   getDashboardStats(userId: string, userRole: string): Promise<DashboardStats>;
 }
@@ -79,7 +79,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN companies c ON u.company_id = c.id
       WHERE u.username = ? AND u.is_active = TRUE
     `, [username]);
-    
+
     if (rows[0]) {
       const user = rows[0];
       return {
@@ -97,12 +97,12 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    
+
     await database.query(`
       INSERT INTO users (id, username, password, role, company_id, name, email, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
     `, [id, insertUser.username, hashedPassword, insertUser.role, insertUser.companyId, insertUser.name, insertUser.email]);
-    
+
     return { ...insertUser, id, password: hashedPassword, isActive: true, createdAt: new Date() };
   }
 
@@ -120,15 +120,17 @@ export class DatabaseStorage implements IStorage {
     try {
       const rows = await database.query('SELECT * FROM companies ORDER BY name ASC');
       console.log(`getCompanies: Found ${rows.length} companies in database`);
-      
+
       const mapped = rows.map((row: any) => ({
         ...row,
         parentId: row.parent_id,
         parent_id: row.parent_id, // Mantieni entrambi per compatibilità
         contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
-        createdAt: row.created_at
+        createdAt: row.created_at,
+         // Normalize parent_id: convert 0, empty string, or null to null
+        parent_id: (!row.parent_id || row.parent_id === '0' || row.parent_id === 0) ? null : row.parent_id
       }));
-      
+
       console.log('getCompanies: Mapped companies:', mapped.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })));
       return mapped;
     } catch (error) {
@@ -143,7 +145,7 @@ export class DatabaseStorage implements IStorage {
       INSERT INTO companies (id, name, type, parent_id, status, contact_info)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId || null, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo || {})]);
-    
+
     const created = { 
       ...insertCompany, 
       id, 
@@ -157,7 +159,7 @@ export class DatabaseStorage implements IStorage {
   async updateCompany(id: string, updates: Partial<Company>): Promise<Company> {
     const updateFields = [];
     const updateValues = [];
-    
+
     if (updates.name) {
       updateFields.push('name = ?');
       updateValues.push(updates.name);
@@ -178,13 +180,13 @@ export class DatabaseStorage implements IStorage {
       updateFields.push('contact_info = ?');
       updateValues.push(JSON.stringify(updates.contactInfo));
     }
-    
+
     updateValues.push(id);
-    
+
     await database.query(`
       UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?
     `, updateValues);
-    
+
     const updatedCompany = await this.getCompany(id);
     return updatedCompany!;
   }
@@ -214,7 +216,7 @@ export class DatabaseStorage implements IStorage {
       INSERT INTO products (id, name, version, description, supported_license_types)
       VALUES (?, ?, ?, ?, ?)
     `, [id, insertProduct.name, insertProduct.version, insertProduct.description, JSON.stringify(insertProduct.supportedLicenseTypes)]);
-    
+
     return { ...insertProduct, id, createdAt: new Date() };
   }
 
@@ -229,19 +231,19 @@ export class DatabaseStorage implements IStorage {
       INSERT INTO modules (id, product_id, name, description, base_price)
       VALUES (?, ?, ?, ?, ?)
     `, [id, insertModule.productId, insertModule.name, insertModule.description, insertModule.basePrice]);
-    
+
     return { ...insertModule, id };
   }
 
   async getClients(companyId?: string): Promise<Client[]> {
     let query = 'SELECT * FROM clients ORDER BY name';
     let params: any[] = [];
-    
+
     if (companyId) {
       query = 'SELECT * FROM clients WHERE company_id = ? ORDER BY name';
       params = [companyId];
     }
-    
+
     const rows = await database.query(query, params);
     return rows.map(row => ({
       ...row,
@@ -267,7 +269,7 @@ export class DatabaseStorage implements IStorage {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
         JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
-    
+
     return { ...insertClient, id, createdAt: new Date() };
   }
 
@@ -288,7 +290,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN companies comp ON l.assigned_company = comp.id
       ORDER BY l.created_at DESC
     `;
-    
+
     const rows = await database.query(query);
     return rows.map(row => ({
       id: row.id,
@@ -365,7 +367,7 @@ export class DatabaseStorage implements IStorage {
       JSON.stringify(insertLicense.activeModules), insertLicense.assignedCompany,
       insertLicense.assignedAgent
     ]);
-    
+
     return { ...insertLicense, id, createdAt: new Date() };
   }
 
@@ -373,7 +375,7 @@ export class DatabaseStorage implements IStorage {
     const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'createdAt');
     const setClause = fields.map(field => `${field} = ?`).join(', ');
     const values = fields.map(field => updates[field as keyof License]);
-    
+
     await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
   }
 
@@ -407,7 +409,7 @@ export class DatabaseStorage implements IStorage {
 
   async validateLicense(activationKey: string, computerKey?: string): Promise<LicenseWithDetails | null> {
     const license = await this.getLicenseByActivationKey(activationKey);
-    
+
     if (!license) {
       return null;
     }
@@ -435,7 +437,7 @@ export class DatabaseStorage implements IStorage {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [id, insertTransaction.licenseId, insertTransaction.type, insertTransaction.amount,
         insertTransaction.paymentMethod, insertTransaction.status, insertTransaction.notes]);
-    
+
     return { ...insertTransaction, id, createdAt: new Date() };
   }
 
@@ -468,15 +470,15 @@ export class DatabaseStorage implements IStorage {
     const [activeLicenses] = await database.query(
       'SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"'
     );
-    
+
     const [demoLicenses] = await database.query(
       'SELECT COUNT(*) as count FROM licenses WHERE license_type = "trial" AND status IN ("attiva", "demo")'
     );
-    
+
     const [totalClients] = await database.query(
       'SELECT COUNT(*) as count FROM clients WHERE status = "convalidato"'
     );
-    
+
     const [monthlyRevenue] = await database.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM transactions 
