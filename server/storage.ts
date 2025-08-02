@@ -121,7 +121,8 @@ export class DatabaseStorage implements IStorage {
     return rows.map((row: any) => ({
       ...row,
       parentId: row.parent_id,
-      contactInfo: row.contact_info ? JSON.parse(row.contact_info) : null,
+      parent_id: row.parent_id, // Mantieni entrambi per compatibilità
+      contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
       createdAt: row.created_at
     }));
   }
@@ -131,9 +132,16 @@ export class DatabaseStorage implements IStorage {
     await database.query(`
       INSERT INTO companies (id, name, type, parent_id, status, contact_info)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo)]);
+    `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId || null, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo || {})]);
     
-    return { ...insertCompany, id, createdAt: new Date() };
+    const created = { 
+      ...insertCompany, 
+      id, 
+      createdAt: new Date(),
+      parentId: insertCompany.parentId,
+      parent_id: insertCompany.parentId
+    };
+    return created;
   }
 
   async updateCompany(id: string, updates: Partial<Company>): Promise<Company> {

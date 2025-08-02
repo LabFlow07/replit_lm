@@ -139,11 +139,14 @@ export default function CompaniesPage() {
 
     // Build hierarchy
     companies.forEach((company: any) => {
-      if (company.parent_id || company.parentId) {
-        const parent = companyMap.get(company.parent_id || company.parentId);
+      const parentId = company.parent_id || company.parentId;
+      if (parentId) {
+        const parent = companyMap.get(parentId);
         if (parent) {
           parent.children.push(companyMap.get(company.id));
         } else {
+          // Se il parent non è nella mappa (potrebbe non essere accessibile), 
+          // aggiungi come root company
           rootCompanies.push(companyMap.get(company.id));
         }
       } else {
@@ -192,6 +195,9 @@ export default function CompaniesPage() {
   // Filtered companies with permission check
   const filteredHierarchy = useMemo(() => {
     const accessibleCompanies = getAccessibleCompanies();
+    console.log('User:', user);
+    console.log('All companies:', companies);
+    console.log('Accessible companies:', accessibleCompanies);
     
     // Create hierarchy from accessible companies only
     const companyMap = new Map();
@@ -204,11 +210,13 @@ export default function CompaniesPage() {
 
     // Build hierarchy
     accessibleCompanies.forEach((company: any) => {
-      if (company.parent_id || company.parentId) {
-        const parent = companyMap.get(company.parent_id || company.parentId);
+      const parentId = company.parent_id || company.parentId;
+      if (parentId) {
+        const parent = companyMap.get(parentId);
         if (parent) {
           parent.children.push(companyMap.get(company.id));
         } else {
+          // Se il parent non è accessibile, mostra come root
           rootCompanies.push(companyMap.get(company.id));
         }
       } else {
