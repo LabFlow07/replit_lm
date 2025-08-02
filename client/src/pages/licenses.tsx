@@ -16,7 +16,7 @@ import ActivationForm from "@/components/license/activation-form";
 export default function LicensesPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -42,7 +42,7 @@ export default function LicensesPage() {
     queryKey: ['/api/clients'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/clients', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -55,7 +55,7 @@ export default function LicensesPage() {
     queryKey: ['/api/products'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/products', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -71,10 +71,10 @@ export default function LicensesPage() {
   return (
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      
+
       <main className="flex-1 ml-64 bg-surface">
         <TopBar />
-        
+
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -103,7 +103,7 @@ export default function LicensesPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1"
                 />
-                
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="md:w-48">
                     <SelectValue placeholder="Stato" />
@@ -117,7 +117,7 @@ export default function LicensesPage() {
                     <SelectItem value="sospesa">Sospesa</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger className="md:w-48">
                     <SelectValue placeholder="Tipo" />
@@ -129,7 +129,7 @@ export default function LicensesPage() {
                     <SelectItem value="subscription">Abbonamento</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Button 
                   variant="outline"
                   onClick={() => {
@@ -143,12 +143,12 @@ export default function LicensesPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <LicenseTable />
             </div>
-            
+
             <div>
               <ActivationForm />
             </div>
@@ -164,9 +164,9 @@ export default function LicensesPage() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
-              
+
               try {
-                const token = localStorage.getItem('qlm_token');
+                const token = localStorage.getItem('token');
                 const response = await fetch('/api/licenses', {
                   method: 'POST',
                   headers: {

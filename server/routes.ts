@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   try {
     const existingCompanies = await storage.getCompanies();
     console.log(`Found ${existingCompanies.length} existing companies`);
-    
+
     // Force creation of demo data if we have less than 5 companies
     if (existingCompanies.length < 5) {
     // Create test companies
@@ -461,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       const user = await storage.getUserByUsername(username);
       if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get fresh user data with company info
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       let licenses;
-      
+
       // If user is admin (not superadmin), filter by their company hierarchy
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
         licenses = await storage.getLicensesByCompanyHierarchy(userWithCompany.companyId);
@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Other roles get basic filtering
         licenses = await storage.getLicenses(req.query);
       }
-      
+
       console.log(`GET /api/licenses - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${licenses.length} licenses`);
       res.json(licenses);
     } catch (error) {
@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/licenze/attiva', async (req, res) => {
     try {
       const { activationKey, computerId, deviceInfo } = req.body;
-      
+
       if (!activationKey || !computerId) {
         return res.status(400).json({ 
           message: 'Activation key and computer ID are required' 
@@ -571,9 +571,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate computer key from device info
       const computerKey = `COMP-${computerId.slice(-8).toUpperCase()}`;
-      
+
       const license = await storage.activateLicense(activationKey, computerKey, deviceInfo);
-      
+
       res.json({
         status: 'success',
         message: 'License activated successfully',
@@ -597,7 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/licenze/valida', async (req, res) => {
     try {
       const { activationKey, computerKey } = req.body;
-      
+
       if (!activationKey) {
         return res.status(400).json({ 
           status: 'invalid',
@@ -606,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const license = await storage.validateLicense(activationKey, computerKey);
-      
+
       if (!license) {
         return res.json({
           status: 'invalid',
@@ -642,18 +642,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/licenses', async (req, res) => {
     try {
       const licenseData = req.body;
-      
+
       // Generate activation key
       const timestamp = Date.now().toString(36).toUpperCase();
       const random = Math.random().toString(36).substring(2, 8).toUpperCase();
       const activationKey = `LIC-${timestamp}-${random}`;
-      
+
       const license = await storage.createLicense({
         ...licenseData,
         activationKey,
         status: 'pending'
       });
-      
+
       res.status(201).json(license);
     } catch (error) {
       console.error('Create license error:', error);
@@ -667,7 +667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get fresh user data with company info
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       let clients;
-      
+
       // If user is admin (not superadmin), filter by their company hierarchy
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
         clients = await storage.getClientsByCompanyAndSubcompanies(userWithCompany.companyId);
@@ -679,7 +679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Other roles get filtered by their company only
         clients = await storage.getClients(userWithCompany?.companyId);
       }
-      
+
       console.log(`GET /api/clients - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${clients.length} clients`);
       res.json(clients);
     } catch (error) {
@@ -744,7 +744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/licenze/rinnova', async (req, res) => {
     try {
       const { licenseId, paymentMethod, amount } = req.body;
-      
+
       const license = await storage.getLicense(licenseId);
       if (!license) {
         return res.status(404).json({ message: 'License not found' });
@@ -762,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extend license expiry
       const newExpiryDate = new Date();
       newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-      
+
       await storage.updateLicense(licenseId, {
         expiryDate: newExpiryDate,
         status: 'attiva'
@@ -805,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = req.body;
       console.log('Creating user:', userData);
-      
+
       const user = await storage.createUser({
         username: userData.username,
         password: userData.password,
@@ -814,7 +814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: userData.email,
         companyId: userData.companyId
       });
-      
+
       console.log('User created successfully:', user.id);
       res.status(201).json(user);
     } catch (error) {
@@ -829,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get fresh user data with company info
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       console.log('GET /api/companies - User:', userWithCompany?.username, userWithCompany?.role, 'Company ID:', userWithCompany?.companyId, 'Company:', userWithCompany?.company?.name);
-      
+
       let companies;
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
         // Admin can only see their company hierarchy
@@ -844,7 +844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Other roles get limited view
         companies = await storage.getCompanies();
       }
-      
+
       console.log(`GET /api/companies - Returning ${companies.length} companies for ${userWithCompany?.role} ${userWithCompany?.username}`);
       res.json(companies);
     } catch (error) {
@@ -873,6 +873,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Update company error:', error);
       res.status(500).json({ message: 'Failed to update company' });
+    }
+  });
+
+  // Create new license
+  app.post('/api/licenses', async (req, res) => {
+    try {
+      const licenseData = req.body;
+
+      // Generate activation key
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const activationKey = `LIC-${timestamp}-${random}`;
+
+      const license = await storage.createLicense({
+        ...licenseData,
+        activationKey,
+        status: 'pending'
+      });
+
+      res.status(201).json(license);
+    } catch (error) {
+      console.error('Create license error:', error);
+      res.status(500).json({ message: 'Failed to create license' });
     }
   });
 
