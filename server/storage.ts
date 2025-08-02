@@ -74,7 +74,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
     const rows = await database.query(`
-      SELECT u.*, c.name as company_name, c.type as company_type
+      SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
       LEFT JOIN companies c ON u.company_id = c.id
       WHERE u.username = ? AND u.is_active = TRUE
@@ -96,7 +96,7 @@ export class DatabaseStorage implements IStorage {
           id: user.company_id,
           name: user.company_name,
           type: user.company_type,
-          parentId: null,
+          parentId: user.company_parent_id,
           status: 'active',
           contactInfo: null,
           createdAt: new Date()

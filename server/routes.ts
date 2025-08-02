@@ -507,7 +507,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get('/api/dashboard/stats', async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats(req.user.id, req.user.role, req.user.companyId);
+      // Get fresh user data with company info
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
+      const stats = await storage.getDashboardStats(userWithCompany?.id || req.user.id, userWithCompany?.role || req.user.role, userWithCompany?.companyId);
+      console.log(`Dashboard stats for ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.companyId}`);
       res.json(stats);
     } catch (error) {
       console.error('Dashboard stats error:', error);
@@ -518,12 +521,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // License endpoints
   app.get('/api/licenses', async (req, res) => {
     try {
+      // Get fresh user data with company info
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
       let licenses;
       
       // If user is admin (not superadmin), filter by their company hierarchy
-      if (req.user.role === 'admin' && req.user.companyId) {
-        licenses = await storage.getLicensesByCompanyHierarchy(req.user.companyId);
-      } else if (req.user.role === 'superadmin') {
+      if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
+        licenses = await storage.getLicensesByCompanyHierarchy(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} filtering licenses for company hierarchy starting from:`, userWithCompany.companyId);
+      } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all licenses
         licenses = await storage.getLicenses(req.query);
       } else {
@@ -531,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         licenses = await storage.getLicenses(req.query);
       }
       
-      console.log(`GET /api/licenses - User: ${req.user.username} (${req.user.role}) - Company: ${req.user.company?.name} - Returning ${licenses.length} licenses`);
+      console.log(`GET /api/licenses - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${licenses.length} licenses`);
       res.json(licenses);
     } catch (error) {
       console.error('Get licenses error:', error);
@@ -658,20 +664,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client endpoints
   app.get('/api/clients', async (req, res) => {
     try {
+      // Get fresh user data with company info
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
       let clients;
       
       // If user is admin (not superadmin), filter by their company hierarchy
-      if (req.user.role === 'admin' && req.user.companyId) {
-        clients = await storage.getClientsByCompanyAndSubcompanies(req.user.companyId);
-      } else if (req.user.role === 'superadmin') {
+      if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
+        clients = await storage.getClientsByCompanyAndSubcompanies(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} filtering clients for company hierarchy starting from:`, userWithCompany.companyId);
+      } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all clients
         clients = await storage.getClients(req.query.companyId as string);
       } else {
         // Other roles get filtered by their company only
-        clients = await storage.getClients(req.user.companyId);
+        clients = await storage.getClients(userWithCompany?.companyId);
       }
       
-      console.log(`GET /api/clients - User: ${req.user.username} (${req.user.role}) - Company: ${req.user.company?.name} - Returning ${clients.length} clients`);
+      console.log(`GET /api/clients - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${clients.length} clients`);
       res.json(clients);
     } catch (error) {
       console.error('Get clients error:', error);
@@ -817,20 +826,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company endpoints
   app.get('/api/companies', async (req, res) => {
     try {
-      console.log('GET /api/companies - User:', req.user?.username, req.user?.role, 'Company ID:', req.user?.companyId, 'Company:', req.user?.company?.name);
+      // Get fresh user data with company info
+      const userWithCompany = await storage.getUserByUsername(req.user.username);
+      console.log('GET /api/companies - User:', userWithCompany?.username, userWithCompany?.role, 'Company ID:', userWithCompany?.companyId, 'Company:', userWithCompany?.company?.name);
       
       let companies;
-      if (req.user.role === 'admin' && req.user.companyId) {
+      if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
         // Admin can only see their company hierarchy
-        const companyIds = await storage.getCompanyHierarchy(req.user.companyId);
+        const companyIds = await storage.getCompanyHierarchy(userWithCompany.companyId);
         const allCompanies = await storage.getCompanies();
         companies = allCompanies.filter(c => companyIds.includes(c.id));
-      } else {
+        console.log(`Admin ${userWithCompany.username} company hierarchy:`, companyIds);
+      } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all companies
+        companies = await storage.getCompanies();
+      } else {
+        // Other roles get limited view
         companies = await storage.getCompanies();
       }
       
-      console.log(`GET /api/companies - Returning ${companies.length} companies for ${req.user.role} ${req.user.username}`);
+      console.log(`GET /api/companies - Returning ${companies.length} companies for ${userWithCompany?.role} ${userWithCompany?.username}`);
       res.json(companies);
     } catch (error) {
       console.error('Get companies error:', error);
