@@ -78,3 +78,68 @@ export interface DashboardStats {
   expiringRenewals: number;
   dailyRevenue: number;
 }
+
+export interface LicenseDetailsResponse {
+  status: 'valid' | 'invalid' | 'error';
+  license?: {
+    id: string;
+    product: string;
+    version: string;
+    client: string;
+    expiryDate?: string;
+    activeModules: string[];
+    deviceBound: boolean;
+    maxUsers: number;
+    currentUsers: number;
+  };
+  message?: string;
+  timestamp: string;
+}
+
+export interface LicenseWithDetails {
+  id: string;
+  clientId: string;
+  productId: string;
+  activationKey: string;
+  computerKey?: string | null;
+  activationDate?: string | null;
+  expiryDate?: string | null;
+  licenseType: string;
+  status: string;
+  maxUsers: number;
+  maxDevices: number;
+  price: string | number;
+  discount: string | number;
+  activeModules: string[];
+  assignedCompany?: string | null;
+  assignedAgent?: string | null;
+  createdAt: string;
+  client?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    companyId: string;
+    contactInfo: any;
+    isMultiSite: boolean;
+    isMultiUser: boolean;
+    createdAt: string;
+  };
+  product?: {
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    supportedLicenseTypes: string[];
+    createdAt: string;
+  };
+  company?: {
+    id: string;
+    name: string;
+    type: string;
+    parentId: string | null;
+    status: string;
+    contactInfo: any;
+    createdAt: string;
+  };
+}

@@ -937,6 +937,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update license
+  app.patch('/api/licenses/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      await storage.updateLicense(id, updates);
+      
+      const updatedLicense = await storage.getLicense(id);
+      res.json(updatedLicense);
+    } catch (error) {
+      console.error('Update license error:', error);
+      res.status(500).json({ message: 'Failed to update license' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

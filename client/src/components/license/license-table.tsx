@@ -3,9 +3,93 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import React, { useState } from 'react';
+
+function LicenseModal({ license, isOpen, onClose, onEdit }: { license: any, isOpen: boolean, onClose: () => void, onEdit?: () => void }) {
+  if (!license) {
+    return null;
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{onEdit ? "Modifica Licenza" : "Dettagli Licenza"}</DialogTitle>
+          <DialogDescription>
+            {onEdit ? "Apporta modifiche alla licenza." : "Visualizza i dettagli completi della licenza."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="activationKey" className="text-right">
+              Chiave Licenza
+            </Label>
+            <Input id="activationKey" value={license.activationKey} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="productName" className="text-right">
+              Prodotto
+            </Label>
+            <Input id="productName" value={license.product?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="clientName" className="text-right">
+              Cliente
+            </Label>
+            <Input id="clientName" value={license.client?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="companyName" className="text-right">
+              Azienda
+            </Label>
+            <Input id="companyName" value={license.company?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="licenseType" className="text-right">
+              Tipo Licenza
+            </Label>
+            <Input id="licenseType" value={license.licenseType} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right">
+              Stato
+            </Label>
+            <Input id="status" value={license.status} className="col-span-3" disabled={!onEdit} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="expiryDate" className="text-right">
+              Scadenza
+            </Label>
+            <Input id="expiryDate" value={license.expiryDate ? new Date(license.expiryDate).toLocaleDateString('it-IT') : 'Mai'} className="col-span-3" disabled={!onEdit} />
+          </div>
+        </div>
+        {onEdit ? (
+          <Button type="submit">Salva Modifiche</Button>
+        ) : (
+          <Button onClick={onEdit}>Modifica</Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function LicenseTable() {
   const [, setLocation] = useLocation();
+  const [isViewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedLicense, setSelectedLicense] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+
   const { data: licenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses'],
     refetchOnWindowFocus: false,
@@ -86,6 +170,22 @@ export default function LicenseTable() {
     return labels[type as keyof typeof labels] || type;
   };
 
+  const openModal = (license: any) => {
+    setSelectedLicense(license);
+    setViewModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedLicense(null);
+    setViewModalOpen(false);
+    setIsEditMode(false);
+  };
+
+  const handleEditLicense = (license: any) => {
+    setIsEditMode(true);
+    openModal(license);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -164,10 +264,10 @@ export default function LicenseTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => openModal(license)}>
                           <i className="fas fa-eye"></i>
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditLicense(license)}>
                           <i className="fas fa-edit"></i>
                         </Button>
                         <Button variant="ghost" size="sm" className="text-red-600">
@@ -192,6 +292,13 @@ export default function LicenseTable() {
           </div>
         )}
       </CardContent>
+
+      <LicenseModal
+        license={selectedLicense}
+        isOpen={isViewModalOpen}
+        onClose={closeModal}
+        onEdit={isEditMode ? undefined : () => handleEditLicense(selectedLicense)}
+      />
     </Card>
   );
 }
