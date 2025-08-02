@@ -1,148 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import type { LicenseWithDetails } from "@/types";
-
-interface LicenseModalProps {
-  license: LicenseWithDetails | null;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function LicenseModal({ license, isOpen, onClose }: LicenseModalProps) {
-  if (!license) return null;
-
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      'attiva': 'default',
-      'demo': 'secondary',
-      'scaduta': 'destructive',
-      'in_attesa_convalida': 'outline',
-      'sospesa': 'destructive'
-    } as const;
-
-    return (
-      <Badge variant={variants[status as keyof typeof variants] || 'outline'}>
-        {status}
-      </Badge>
-    );
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-screen overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-gray-900">
-            Dettagli Licenza
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Activation Key
-              </Label>
-              <p className="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
-                {license.activationKey}
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Computer Key
-              </Label>
-              <p className="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
-                {license.computerKey || 'Non attivata'}
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Cliente
-              </Label>
-              <p className="mt-1 text-sm text-gray-900">
-                {license.client.name}
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Prodotto
-              </Label>
-              <p className="mt-1 text-sm text-gray-900">
-                {license.product.name} {license.product.version}
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Stato
-              </Label>
-              <div className="mt-1">
-                {getStatusBadge(license.status || 'pending')}
-              </div>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Data Attivazione
-              </Label>
-              <p className="mt-1 text-sm text-gray-900">
-                {license.activationDate 
-                  ? new Date(license.activationDate).toLocaleDateString('it-IT')
-                  : 'Non attivata'
-                }
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Data Scadenza
-              </Label>
-              <p className="mt-1 text-sm text-gray-900">
-                {license.expiryDate 
-                  ? new Date(license.expiryDate).toLocaleDateString('it-IT')
-                  : 'Permanente'
-                }
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Moduli Attivi
-              </Label>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {license.activeModules && license.activeModules.length > 0 ? (
-                  license.activeModules.map((module: string, index: number) => (
-                    <Badge key={index} variant="outline">
-                      {module}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-gray-500">Nessun modulo attivo</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex justify-end space-x-3 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            Chiudi
-          </Button>
-          <Button className="bg-primary hover:bg-blue-700">
-            Modifica
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -153,9 +9,10 @@ interface LicenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit?: () => void;
+  isEditMode: boolean;
 }
 
-export default function LicenseModal({ license, isOpen, onClose, onEdit }: LicenseModalProps) {
+export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditMode }: LicenseModalProps) {
   if (!license) return null;
 
   const getStatusBadge = (status: string) => {
@@ -197,11 +54,14 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
       <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <i className="fas fa-key text-primary"></i>
-            Dettagli Licenza
+            <i className={`fas ${isEditMode ? 'fa-edit text-green-600' : 'fa-key text-blue-600'}`}></i>
+            {isEditMode ? 'Modifica Licenza' : 'Dettagli Licenza'}
           </DialogTitle>
+          <DialogDescription>
+            {isEditMode ? 'Modifica le informazioni della licenza' : 'Informazioni complete sulla licenza selezionata'}
+          </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Intestazione con chiave licenza */}
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -222,17 +82,17 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
             {/* Informazioni Cliente */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Cliente</h3>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Nome</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.client?.name || 'N/A'}</p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Email</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.client?.email || 'N/A'}</p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Azienda</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.company?.name || 'N/A'}</p>
@@ -242,21 +102,21 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
             {/* Informazioni Prodotto */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Prodotto</h3>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Nome Prodotto</Label>
                 <p className="mt-1 text-sm text-gray-900">
                   {license.product?.name} {license.product?.version}
                 </p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Tipo Licenza</Label>
                 <p className="mt-1 text-sm text-gray-900">
                   {getLicenseTypeLabel(license.licenseType)}
                 </p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Prezzo</Label>
                 <p className="mt-1 text-sm text-gray-900">
@@ -274,18 +134,18 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
           {/* Dettagli Tecnici */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Dettagli Tecnici</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700">Max Utenti</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.maxUsers || 1}</p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Max Dispositivi</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.maxDevices || 1}</p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Computer Key</Label>
                 <p className="mt-1 text-sm text-gray-900 font-mono">
@@ -298,7 +158,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
           {/* Date */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Date</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700">Data Creazione</Label>
@@ -309,7 +169,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
                   }
                 </p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Data Attivazione</Label>
                 <p className="mt-1 text-sm text-gray-900">
@@ -319,7 +179,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
                   }
                 </p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">Data Scadenza</Label>
                 <p className="mt-1 text-sm text-gray-900">
@@ -348,7 +208,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit }: Licen
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-end space-x-3 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>
             Chiudi

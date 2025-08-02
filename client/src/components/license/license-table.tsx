@@ -170,8 +170,15 @@ export default function LicenseTable() {
     return labels[type as keyof typeof labels] || type;
   };
 
-  const openModal = (license: any) => {
+  const openViewModal = (license: any) => {
     setSelectedLicense(license);
+    setIsEditMode(false);
+    setViewModalOpen(true);
+  };
+
+  const openEditModal = (license: any) => {
+    setSelectedLicense(license);
+    setIsEditMode(true);
     setViewModalOpen(true);
   };
 
@@ -181,9 +188,26 @@ export default function LicenseTable() {
     setIsEditMode(false);
   };
 
-  const handleEditLicense = (license: any) => {
-    setIsEditMode(true);
-    openModal(license);
+  const handleLicenseAction = async (license: any, action: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/licenses/${license.id}/${action}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Refresh licenses list
+        window.location.reload();
+      } else {
+        console.error(`Failed to ${action} license`);
+      }
+    } catch (error) {
+      console.error(`Error ${action} license:`, error);
+    }
   };
 
   return (
@@ -264,14 +288,33 @@ export default function LicenseTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => openModal(license)}>
-                          <i className="fas fa-eye"></i>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => openViewModal(license)}
+                          title="Visualizza dettagli"
+                        >
+                          <i className="fas fa-eye text-blue-600"></i>
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEditLicense(license)}>
-                          <i className="fas fa-edit"></i>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => openEditModal(license)}
+                          title="Modifica licenza"
+                        >
+                          <i className="fas fa-edit text-green-600"></i>
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600">
-                          <i className="fas fa-ban"></i>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600"
+                          onClick={() => {
+                            const action = license.status === 'attiva' ? 'suspend' : 'activate';
+                            handleLicenseAction(license, action);
+                          }}
+                          title={license.status === 'attiva' ? 'Sospendi licenza' : 'Attiva licenza'}
+                        >
+                          <i className={license.status === 'attiva' ? 'fas fa-ban' : 'fas fa-check-circle'}></i>
                         </Button>
                       </div>
                     </td>
@@ -297,7 +340,7 @@ export default function LicenseTable() {
         license={selectedLicense}
         isOpen={isViewModalOpen}
         onClose={closeModal}
-        onEdit={isEditMode ? undefined : () => handleEditLicense(selectedLicense)}
+        isEditMode={isEditMode}
       />
     </Card>
   );

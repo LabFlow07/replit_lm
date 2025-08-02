@@ -5,6 +5,7 @@ import { database } from "./database";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import { Request, Response } from 'express';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'qlm-secret-key-2024';
 
@@ -938,18 +939,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update license
-  app.patch('/api/licenses/:id', async (req, res) => {
+  app.put('/api/licenses/:id', authenticateToken, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
-      
-      await storage.updateLicense(id, updates);
-      
-      const updatedLicense = await storage.getLicense(id);
-      res.json(updatedLicense);
+      const licenseData = req.body;
+
+      const updated = await storage.updateLicense(id, licenseData);
+      if (!updated) {
+        return res.status(404).json({ message: 'License not found' });
+      }
+
+      res.json(updated);
     } catch (error) {
-      console.error('Update license error:', error);
+      console.error('Error updating license:', error);
       res.status(500).json({ message: 'Failed to update license' });
+    }
+  });
+
+  // License actions (suspend/activate)
+  app.patch('/api/licenses/:id/suspend', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateLicense(id, { status: 'sospesa' });
+      if (!updated) {
+        return res.status(404).json({ message: 'License not found' });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error('Error suspending license:', error);
+      res.status(500).json({ message: 'Failed to suspend license' });
+    }
+  });
+
+  app.patch('/api/licenses/:id/activate', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateLicense(id, { status: 'attiva' });
+      if (!updated) {
+        return res.status(404).json({ message: 'License not found' });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error('Error activating license:', error);
+      res.status(500).json({ message: 'Failed to activate license' });
     }
   });
 
