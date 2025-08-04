@@ -201,6 +201,28 @@ export default function SoftwareRegistrations() {
             Gestisci le registrazioni automatiche dei software installati presso i clienti
           </p>
         </div>
+        <Button
+          onClick={async () => {
+            try {
+              const response = await fetch('/api/software/registrazioni/demo', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (response.ok) {
+                queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+                console.log('Demo data created successfully');
+              }
+            } catch (error) {
+              console.error('Error creating demo data:', error);
+            }
+          }}
+          variant="outline"
+        >
+          Crea Dati Demo
+        </Button>
       </div>
 
       {/* Filters */}

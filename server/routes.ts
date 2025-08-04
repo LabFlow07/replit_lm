@@ -1222,79 +1222,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Software registrations endpoints
   app.get('/api/software/registrazioni', authenticateToken, async (req, res) => {
     try {
-      // Demo data for software registrations
-      const registrations = [
-        {
-          id: '1',
-          softwareName: 'Microsoft Office 365',
-          version: '2023',
-          computerName: 'LAPTOP-MARIO-01',
-          computerKey: 'WIN-12345-ABCDE',
-          clientName: 'Mario Rossi',
-          company: 'ABC Software Solutions',
-          installDate: '2024-01-15T10:30:00Z',
-          status: 'non_assegnato',
-          operatingSystem: 'Windows 11 Pro',
-          ipAddress: '192.168.1.100'
-        },
-        {
-          id: '2',
-          softwareName: 'Adobe Creative Suite',
-          version: '2024',
-          computerName: 'MAC-GIULIA-02',
-          computerKey: 'MAC-67890-FGHIJ',
-          clientName: 'Giulia Bianchi',
-          company: 'TechCorp Italia',
-          installDate: '2024-02-20T14:15:00Z',
-          status: 'classificato',
-          operatingSystem: 'macOS Ventura',
-          ipAddress: '192.168.1.105'
-        },
-        {
-          id: '3',
-          softwareName: 'AutoCAD',
-          version: '2024',
-          computerName: 'WS-LUCA-03',
-          computerKey: 'WS-11111-KLMNO',
-          clientName: 'Luca Ferrari',
-          company: 'Ferrari Development',
-          installDate: '2024-03-10T09:45:00Z',
-          status: 'licenziato',
-          operatingSystem: 'Windows 10 Pro',
-          ipAddress: '192.168.1.110'
-        },
-        {
-          id: '4',
-          softwareName: 'QLM Professional',
-          version: '2024.1',
-          computerName: 'LAPTOP-ANNA-04',
-          computerKey: 'WIN-22222-PQRST',
-          clientName: 'Anna Neri',
-          company: 'StartupTech',
-          installDate: '2024-03-25T16:20:00Z',
-          status: 'non_assegnato',
-          operatingSystem: 'Windows 11 Home',
-          ipAddress: '192.168.1.115'
-        },
-        {
-          id: '5',
-          softwareName: 'Visual Studio 2022',
-          version: '17.8',
-          computerName: 'DEV-CHIARA-05',
-          computerKey: 'WIN-33333-UVWXY',
-          clientName: 'Chiara Fiorentina',
-          company: 'Toscana Digital',
-          installDate: '2024-04-05T11:30:00Z',
-          status: 'classificato',
-          operatingSystem: 'Windows 11 Pro',
-          ipAddress: '192.168.1.120'
-        }
-      ];
-
+      const registrations = await storage.getSoftwareRegistrations(req.query);
       res.json(registrations);
     } catch (error) {
       console.error('Error fetching software registrations:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ message: 'Failed to fetch software registrations' });
     }
   });
 
@@ -1323,6 +1255,241 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Classify software registration error:', error);
       res.status(500).json({ message: 'Failed to classify software registration' });
+    }
+  });
+
+  // Create demo software registrations endpoint
+  app.post('/api/software/registrazioni/demo', authenticateToken, async (req, res) => {
+    try {
+      // Get existing clients for assignments
+      const clients = await storage.getClients();
+      
+      const client1 = clients.find(c => c.email === 'mario.rossi@company.com');
+      const client2 = clients.find(c => c.email === 'giulia.bianchi@techcorp.it');
+      const client3 = clients.find(c => c.email === 'f.verde@innovate.com');
+      const client4 = clients.find(c => c.email === 'anna.neri@startup.io');
+      const client5 = clients.find(c => c.email === 'luca@ferrari-dev.com');
+      const client6 = clients.find(c => c.email === 'marco.blu@enterprise.com');
+      const client7 = clients.find(c => c.email === 'g.napoli@southdist.it');
+      const client8 = clients.find(c => c.email === 'elena.verdi@northeast.com');
+      const client9 = clients.find(c => c.email === 's.sicilia@siciliasoft.it');
+      const client10 = clients.find(c => c.email === 'chiara@toscana-it.com');
+
+      const demoRegistrations = [
+        {
+          nomeSoftware: 'QLM Professional',
+          versione: '2024.1',
+          ragioneSociale: 'Rossi Consulting SRL',
+          partitaIva: 'IT12345678901',
+          totaleOrdini: 15,
+          totaleVenduto: '45000.00',
+          sistemaOperativo: 'Windows 11 Pro',
+          indirizzoIp: '192.168.1.101',
+          computerKey: 'COMP-ROSSI-001',
+          installationPath: 'C:\\Program Files\\QLM Professional',
+          status: 'non_assegnato',
+          note: 'Prima installazione del software presso il cliente'
+        },
+        {
+          nomeSoftware: 'DataGuard Pro',
+          versione: '3.5.2',
+          ragioneSociale: 'TechCorp Italia',
+          partitaIva: 'IT98765432109',
+          totaleOrdini: 8,
+          totaleVenduto: '12500.00',
+          sistemaOperativo: 'Windows Server 2022',
+          indirizzoIp: '10.0.0.50',
+          computerKey: 'COMP-TECH-SRV01',
+          installationPath: 'C:\\Program Files\\DataGuard Pro',
+          status: 'classificato',
+          clienteAssegnato: client2?.id,
+          note: 'Software installato su server principale'
+        },
+        {
+          nomeSoftware: 'WebSecure Suite',
+          versione: '1.8.0',
+          ragioneSociale: 'Innovate Solutions',
+          partitaIva: 'IT11223344556',
+          totaleOrdini: 3,
+          totaleVenduto: '8900.00',
+          sistemaOperativo: 'Ubuntu Server 22.04',
+          indirizzoIp: '172.16.0.25',
+          computerKey: 'COMP-INNOV-WEB01',
+          installationPath: '/opt/websecure',
+          status: 'non_assegnato',
+          note: 'Installazione su ambiente di produzione'
+        },
+        {
+          nomeSoftware: 'QLM Starter',
+          versione: '2024.1',
+          ragioneSociale: 'Ferrari Development',
+          partitaIva: 'IT55667788990',
+          totaleOrdini: 2,
+          totaleVenduto: '998.00',
+          sistemaOperativo: 'Windows 10 Professional',
+          indirizzoIp: '192.168.0.15',
+          computerKey: 'COMP-FERRARI-DEV',
+          installationPath: 'C:\\Program Files (x86)\\QLM Starter',
+          status: 'licenziato',
+          clienteAssegnato: client5?.id,
+          licenzaAssegnata: null,
+          note: 'Versione starter per sviluppatore singolo'
+        },
+        {
+          nomeSoftware: 'QLM Professional',
+          versione: '2024.2',
+          ragioneSociale: 'Enterprise Corp',
+          partitaIva: 'IT33445566778',
+          totaleOrdini: 25,
+          totaleVenduto: '67500.00',
+          sistemaOperativo: 'Windows 11 Enterprise',
+          indirizzoIp: '10.10.0.100',
+          computerKey: 'COMP-ENT-MAIN01',
+          installationPath: 'C:\\Program Files\\QLM Professional',
+          status: 'non_assegnato',
+          note: 'Installazione su workstation principale'
+        },
+        {
+          nomeSoftware: 'DataGuard Pro',
+          versione: '3.6.0',
+          ragioneSociale: 'Southern Tech SRL',
+          partitaIva: 'IT77889900112',
+          totaleOrdini: 12,
+          totaleVenduto: '18750.00',
+          sistemaOperativo: 'CentOS 8',
+          indirizzoIp: '172.20.1.45',
+          computerKey: 'COMP-SOUTH-BAK01',
+          installationPath: '/usr/local/dataguard',
+          status: 'classificato',
+          clienteAssegnato: client7?.id,
+          note: 'Server di backup aziendale'
+        },
+        {
+          nomeSoftware: 'WebSecure Suite',
+          versione: '1.7.5',
+          ragioneSociale: 'Verdi Systems',
+          partitaIva: 'IT99887766554',
+          totaleOrdini: 5,
+          totaleVenduto: '6450.00',
+          sistemaOperativo: 'Windows Server 2019',
+          indirizzoIp: '192.168.100.200',
+          computerKey: 'COMP-VERDI-SEC01',
+          installationPath: 'C:\\Program Files\\WebSecure Suite',
+          status: 'non_assegnato',
+          note: 'Firewall e protezione web aziendale'
+        },
+        {
+          nomeSoftware: 'QLM Enterprise',
+          versione: '2024.2',
+          ragioneSociale: 'Sicilia Software',
+          partitaIva: 'IT44556677889',
+          totaleOrdini: 35,
+          totaleVenduto: '125000.00',
+          sistemaOperativo: 'Red Hat Enterprise Linux 9',
+          indirizzoIp: '10.5.0.75',
+          computerKey: 'COMP-SIC-ENT01',
+          installationPath: '/opt/qlm-enterprise',
+          status: 'classificato',
+          clienteAssegnato: client9?.id,
+          note: 'Installazione enterprise per gestione licenze massive'
+        },
+        {
+          nomeSoftware: 'QLM Professional',
+          versione: '2023.12',
+          ragioneSociale: 'Toscana Digital',
+          partitaIva: 'IT22334455667',
+          totaleOrdini: 7,
+          totaleVenduto: '10500.00',
+          sistemaOperativo: 'macOS Sonoma 14.2',
+          indirizzoIp: '192.168.50.30',
+          computerKey: 'COMP-TOSC-MAC01',
+          installationPath: '/Applications/QLM Professional.app',
+          status: 'non_assegnato',
+          note: 'Installazione su ambiente Mac per sviluppo'
+        },
+        {
+          nomeSoftware: 'DataGuard Pro',
+          versione: '3.4.8',
+          ragioneSociale: 'StartupTech',
+          partitaIva: 'IT66778899001',
+          totaleOrdini: 1,
+          totaleVenduto: '1999.00',
+          sistemaOperativo: 'Windows 11 Home',
+          indirizzoIp: '192.168.1.50',
+          computerKey: 'COMP-START-PC01',
+          installationPath: 'C:\\Program Files\\DataGuard Pro',
+          status: 'non_assegnato',
+          note: 'Prima installazione per startup in fase di test'
+        },
+        {
+          nomeSoftware: 'Office Suite Pro',
+          versione: '2024.3',
+          ragioneSociale: 'Milano Tech Solutions',
+          partitaIva: 'IT12312312312',
+          totaleOrdini: 20,
+          totaleVenduto: '32000.00',
+          sistemaOperativo: 'Windows 11 Pro',
+          indirizzoIp: '192.168.2.100',
+          computerKey: 'COMP-MILANO-OFF01',
+          installationPath: 'C:\\Program Files\\Office Suite Pro',
+          status: 'non_assegnato',
+          note: 'Suite per ufficio completa'
+        },
+        {
+          nomeSoftware: 'CRM Enterprise',
+          versione: '5.2.1',
+          ragioneSociale: 'Roma Business Center',
+          partitaIva: 'IT98798798798',
+          totaleOrdini: 50,
+          totaleVenduto: '75000.00',
+          sistemaOperativo: 'Windows Server 2022',
+          indirizzoIp: '10.1.1.50',
+          computerKey: 'COMP-ROMA-CRM01',
+          installationPath: 'C:\\Program Files\\CRM Enterprise',
+          status: 'classificato',
+          clienteAssegnato: client1?.id,
+          note: 'Sistema CRM per gestione clienti'
+        }
+      ];
+
+      let createdCount = 0;
+
+      for (const regData of demoRegistrations) {
+        try {
+          const existingReg = await storage.getSoftwareRegistrationByComputerKey(regData.computerKey);
+          if (!existingReg) {
+            await storage.createSoftwareRegistration({
+              nomeSoftware: regData.nomeSoftware,
+              versione: regData.versione,
+              ragioneSociale: regData.ragioneSociale,
+              partitaIva: regData.partitaIva,
+              totaleOrdini: regData.totaleOrdini,
+              totaleVenduto: regData.totaleVenduto,
+              sistemaOperativo: regData.sistemaOperativo,
+              indirizzoIp: regData.indirizzoIp,
+              computerKey: regData.computerKey,
+              installationPath: regData.installationPath,
+              status: regData.status,
+              clienteAssegnato: regData.clienteAssegnato,
+              licenzaAssegnata: regData.licenzaAssegnata,
+              note: regData.note
+            });
+            createdCount++;
+          }
+        } catch (error) {
+          console.error(`Error creating software registration for ${regData.ragioneSociale}:`, error);
+        }
+      }
+
+      res.json({
+        status: 'success',
+        message: `${createdCount} demo software registrations created successfully`,
+        createdCount
+      });
+
+    } catch (error) {
+      console.error('Create demo software registrations error:', error);
+      res.status(500).json({ message: 'Failed to create demo software registrations' });
     }
   });
 
