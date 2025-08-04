@@ -103,32 +103,38 @@ export default function ExpiringLicensesList() {
   }
 
   return (
-    <div className="space-y-3">
-      {expiringLicenses.slice(0, 10).map((license: ExpiringLicense) => (
-        <div key={license.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium text-sm">{license.client.name}</span>
-              {getLicenseTypeBadge(license.licenseType)}
-            </div>
-            <div className="text-xs text-gray-600">
-              {license.product.name} {license.product.version}
-            </div>
-            <div className="text-xs text-gray-500">
-              {license.activationKey}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-xs text-gray-500">Scadenza</div>
-              <div className="text-sm font-medium">
-                {new Date(license.expiryDate).toLocaleDateString('it-IT')}
+    <div className="w-full">
+      <div className="flex gap-4 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
+        {expiringLicenses.slice(0, 10).map((license: ExpiringLicense) => (
+          <div key={license.id} className="flex-none w-80 p-4 border rounded-lg hover:bg-gray-50 bg-white shadow-sm">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm text-gray-900">{license.client.name}</span>
+                {getLicenseTypeBadge(license.licenseType)}
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-gray-700">
+                  {license.product.name} {license.product.version}
+                </div>
+                <div className="text-xs text-gray-500 font-mono">
+                  {license.activationKey}
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div>
+                  <div className="text-xs text-gray-500">Scadenza</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {new Date(license.expiryDate).toLocaleDateString('it-IT')}
+                  </div>
+                </div>
+                {getExpiryBadge(license.expiryDate)}
               </div>
             </div>
-            {getExpiryBadge(license.expiryDate)}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {expiringLicenses.length > 10 && (
         <div className="text-center pt-3">

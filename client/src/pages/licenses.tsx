@@ -231,7 +231,7 @@ export default function LicensesPage() {
                 </div>
               </div>
 
-              {/* Grid Layout */}
+              {/* Grid Layout with Horizontal Scroll */}
               {filteredLicenses.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center">
@@ -243,21 +243,22 @@ export default function LicensesPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredLicenses.map((license: License) => (
-                    <Card key={license.id} className="hover:shadow-lg transition-shadow duration-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-lg leading-tight">
-                              {license.product?.name || 'Prodotto sconosciuto'}
-                            </CardTitle>
-                            <CardDescription className="text-sm">
-                              {license.client?.name || 'Cliente sconosciuto'}
-                            </CardDescription>
-                          </div>
-                          <Badge 
-                            variant={
+                <div className="w-full">
+                  <div className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
+                    {filteredLicenses.map((license: License) => (
+                      <Card key={license.id} className="flex-none w-80 hover:shadow-lg transition-shadow duration-200">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <CardTitle className="text-lg leading-tight">
+                                {license.product?.name || 'Prodotto sconosciuto'}
+                              </CardTitle>
+                              <CardDescription className="text-sm">
+                                {license.client?.name || 'Cliente sconosciuto'}
+                              </CardDescription>
+                            </div>
+                            <Badge 
+                              variant={
                               license.status === 'attiva' ? 'default' :
                               license.status === 'scaduta' ? 'destructive' :
                               license.status === 'sospesa' ? 'secondary' :
@@ -381,6 +382,7 @@ export default function LicensesPage() {
                       </CardContent>
                     </Card>
                   ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -70,36 +70,55 @@
   .bg-surface {
     background-color: var(--surface);
   }
-  
+
   .text-primary {
     color: var(--primary);
   }
-  
+
   .bg-primary {
     background-color: var(--primary);
   }
-  
+
   .text-secondary {
     color: var(--secondary);
   }
-  
+
   .bg-secondary {
     background-color: var(--secondary);
   }
-  
+
   .text-accent {
     color: var(--accent);
   }
-  
+
   .bg-accent {
     background-color: var(--accent);
   }
-  
+
   .text-error {
     color: var(--error);
   }
-  
+
   .bg-error {
     background-color: var(--error);
   }
+}
+
+/* Custom scrollbar for horizontal scroll areas */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
