@@ -225,6 +225,49 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getAllProducts(): Promise<Product[]> {
+    return this.getProducts();
+  }
+
+  async getAllCompanies(): Promise<Company[]> {
+    return this.getCompanies();
+  }
+
+  async getAllClients(): Promise<Client[]> {
+    const rows = await database.query('SELECT * FROM clients ORDER BY name');
+    return rows.map(row => ({
+      ...row,
+      contactInfo: JSON.parse(row.contact_info || '{}')
+    }));
+  }
+
+  async getCompanyById(id: string): Promise<Company | undefined> {
+    return this.getCompany(id);
+  }
+
+  async getCompaniesInHierarchy(companyId: string): Promise<Company[]> {
+    const allCompanies = await this.getCompanies();
+    const hierarchy: Company[] = [];
+    
+    // Find the root company
+    const rootCompany = allCompanies.find(c => c.id === companyId);
+    if (rootCompany) {
+      hierarchy.push(rootCompany);
+    }
+    
+    // Find all subsidiaries recursively
+    const findSubcompanies = (parentId: string) => {
+      const subcompanies = allCompanies.filter(c => c.parent_id === parentId);
+      subcompanies.forEach(sub => {
+        hierarchy.push(sub);
+        findSubcompanies(sub.id);
+      });
+    };
+    
+    findSubcompanies(companyId);
+    return hierarchy;
+  }
+
   async getProduct(id: string): Promise<Product | undefined> {
     const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
     if (rows[0]) {

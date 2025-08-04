@@ -435,6 +435,251 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
   }
 });
 
+// Demo data creation endpoint - only for superadmin
+router.post("/api/demo/populate", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can populate demo data
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can populate demo data" });
+    }
+
+    console.log('Starting demo data population...');
+
+    // Clear existing data
+    await database.query('DELETE FROM licenses');
+    await database.query('DELETE FROM clients');
+    await database.query('DELETE FROM products');
+    await database.query('DELETE FROM companies');
+    console.log('Cleared existing data');
+
+    // Create companies
+    const companies = [
+      {
+        id: 'comp-headquarters',
+        name: 'QLM Solutions S.p.A.',
+        type: 'sede',
+        parent_id: null,
+        status: 'active',
+        contact_info: JSON.stringify({
+          address: 'Via Roma 123, Milano',
+          phone: '+39 02 1234567',
+          email: 'info@qlmsolutions.it'
+        })
+      },
+      {
+        id: 'comp-reseller-1',
+        name: 'TechnoSoft Distribution',
+        type: 'rivenditore',
+        parent_id: 'comp-headquarters',
+        status: 'active',
+        contact_info: JSON.stringify({
+          address: 'Via Torino 45, Torino',
+          phone: '+39 011 9876543',
+          email: 'sales@technosoft.it'
+        })
+      },
+      {
+        id: 'comp-reseller-2',
+        name: 'SoftwareHouse Roma',
+        type: 'rivenditore',
+        parent_id: 'comp-headquarters',
+        status: 'active',
+        contact_info: JSON.stringify({
+          address: 'Via del Corso 78, Roma',
+          phone: '+39 06 5551234',
+          email: 'info@swhouse.it'
+        })
+      },
+      {
+        id: 'comp-client-1',
+        name: 'Manifattura Italiana S.r.l.',
+        type: 'cliente',
+        parent_id: 'comp-reseller-1',
+        status: 'active',
+        contact_info: JSON.stringify({
+          address: 'Via dell\'Industria 12, Brescia',
+          phone: '+39 030 7778899',
+          email: 'it@manifattura.it'
+        })
+      }
+    ];
+
+    for (const company of companies) {
+      await database.query(`
+        INSERT INTO companies (id, name, type, parent_id, status, contact_info, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+      `, [company.id, company.name, company.type, company.parent_id, company.status, company.contact_info]);
+    }
+    console.log('Created companies');
+
+    // Create products
+    const products = [
+      {
+        id: 'prod-qlm-pro',
+        name: 'QLM Professional',
+        version: '2024.1',
+        description: 'Soluzione completa per la gestione licenze software',
+        supported_license_types: JSON.stringify(['permanente', 'abbonamento', 'trial'])
+      },
+      {
+        id: 'prod-qlm-enterprise',
+        name: 'QLM Enterprise',
+        version: '2024.2',
+        description: 'Soluzione enterprise per la gestione di licenze software su larga scala',
+        supported_license_types: JSON.stringify(['permanente', 'abbonamento'])
+      },
+      {
+        id: 'prod-cassawow',
+        name: 'CassaWOW Easy',
+        version: '2025.1',
+        description: 'Software gestionale per punti vendita e ristoranti',
+        supported_license_types: JSON.stringify(['abbonamento', 'trial'])
+      }
+    ];
+
+    for (const product of products) {
+      await database.query(`
+        INSERT INTO products (id, name, version, description, supported_license_types, created_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
+      `, [product.id, product.name, product.version, product.description, product.supported_license_types]);
+    }
+    console.log('Created products');
+
+    // Create clients
+    const clients = [
+      {
+        id: 'client-1',
+        company_id: 'comp-client-1',
+        name: 'Mario Rossi',
+        email: 'mario.rossi@manifattura.it',
+        status: 'convalidato',
+        contact_info: JSON.stringify({
+          phone: '+39 030 7778800',
+          position: 'IT Manager'
+        }),
+        is_multi_site: false,
+        is_multi_user: true
+      },
+      {
+        id: 'client-2',
+        company_id: 'comp-reseller-1',
+        name: 'Laura Bianchi',
+        email: 'laura.bianchi@technosoft.it',
+        status: 'convalidato',
+        contact_info: JSON.stringify({
+          phone: '+39 011 9876544',
+          position: 'Sales Manager'
+        }),
+        is_multi_site: true,
+        is_multi_user: true
+      },
+      {
+        id: 'client-3',
+        company_id: 'comp-reseller-2',
+        name: 'Giuseppe Verdi',
+        email: 'g.verdi@swhouse.it',
+        status: 'in_attesa',
+        contact_info: JSON.stringify({
+          phone: '+39 06 5551235',
+          position: 'Technical Director'
+        }),
+        is_multi_site: false,
+        is_multi_user: false
+      }
+    ];
+
+    for (const client of clients) {
+      await database.query(`
+        INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `, [client.id, client.company_id, client.name, client.email, client.status, client.contact_info, client.is_multi_site, client.is_multi_user]);
+    }
+    console.log('Created clients');
+
+    // Create licenses
+    const licenses = [
+      {
+        id: 'lic-1',
+        product_id: 'prod-qlm-pro',
+        client_id: 'client-1',
+        license_type: 'permanente',
+        activation_key: 'QLM-PRO-2024-ABCD-1234',
+        computer_key: 'PC-MARIO-WORK-001',
+        status: 'attiva',
+        max_users: 5,
+        expires_at: null,
+        activation_date: '2024-01-15',
+        assigned_company: 'comp-client-1'
+      },
+      {
+        id: 'lic-2',
+        product_id: 'prod-cassawow',
+        client_id: 'client-2',
+        license_type: 'abbonamento',
+        activation_key: 'CASSA-WOW-2025-EFGH-5678',
+        computer_key: 'PC-LAURA-DEMO-002',
+        status: 'attiva',
+        max_users: 10,
+        expires_at: '2025-12-31',
+        activation_date: '2024-06-01',
+        assigned_company: 'comp-reseller-1'
+      },
+      {
+        id: 'lic-3',
+        product_id: 'prod-qlm-enterprise',
+        client_id: 'client-1',
+        license_type: 'trial',
+        activation_key: 'QLM-ENT-TRIAL-IJKL-9012',
+        computer_key: 'PC-MARIO-TEST-003',
+        status: 'scaduta',
+        max_users: 3,
+        expires_at: '2024-02-15',
+        activation_date: '2024-01-16',
+        assigned_company: 'comp-client-1'
+      },
+      {
+        id: 'lic-4',
+        product_id: 'prod-qlm-pro',
+        client_id: 'client-3',
+        license_type: 'abbonamento',
+        activation_key: 'QLM-PRO-SUB-MNOP-3456',
+        computer_key: null,
+        status: 'non_attivata',
+        max_users: 1,
+        expires_at: '2025-08-31',
+        activation_date: null,
+        assigned_company: 'comp-reseller-2'
+      }
+    ];
+
+    for (const license of licenses) {
+      await database.query(`
+        INSERT INTO licenses (id, product_id, client_id, license_type, activation_key, computer_key, status, max_users, expires_at, activation_date, assigned_company, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `, [license.id, license.product_id, license.client_id, license.license_type, license.activation_key, license.computer_key, license.status, license.max_users, license.expires_at, license.activation_date, license.assigned_company]);
+    }
+    console.log('Created licenses');
+
+    const stats = {
+      companies: companies.length,
+      products: products.length,
+      clients: clients.length,
+      licenses: licenses.length
+    };
+
+    res.json({ 
+      message: "Demo data populated successfully", 
+      stats 
+    });
+    
+  } catch (error) {
+    console.error('Demo data population error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }

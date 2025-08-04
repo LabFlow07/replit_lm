@@ -1,17 +1,21 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AlertPanel from "@/components/alerts/alert-panel";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -20,7 +24,7 @@ export default function Dashboard() {
   }, [user, loading, setLocation]);
 
   // Fetch dashboard statistics
-  const { data: stats = {}, isLoading: statsLoading } = useQuery({
+  const { data: stats = {} as any, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/dashboard/stats'],
     enabled: !!user,
   });
@@ -77,6 +81,30 @@ export default function Dashboard() {
     return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
   }).length;
 
+  // Demo data mutation for superadmin
+  const populateDemo = useMutation({
+    mutationFn: () => apiRequest('/api/demo/populate', { method: 'POST' }),
+    onSuccess: (data: { stats: any }) => {
+      toast({
+        title: "Dati demo creati con successo!",
+        description: `Creati: ${data.stats.companies} aziende, ${data.stats.products} prodotti, ${data.stats.clients} clienti, ${data.stats.licenses} licenze`,
+      });
+      // Refresh all data
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore nella creazione dei dati demo",
+        description: error.message || "Si è verificato un errore",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
@@ -87,12 +115,27 @@ export default function Dashboard() {
         <div className="p-6 space-y-6">
           {/* Welcome Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg p-6 text-white">
-            <h1 className="text-2xl font-bold mb-2">
-              Benvenuto, {user.name}
-            </h1>
-            <p className="text-blue-100">
-              Panoramica generale del sistema di gestione licenze
-            </p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold mb-2">
+                  Benvenuto, {user.name}
+                </h1>
+                <p className="text-blue-100">
+                  Panoramica generale del sistema di gestione licenze
+                </p>
+              </div>
+              {user.role === 'superadmin' && (
+                <Button
+                  onClick={() => populateDemo.mutate()}
+                  disabled={populateDemo.isPending}
+                  variant="secondary"
+                  size="sm"
+                  data-testid="button-populate-demo"
+                >
+                  {populateDemo.isPending ? 'Caricamento...' : 'Popola Dati Demo'}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Primary Statistics Cards */}
