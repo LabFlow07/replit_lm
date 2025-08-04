@@ -50,6 +50,33 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Demo data mutation for superadmin - must be defined before any conditional returns
+  const populateDemo = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('/api/demo/populate', 'POST', {});
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Dati demo creati con successo!",
+        description: `Creati: ${data.stats.companies} aziende, ${data.stats.products} prodotti, ${data.stats.clients} clienti, ${data.stats.licenses} licenze`,
+      });
+      // Refresh all data
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore nella creazione dei dati demo",
+        description: error.message || "Si è verificato un errore",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -80,30 +107,6 @@ export default function Dashboard() {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
   }).length;
-
-  // Demo data mutation for superadmin
-  const populateDemo = useMutation({
-    mutationFn: () => apiRequest('/api/demo/populate', { method: 'POST' }),
-    onSuccess: (data: { stats: any }) => {
-      toast({
-        title: "Dati demo creati con successo!",
-        description: `Creati: ${data.stats.companies} aziende, ${data.stats.products} prodotti, ${data.stats.clients} clienti, ${data.stats.licenses} licenze`,
-      });
-      // Refresh all data
-      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore nella creazione dei dati demo",
-        description: error.message || "Si è verificato un errore",
-        variant: "destructive",
-      });
-    },
-  });
 
   return (
     <div className="min-h-screen flex bg-surface">
