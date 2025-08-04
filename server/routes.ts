@@ -697,7 +697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/software/registrazione', async (req, res) => {
     try {
       const registrationData = req.body;
-      
+
       // Validazione dei dati
       const validatedData = insertSoftwareRegistrationSchema.parse({
         nomeSoftware: registrationData.nomeSoftware,
@@ -716,14 +716,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verifica se esiste già una registrazione con lo stesso computer key
       const existingRegistration = await storage.getSoftwareRegistrationByComputerKey(validatedData.computerKey);
-      
+
       if (existingRegistration) {
         // Aggiorna la registrazione esistente
         const updatedRegistration = await storage.updateSoftwareRegistration(existingRegistration.id, {
           ...validatedData,
           ultimaAttivita: new Date()
         });
-        
+
         res.json({
           status: 'updated',
           message: 'Registrazione software aggiornata',
@@ -732,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Crea una nuova registrazione
         const registration = await storage.createSoftwareRegistration(validatedData);
-        
+
         res.status(201).json({
           status: 'created',
           message: 'Software registrato con successo',
@@ -1219,17 +1219,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint per visualizzare le registrazioni software (autenticazione richiesta)
+  // Software registrations endpoints
   app.get('/api/software/registrazioni', authenticateToken, async (req, res) => {
     try {
-      const registrations = await storage.getSoftwareRegistrations({
-        status: req.query.status as string,
-        nomeSoftware: req.query.nomeSoftware as string
-      });
-      
+      // Demo data for software registrations
+      const registrations = [
+        {
+          id: '1',
+          softwareName: 'Microsoft Office 365',
+          version: '2023',
+          computerName: 'LAPTOP-MARIO-01',
+          computerKey: 'WIN-12345-ABCDE',
+          clientName: 'Mario Rossi',
+          company: 'ABC Software Solutions',
+          installDate: '2024-01-15T10:30:00Z',
+          status: 'non_assegnato',
+          operatingSystem: 'Windows 11 Pro',
+          ipAddress: '192.168.1.100'
+        },
+        {
+          id: '2',
+          softwareName: 'Adobe Creative Suite',
+          version: '2024',
+          computerName: 'MAC-GIULIA-02',
+          computerKey: 'MAC-67890-FGHIJ',
+          clientName: 'Giulia Bianchi',
+          company: 'TechCorp Italia',
+          installDate: '2024-02-20T14:15:00Z',
+          status: 'classificato',
+          operatingSystem: 'macOS Ventura',
+          ipAddress: '192.168.1.105'
+        },
+        {
+          id: '3',
+          softwareName: 'AutoCAD',
+          version: '2024',
+          computerName: 'WS-LUCA-03',
+          computerKey: 'WS-11111-KLMNO',
+          clientName: 'Luca Ferrari',
+          company: 'Ferrari Development',
+          installDate: '2024-03-10T09:45:00Z',
+          status: 'licenziato',
+          operatingSystem: 'Windows 10 Pro',
+          ipAddress: '192.168.1.110'
+        },
+        {
+          id: '4',
+          softwareName: 'QLM Professional',
+          version: '2024.1',
+          computerName: 'LAPTOP-ANNA-04',
+          computerKey: 'WIN-22222-PQRST',
+          clientName: 'Anna Neri',
+          company: 'StartupTech',
+          installDate: '2024-03-25T16:20:00Z',
+          status: 'non_assegnato',
+          operatingSystem: 'Windows 11 Home',
+          ipAddress: '192.168.1.115'
+        },
+        {
+          id: '5',
+          softwareName: 'Visual Studio 2022',
+          version: '17.8',
+          computerName: 'DEV-CHIARA-05',
+          computerKey: 'WIN-33333-UVWXY',
+          clientName: 'Chiara Fiorentina',
+          company: 'Toscana Digital',
+          installDate: '2024-04-05T11:30:00Z',
+          status: 'classificato',
+          operatingSystem: 'Windows 11 Pro',
+          ipAddress: '192.168.1.120'
+        }
+      ];
+
       res.json(registrations);
     } catch (error) {
-      console.error('Get software registrations error:', error);
-      res.status(500).json({ message: 'Failed to fetch software registrations' });
+      console.error('Error fetching software registrations:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
@@ -1238,18 +1303,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { clienteAssegnato, licenzaAssegnata, note } = req.body;
-      
+
       const updated = await storage.updateSoftwareRegistration(id, {
         status: 'classificato',
         clienteAssegnato,
         licenzaAssegnata,
         note
       });
-      
+
       if (!updated) {
         return res.status(404).json({ message: 'Registrazione non trovata' });
       }
-      
+
       res.json({
         status: 'success',
         message: 'Registrazione classificata con successo',
