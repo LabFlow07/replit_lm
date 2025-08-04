@@ -472,7 +472,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
       assignedAgent: null
     });
 
-    console.log('Extended demo data created successfully with multiple clients, products and licenses');
+    // Create demo software registrations
+    const demoRegistrations = [
+      {
+        nomeSoftware: 'QLM Professional',
+        versione: '2024.1',
+        ragioneSociale: 'Rossi Consulting SRL',
+        partitaIva: 'IT12345678901',
+        totaleOrdini: 15,
+        totaleVenduto: '45000.00',
+        sistemaOperativo: 'Windows 11 Pro',
+        indirizzoIp: '192.168.1.101',
+        computerKey: 'COMP-ROSSI-001',
+        installationPath: 'C:\\Program Files\\QLM Professional',
+        status: 'non_assegnato',
+        note: 'Prima installazione del software presso il cliente'
+      },
+      {
+        nomeSoftware: 'DataGuard Pro',
+        versione: '3.5.2',
+        ragioneSociale: 'TechCorp Italia',
+        partitaIva: 'IT98765432109',
+        totaleOrdini: 8,
+        totaleVenduto: '12500.00',
+        sistemaOperativo: 'Windows Server 2022',
+        indirizzoIp: '10.0.0.50',
+        computerKey: 'COMP-TECH-SRV01',
+        installationPath: 'C:\\Program Files\\DataGuard Pro',
+        status: 'classificato',
+        clienteAssegnato: client2.id,
+        note: 'Software installato su server principale'
+      },
+      {
+        nomeSoftware: 'WebSecure Suite',
+        versione: '1.8.0',
+        ragioneSociale: 'Innovate Solutions',
+        partitaIva: 'IT11223344556',
+        totaleOrdini: 3,
+        totaleVenduto: '8900.00',
+        sistemaOperativo: 'Ubuntu Server 22.04',
+        indirizzoIp: '172.16.0.25',
+        computerKey: 'COMP-INNOV-WEB01',
+        installationPath: '/opt/websecure',
+        status: 'non_assegnato',
+        note: 'Installazione su ambiente di produzione'
+      },
+      {
+        nomeSoftware: 'QLM Starter',
+        versione: '2024.1',
+        ragioneSociale: 'Ferrari Development',
+        partitaIva: 'IT55667788990',
+        totaleOrdini: 2,
+        totaleVenduto: '998.00',
+        sistemaOperativo: 'Windows 10 Professional',
+        indirizzoIp: '192.168.0.15',
+        computerKey: 'COMP-FERRARI-DEV',
+        installationPath: 'C:\\Program Files (x86)\\QLM Starter',
+        status: 'licenziato',
+        clienteAssegnato: client5.id,
+        licenzaAssegnata: null,
+        note: 'Versione starter per sviluppatore singolo'
+      },
+      {
+        nomeSoftware: 'QLM Professional',
+        versione: '2024.2',
+        ragioneSociale: 'Enterprise Corp',
+        partitaIva: 'IT33445566778',
+        totaleOrdini: 25,
+        totaleVenduto: '67500.00',
+        sistemaOperativo: 'Windows 11 Enterprise',
+        indirizzoIp: '10.10.0.100',
+        computerKey: 'COMP-ENT-MAIN01',
+        installationPath: 'C:\\Program Files\\QLM Professional',
+        status: 'non_assegnato',
+        note: 'Installazione su workstation principale'
+      },
+      {
+        nomeSoftware: 'DataGuard Pro',
+        versione: '3.6.0',
+        ragioneSociale: 'Southern Tech SRL',
+        partitaIva: 'IT77889900112',
+        totaleOrdini: 12,
+        totaleVenduto: '18750.00',
+        sistemaOperativo: 'CentOS 8',
+        indirizzoIp: '172.20.1.45',
+        computerKey: 'COMP-SOUTH-BAK01',
+        installationPath: '/usr/local/dataguard',
+        status: 'classificato',
+        clienteAssegnato: client7.id,
+        note: 'Server di backup aziendale'
+      },
+      {
+        nomeSoftware: 'WebSecure Suite',
+        versione: '1.7.5',
+        ragioneSociale: 'Verdi Systems',
+        partitaIva: 'IT99887766554',
+        totaleOrdini: 5,
+        totaleVenduto: '6450.00',
+        sistemaOperativo: 'Windows Server 2019',
+        indirizzoIp: '192.168.100.200',
+        computerKey: 'COMP-VERDI-SEC01',
+        installationPath: 'C:\\Program Files\\WebSecure Suite',
+        status: 'non_assegnato',
+        note: 'Firewall e protezione web aziendale'
+      },
+      {
+        nomeSoftware: 'QLM Enterprise',
+        versione: '2024.2',
+        ragioneSociale: 'Sicilia Software',
+        partitaIva: 'IT44556677889',
+        totaleOrdini: 35,
+        totaleVenduto: '125000.00',
+        sistemaOperativo: 'Red Hat Enterprise Linux 9',
+        indirizzoIp: '10.5.0.75',
+        computerKey: 'COMP-SIC-ENT01',
+        installationPath: '/opt/qlm-enterprise',
+        status: 'classificato',
+        clienteAssegnato: client9.id,
+        note: 'Installazione enterprise per gestione licenze massive'
+      },
+      {
+        nomeSoftware: 'QLM Professional',
+        versione: '2023.12',
+        ragioneSociale: 'Toscana Digital',
+        partitaIva: 'IT22334455667',
+        totaleOrdini: 7,
+        totaleVenduto: '10500.00',
+        sistemaOperativo: 'macOS Sonoma 14.2',
+        indirizzoIp: '192.168.50.30',
+        computerKey: 'COMP-TOSC-MAC01',
+        installationPath: '/Applications/QLM Professional.app',
+        status: 'non_assegnato',
+        note: 'Installazione su ambiente Mac per sviluppo'
+      },
+      {
+        nomeSoftware: 'DataGuard Pro',
+        versione: '3.4.8',
+        ragioneSociale: 'StartupTech',
+        partitaIva: 'IT66778899001',
+        totaleOrdini: 1,
+        totaleVenduto: '1999.00',
+        sistemaOperativo: 'Windows 11 Home',
+        indirizzoIp: '192.168.1.50',
+        computerKey: 'COMP-START-PC01',
+        installationPath: 'C:\\Program Files\\DataGuard Pro',
+        status: 'non_assegnato',
+        note: 'Prima installazione per startup in fase di test'
+      }
+    ];
+
+    // Create software registrations using the API endpoint logic
+    for (const regData of demoRegistrations) {
+      try {
+        const existingReg = await storage.getSoftwareRegistrationByComputerKey(regData.computerKey);
+        if (!existingReg) {
+          await storage.createSoftwareRegistration({
+            nomeSoftware: regData.nomeSoftware,
+            versione: regData.versione,
+            ragioneSociale: regData.ragioneSociale,
+            partitaIva: regData.partitaIva,
+            totaleOrdini: regData.totaleOrdini,
+            totaleVenduto: regData.totaleVenduto,
+            sistemaOperativo: regData.sistemaOperativo,
+            indirizzoIp: regData.indirizzoIp,
+            computerKey: regData.computerKey,
+            installationPath: regData.installationPath,
+            status: regData.status,
+            clienteAssegnato: regData.clienteAssegnato,
+            licenzaAssegnata: regData.licenzaAssegnata,
+            note: regData.note
+          });
+        }
+      } catch (error) {
+        console.error(`Error creating software registration for ${regData.ragioneSociale}:`, error);
+      }
+    }
+
+    console.log('Extended demo data created successfully with multiple clients, products, licenses and software registrations');
     }
   } catch (error) {
     console.error('Error creating demo data:', error);
