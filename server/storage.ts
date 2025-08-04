@@ -436,7 +436,28 @@ export class DatabaseStorage implements IStorage {
     return licenses.find(l => l.activationKey === key);
   }
 
-  async getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
+  async getAllLicenses(): Promise<License[]> {
+    const query = `
+      SELECT 
+        l.*,
+        c.name as client_name,
+        c.email as client_email,
+        c.company_id as client_company_id,
+        p.name as product_name,
+        p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      LEFT JOIN clients c ON l.client_id = c.id
+      LEFT JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON c.company_id = comp.id
+      ORDER BY l.created_at DESC
+    `;
+
+    const rows = await database.query(query);
+    return this.mapLicenseRows(rows);
+  }
+
+  async getLicensesByCompanyHierarchy(companyId: string): Promise<License[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
@@ -446,13 +467,16 @@ export class DatabaseStorage implements IStorage {
     const query = `
       SELECT 
         l.*,
-        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
-        p.name as product_name, p.version as product_version,
+        c.name as client_name,
+        c.email as client_email,
+        c.company_id as client_company_id,
+        p.name as product_name,
+        p.version as product_version,
         comp.name as company_name
       FROM licenses l
-      JOIN clients c ON l.client_id = c.id
-      JOIN products p ON l.product_id = p.id
-      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      LEFT JOIN clients c ON l.client_id = c.id
+      LEFT JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON c.company_id = comp.id
       WHERE c.company_id IN (${placeholders})
       ORDER BY l.created_at DESC
     `;
@@ -778,7 +802,7 @@ export class DatabaseStorage implements IStorage {
         demoLicenses: demoLicenses[0]?.count || 0,
         totalClients: totalClients[0]?.count || 0,
         monthlyRevenue: parseFloat(monthlyRevenue[0]?.total || '0'),
-        todayActivations: todayActivations[0]?.count || 0,
+        todayActivations: todayActivations[0]?..count || 0,
         demoConversions: 0,
         expiringRenewals: 0,
         dailyRevenue: 0
