@@ -28,7 +28,7 @@ interface License {
   activationDate: string;
   expiryDate: string;
   computerKey: string;
-  client: { name: string };
+  client: { name: string; company_id?: string };
   product: { name: string };
 }
 
@@ -71,6 +71,19 @@ export default function LicensesPage() {
     }
   });
 
+  const { data: companies = [] } = useQuery({
+    queryKey: ['/api/companies'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/companies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch companies');
+      return response.json();
+    }
+  });
+
   const { data: allLicenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
     enabled: !!user,
@@ -105,6 +118,57 @@ export default function LicensesPage() {
     return null;
   }
 
+  // Company hierarchy filtering
+  const getFilteredHierarchy = (companies: any[], user: any) => {
+    console.log('filteredHierarchy: User role:', user?.role);
+    console.log('filteredHierarchy: All companies count:', companies?.length);
+    
+    if (!user || !companies) return [];
+    
+    console.log('User role:', user.role);
+    console.log('User company ID:', user.companyId);
+    console.log('Companies array length:', companies.length);
+    
+    if (user.role === 'superadmin') {
+      return companies;
+    }
+    
+    if (user.role === 'admin' && user.companyId) {
+      // Find company hierarchy starting from user's company
+      const findHierarchy = (companyId: string, visited = new Set()): any[] => {
+        if (visited.has(companyId)) return [];
+        visited.add(companyId);
+        
+        const company = companies.find((c: any) => c.id === companyId);
+        if (!company) return [];
+        
+        let hierarchy = [company];
+        
+        // Find all children
+        const children = companies.filter((c: any) => c.parent_id === companyId);
+        for (const child of children) {
+          hierarchy = hierarchy.concat(findHierarchy(child.id, visited));
+        }
+        
+        return hierarchy;
+      };
+      
+      const accessibleCompanies = findHierarchy(user.companyId);
+      console.log('filteredHierarchy: Accessible companies count:', accessibleCompanies.length);
+      return accessibleCompanies;
+    }
+    
+    if (user.role === 'admin' && !user.companyId) {
+      console.log('Admin without company ID: returning all companies as fallback');
+      return companies;
+    }
+    
+    return companies;
+  };
+
+  const accessibleCompanies = getFilteredHierarchy(companies, user);
+  const accessibleCompanyIds = accessibleCompanies.map((c: any) => c.id);
+
   const filteredLicenses = licenses.filter((license: License) => {
     const searchTermLower = searchTerm.toLowerCase();
     const clientName = license.client?.name?.toLowerCase() || '';
@@ -118,7 +182,13 @@ export default function LicensesPage() {
     const statusMatch = statusFilter === "all" || license.status === statusFilter;
     const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
 
-    return searchMatch && statusMatch && typeMatch;
+    // Company hierarchy filtering - only show licenses for accessible companies
+    const companyMatch = user?.role === 'superadmin' || 
+      !user?.companyId || 
+      accessibleCompanyIds.length === 0 || 
+      accessibleCompanyIds.includes(license.client?.company_id);
+
+    return searchMatch && statusMatch && typeMatch && companyMatch;
   });
 
   const handleEditLicense = (license: License) => {
