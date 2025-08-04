@@ -48,7 +48,7 @@ export default function LicensesPage() {
     queryKey: ['/api/clients'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/clients', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -61,7 +61,7 @@ export default function LicensesPage() {
     queryKey: ['/api/products'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/products', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -74,7 +74,7 @@ export default function LicensesPage() {
     queryKey: ['/api/companies'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/companies', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -87,7 +87,7 @@ export default function LicensesPage() {
     queryKey: ['/api/licenses'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/licenses', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -448,7 +448,7 @@ export default function LicensesPage() {
               const formData = new FormData(e.target as HTMLFormElement);
 
               try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('qlm_token');
                 const response = await fetch('/api/licenses', {
                   method: 'POST',
                   headers: {

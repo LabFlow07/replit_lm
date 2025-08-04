@@ -46,7 +46,7 @@ export default function ProductsPage() {
     refetchOnWindowFocus: false,
     staleTime: 0,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       if (!token) {
         throw new Error('No authentication token found');
       }

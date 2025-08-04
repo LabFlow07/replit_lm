@@ -27,7 +27,7 @@ export default function ExpiringLicensesList() {
     queryKey: ['/api/licenses/expiring'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/licenses/expiring', {
         headers: { 'Authorization': `Bearer ${token}` }
       });

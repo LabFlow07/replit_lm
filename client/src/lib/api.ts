@@ -3,7 +3,7 @@ export async function apiRequest(
   url: string,
   data?: unknown
 ): Promise<Response> {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('qlm_token');
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

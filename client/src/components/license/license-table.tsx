@@ -100,7 +100,7 @@ export default function LicenseTable() {
     refetchOnWindowFocus: false,
     staleTime: 0,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -187,7 +187,7 @@ export default function LicenseTable() {
 
   const handleLicenseAction = async (license: any, action: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch(`/api/licenses/${license.id}/${action}`, {
         method: 'PATCH',
         headers: {
