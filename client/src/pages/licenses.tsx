@@ -84,19 +84,22 @@ export default function LicensesPage() {
     }
   });
 
-  const { data: allLicenses = [] } = useQuery({
+  const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/licenses', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
-      if (!response.ok) throw new Error('Failed to fetch licenses');
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setLicenses(data);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+
+      console.log(`Licenses API returned ${data.length} licenses for user ${user?.username}`);
+      return data;
     }
   });
 
@@ -118,56 +121,9 @@ export default function LicensesPage() {
     return null;
   }
 
-  // Company hierarchy filtering
-  const getFilteredHierarchy = (companies: any[], user: any) => {
-    console.log('filteredHierarchy: User role:', user?.role);
-    console.log('filteredHierarchy: All companies count:', companies?.length);
-    
-    if (!user || !companies) return [];
-    
-    console.log('User role:', user.role);
-    console.log('User company ID:', user.companyId);
-    console.log('Companies array length:', companies.length);
-    
-    if (user.role === 'superadmin') {
-      return companies;
-    }
-    
-    if (user.role === 'admin' && user.companyId) {
-      // Find company hierarchy starting from user's company
-      const findHierarchy = (companyId: string, visited = new Set()): any[] => {
-        if (visited.has(companyId)) return [];
-        visited.add(companyId);
-        
-        const company = companies.find((c: any) => c.id === companyId);
-        if (!company) return [];
-        
-        let hierarchy = [company];
-        
-        // Find all children
-        const children = companies.filter((c: any) => c.parent_id === companyId);
-        for (const child of children) {
-          hierarchy = hierarchy.concat(findHierarchy(child.id, visited));
-        }
-        
-        return hierarchy;
-      };
-      
-      const accessibleCompanies = findHierarchy(user.companyId);
-      console.log('filteredHierarchy: Accessible companies count:', accessibleCompanies.length);
-      return accessibleCompanies;
-    }
-    
-    if (user.role === 'admin' && !user.companyId) {
-      console.log('Admin without company ID: returning all companies as fallback');
-      return companies;
-    }
-    
-    return companies;
-  };
-
-  const accessibleCompanies = getFilteredHierarchy(companies, user);
-  const accessibleCompanyIds = accessibleCompanies.map((c: any) => c.id);
+  // Since the server already filters licenses by company hierarchy for admin users,
+  // we don't need complex client-side filtering. Just trust the server response.
+  console.log(`Licenses page: User ${user?.username} (${user?.role}) has ${licenses.length} licenses from server`);
 
   const filteredLicenses = licenses.filter((license: License) => {
     const searchTermLower = searchTerm.toLowerCase();
@@ -185,7 +141,7 @@ export default function LicensesPage() {
     // Company hierarchy filtering - IMPORTANT: The server already filters by company hierarchy
     // so we don't need additional filtering here if user is admin with company
     let companyMatch = true;
-    
+
     if (user?.role === 'admin' && user?.companyId && accessibleCompanyIds.length > 0) {
       // For admin users, the server already filtered the licenses, so we trust the server response
       // But we can add an extra check to be sure
