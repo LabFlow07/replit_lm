@@ -108,18 +108,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('qlm_token', data.token);
 
       // Ensure companyId is properly set from login response
-      const userData = {
-        id: data.user.id,
-        username: data.user.username,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        companyId: data.user.companyId,
-        company: data.user.company
-      };
+      const userData = data.user;
+    console.log('Login successful, user data received:', userData);
 
-      console.log('Setting user data in auth hook:', userData);
-      setUser(userData);
+    // Set user data from response - ensure all company data is properly mapped
+    setUser({
+      id: userData.id,
+      username: userData.username,
+      name: userData.name,
+      email: userData.email, 
+      role: userData.role,
+      companyId: userData.companyId || userData.company_id,
+      company: userData.company
+    });
+
+    console.log('User state set with company info:', {
+      role: userData.role,
+      companyId: userData.companyId || userData.company_id,
+      company: userData.company
+    });
+
+      
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
     } catch (error) {
