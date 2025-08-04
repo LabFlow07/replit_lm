@@ -82,14 +82,30 @@ export default function SoftwareRegistrations() {
   // Fetch clients for classification
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
-    queryFn: () => apiRequest('/api/clients'),
+    queryFn: async () => {
+      const response = await fetch('/api/clients', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch clients');
+      }
+      return response.json();
+    },
     enabled: true
   });
 
   // Fetch licenses for classification
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
-    queryFn: () => apiRequest('/api/licenses'),
+    queryFn: async () => {
+      const response = await fetch('/api/licenses', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch licenses');
+      }
+      return response.json();
+    },
     enabled: true
   });
 
