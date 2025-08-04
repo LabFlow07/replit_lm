@@ -812,6 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all licenses
         licenses = await storage.getLicenses(req.query);
+        console.log(`Superadmin ${userWithCompany.username} returning all licenses`);
       } else {
         // Other roles get basic filtering
         licenses = await storage.getLicenses(req.query);
@@ -932,6 +933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all clients
         clients = await storage.getClients(req.query.companyId as string);
+        console.log(`Superadmin ${userWithCompany.username} returning all clients`);
       } else {
         // Other roles get filtered by their company only
         clients = await storage.getClients(userWithCompany?.companyId);

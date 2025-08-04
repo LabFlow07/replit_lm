@@ -271,14 +271,24 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getClientsByCompany(companyId: string): Promise<Client[]> {
+    const rows = await database.query(
+      'SELECT * FROM clients WHERE company_id = ? ORDER BY created_at DESC',
+      [companyId]
+    );
+    return rows.map(row => ({
+      ...row,
+      contactInfo: JSON.parse(row.contact_info || '{}')
+    }));
+  }
+
   async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
-    // Get all company IDs including subcompanies
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
-    
+
     const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
     const rows = await database.query(query, companyIds);
-    
+
     return rows.map(row => ({
       ...row,
       contactInfo: JSON.parse(row.contact_info || '{}')
@@ -288,7 +298,7 @@ export class DatabaseStorage implements IStorage {
   async getCompanyHierarchy(companyId: string): Promise<string[]> {
     const allCompanies = await this.getCompanies();
     const hierarchy: string[] = [companyId];
-    
+
     const findSubcompanies = (parentId: string) => {
       const subcompanies = allCompanies.filter(c => c.parent_id === parentId);
       subcompanies.forEach(sub => {
@@ -296,7 +306,7 @@ export class DatabaseStorage implements IStorage {
         findSubcompanies(sub.id);
       });
     };
-    
+
     findSubcompanies(companyId);
     return hierarchy;
   }
@@ -404,7 +414,7 @@ export class DatabaseStorage implements IStorage {
   async getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
-    
+
     const query = `
       SELECT 
         l.*,
@@ -471,7 +481,7 @@ export class DatabaseStorage implements IStorage {
 
   async createLicense(insertLicense: InsertLicense): Promise<License> {
     const id = randomUUID();
-    
+
     // Calcola automaticamente la data di scadenza per gli abbonamenti
     let expiryDate = insertLicense.expiryDate;
     if (insertLicense.licenseType === 'abbonamento_mensile') {
@@ -481,7 +491,7 @@ export class DatabaseStorage implements IStorage {
       const now = new Date();
       expiryDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
     }
-    
+
     await database.query(`
       INSERT INTO licenses (
         id, client_id, product_id, activation_key, computer_key, activation_date,
@@ -627,7 +637,7 @@ export class DatabaseStorage implements IStorage {
   async getLicensesExpiringByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
-    
+
     const query = `
       SELECT 
         l.*,
@@ -703,7 +713,7 @@ export class DatabaseStorage implements IStorage {
     if (userRole === 'admin' && userCompanyId) {
       const companyIds = await this.getCompanyHierarchy(userCompanyId);
       const placeholders = companyIds.map(() => '?').join(',');
-      
+
       const [activeLicenses] = await database.query(
         `SELECT COUNT(*) as count FROM licenses l 
          JOIN clients c ON l.client_id = c.id 
@@ -829,16 +839,16 @@ export class DatabaseStorage implements IStorage {
       'SELECT * FROM software_registrations WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) return undefined;
-    
+
     const row = rows[0];
     return {
       ...row,
       totaleVenduto: parseFloat(row.totale_venduto || '0'),
       primaRegistrazione: row.prima_registrazione,
       ultimaAttivita: row.ultima_attivita,
-      createdAt: row.created_at,
+      createdAt: row.created_at,```python
       updatedAt: row.updated_at
     };
   }
@@ -848,9 +858,9 @@ export class DatabaseStorage implements IStorage {
       'SELECT * FROM software_registrations WHERE computer_key = ?',
       [computerKey]
     );
-    
+
     if (rows.length === 0) return undefined;
-    
+
     const row = rows[0];
     return {
       ...row,
