@@ -150,6 +150,7 @@ export const softwareRegistrations = pgTable("software_registrations", {
   status: text("status").default('non_assegnato'), // non_assegnato, classificato, licenziato
   clienteAssegnato: varchar("cliente_assegnato"),
   licenzaAssegnata: varchar("licenza_assegnata"),
+  prodottoAssegnato: varchar("prodotto_assegnato"),
   note: text("note"),
   
   // Timestamp

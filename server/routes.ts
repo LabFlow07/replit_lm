@@ -500,7 +500,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         computerKey: 'COMP-TECH-SRV01',
         installationPath: 'C:\\Program Files\\DataGuard Pro',
         status: 'classificato',
-        clienteAssegnato: client2.id,
+        clienteAssegnato: client2?.id,
+        prodottoAssegnato: null, // Sarà assegnato tramite UI
         note: 'Software installato su server principale'
       },
       {
@@ -1263,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get existing clients for assignments
       const clients = await storage.getClients();
-      
+
       const client1 = clients.find(c => c.email === 'mario.rossi@company.com');
       const client2 = clients.find(c => c.email === 'giulia.bianchi@techcorp.it');
       const client3 = clients.find(c => c.email === 'f.verde@innovate.com');
@@ -1303,6 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           installationPath: 'C:\\Program Files\\DataGuard Pro',
           status: 'classificato',
           clienteAssegnato: client2?.id,
+          prodottoAssegnato: null, // Sarà assegnato tramite UI
           note: 'Software installato su server principale'
         },
         {

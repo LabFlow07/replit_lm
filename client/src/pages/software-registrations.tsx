@@ -52,6 +52,13 @@ interface License {
   status: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+}
+
 export default function SoftwareRegistrations() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,12 +128,32 @@ export default function SoftwareRegistrations() {
     enabled: true
   });
 
+  // Fetch products for classification
+  const { data: products = [] } = useQuery({
+    queryKey: ['/api/products'],
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/products', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      return response.json();
+    },
+    enabled: true
+  });
+
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
       const requestBody = {
         clienteAssegnato: data.clienteAssegnato === 'none' ? null : data.clienteAssegnato,
         licenzaAssegnata: (data.licenzaAssegnata === 'none' || !data.licenzaAssegnata) ? null : data.licenzaAssegnata,
+        prodottoAssegnato: data.prodottoAssegnato === 'none' ? null : data.prodottoAssegnato,
         note: data.note
       };
 
@@ -449,6 +476,23 @@ export default function SoftwareRegistrations() {
                   {clients.filter((client: Client) => client.id).map((client: Client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} - {client.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
+              <Select onValueChange={(value) => setValue('prodottoAssegnato', value)}>
+                <SelectTrigger data-testid="select-assign-product">
+                  <SelectValue placeholder="Seleziona software" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seleziona Software</SelectItem>
+                  {products.filter((product: Product) => product.id).map((product: Product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} v{product.version}
                     </SelectItem>
                   ))}
                 </SelectContent>
