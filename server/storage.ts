@@ -331,31 +331,35 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
+  async getClientsByCompanyHierarchy(companyId: string): Promise<Client[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
-    console.log(`getClientsByCompanyAndSubcompanies: Company hierarchy for ${companyId}:`, companyIds);
+    console.log(`getClientsByCompanyHierarchy: Company hierarchy for ${companyId}:`, companyIds);
 
     if (companyIds.length === 0) {
-      console.log(`getClientsByCompanyAndSubcompanies: No companies in hierarchy, returning empty array`);
+      console.log(`getClientsByCompanyHierarchy: No companies in hierarchy, returning empty array`);
       return [];
     }
 
     const placeholders = companyIds.map(() => '?').join(',');
     const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
 
-    console.log(`getClientsByCompanyAndSubcompanies: Executing query:`, query);
-    console.log(`getClientsByCompanyAndSubcompanies: With company IDs:`, companyIds);
+    console.log(`getClientsByCompanyHierarchy: Executing query:`, query);
+    console.log(`getClientsByCompanyHierarchy: With company IDs:`, companyIds);
     const rows = await database.query(query, companyIds);
-    console.log(`getClientsByCompanyAndSubcompanies: Found ${rows.length} clients`);
+    console.log(`getClientsByCompanyHierarchy: Found ${rows.length} clients`);
 
     const mappedClients = rows.map(row => ({
       ...row,
       contactInfo: JSON.parse(row.contact_info || '{}')
     }));
 
-    console.log(`getClientsByCompanyAndSubcompanies: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.company_id })));
-
+    console.log(`getClientsByCompanyHierarchy: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.companyId })));
     return mappedClients;
+  }
+
+  async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
+    // Use the main function for consistency
+    return this.getClientsByCompanyHierarchy(companyId);
   }
 
   async getCompanyHierarchy(companyId: string): Promise<string[]> {
