@@ -1,5 +1,4 @@
-
-import express, { type Request, type Response } from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
@@ -12,41 +11,41 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "qlm-jwt-secret-key-2024";
 
 // Middleware to verify JWT token
-const authenticateToken = (req: Request, res: Response, next: any) => {
+function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
+  if (!token) {
+    console.log('No token provided');
     return res.sendStatus(401);
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
-      console.log('Token verification error:', err);
+      console.error('Token verification error:', err);
+      console.log('Token that failed:', token.substring(0, 20) + '...');
+      console.log('JWT_SECRET exists:', !!JWT_SECRET);
       return res.sendStatus(403);
     }
-    
-    console.log('Token payload on validation:', decoded);
-    console.log('CompanyId from token:', decoded.companyId);
-    
-    (req as any).user = decoded;
+    console.log('Token verified successfully for user:', user.username);
+    (req as any).user = user;
     next();
   });
-};
+}
 
 // Auth routes
 router.post("/api/register", async (req: Request, res: Response) => {
   try {
     const { username, email, password, name, role, companyId } = req.body;
-    
+
     // Check if user already exists
     const existingUser = await storage.getUserByUsername(username);
     if (existingUser) {
       return res.status(400).json({ message: "Username already exists" });
     }
-    
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const user = await storage.createUser({
       id: nanoid(),
       username,
@@ -57,7 +56,7 @@ router.post("/api/register", async (req: Request, res: Response) => {
       companyId: companyId || null,
       createdAt: new Date().toISOString()
     });
-    
+
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -69,7 +68,7 @@ router.post("/api/register", async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     res.json({ 
       message: "User registered successfully", 
       token,
@@ -90,17 +89,17 @@ router.post("/api/register", async (req: Request, res: Response) => {
 router.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
-    
+
     const user = await storage.getUserByUsername(username);
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    
+
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    
+
     // Generate JWT token
     const token = jwt.sign(
       { 
@@ -112,7 +111,7 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     console.log('Login successful for user:', user.username);
     console.log('Full token payload:', { 
       id: user.id, 
@@ -121,7 +120,7 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
       companyId: user.companyId 
     });
     console.log('CompanyId from token payload:', user.companyId);
-    
+
     res.json({ 
       token,
       user: {
@@ -142,11 +141,11 @@ router.get("/api/user", authenticateToken, async (req: Request, res: Response) =
   try {
     const userId = (req as any).user.id;
     const user = await storage.getUserById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     res.json({
       id: user.id,
       username: user.username,
@@ -165,9 +164,9 @@ router.get("/api/companies", authenticateToken, async (req: Request, res: Respon
   try {
     const user = (req as any).user;
     console.log('Fetching companies for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     let companies;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see all companies
       companies = await storage.getAllCompanies();
@@ -182,7 +181,7 @@ router.get("/api/companies", authenticateToken, async (req: Request, res: Respon
       companies = company ? [company] : [];
       console.log('User role', user.role, ': fetched', companies.length, 'companies (own company only)');
     }
-    
+
     res.json(companies);
   } catch (error) {
     console.error('Get companies error:', error);
@@ -194,9 +193,9 @@ router.get("/api/clients", authenticateToken, async (req: Request, res: Response
   try {
     const user = (req as any).user;
     console.log('Fetching clients for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     let clients;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see all clients
       clients = await storage.getAllClients();
@@ -210,10 +209,10 @@ router.get("/api/clients", authenticateToken, async (req: Request, res: Response
       clients = await storage.getClientsByCompany(user.companyId);
       console.log('User role', user.role, ': fetched', clients.length, 'clients from company', user.companyId);
     }
-    
+
     console.log('Raw clients data received:', clients.length, 'clients');
     console.log(`Clients API returned ${clients.length} clients for user ${user.username} (${user.role})`);
-    
+
     res.json(clients);
   } catch (error) {
     console.error('Get clients error:', error);
@@ -225,9 +224,9 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
   try {
     const user = (req as any).user;
     console.log('Fetching licenses for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     let licenses;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see all licenses
       licenses = await storage.getAllLicenses();
@@ -241,9 +240,9 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
       licenses = await storage.getLicensesByCompany(user.companyId);
       console.log('User role', user.role, ': fetched', licenses.length, 'licenses from company', user.companyId);
     }
-    
+
     console.log(`Licenses API returned ${licenses.length} licenses for user ${user.username}`);
-    
+
     res.json(licenses);
   } catch (error) {
     console.error('Get licenses error:', error);
@@ -255,9 +254,9 @@ router.get("/api/licenses/expiring", authenticateToken, async (req: Request, res
   try {
     const user = (req as any).user;
     console.log('Fetching expiring licenses for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     let licenses;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see all expiring licenses
       licenses = await storage.getExpiringLicenses();
@@ -271,9 +270,9 @@ router.get("/api/licenses/expiring", authenticateToken, async (req: Request, res
       licenses = await storage.getExpiringLicensesByCompany(user.companyId);
       console.log('User role', user.role, ': fetched', licenses.length, 'expiring licenses from company', user.companyId);
     }
-    
+
     console.log(`Expiring licenses API returned ${licenses.length} licenses for user ${user.username}`);
-    
+
     res.json(licenses);
   } catch (error) {
     console.error('Get expiring licenses error:', error);
@@ -285,9 +284,9 @@ router.get("/api/licenses/active/count", authenticateToken, async (req: Request,
   try {
     const user = (req as any).user;
     console.log('Fetching active licenses count for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     let count;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see count of all active licenses
       count = await storage.getActiveLicensesCount();
@@ -301,7 +300,7 @@ router.get("/api/licenses/active/count", authenticateToken, async (req: Request,
       count = await storage.getActiveLicensesCountByCompany(user.companyId);
       console.log('User role', user.role, ': active licenses count from company', user.companyId, '=', count);
     }
-    
+
     res.json({ count });
   } catch (error) {
     console.error('Get active licenses count error:', error);
@@ -323,17 +322,17 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
   try {
     const user = (req as any).user;
     const { status, nomeSoftware } = req.query;
-    
+
     console.log('Fetching software registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
-    
+
     const filters = {
       ...(status && { status: status as string }),
       ...(nomeSoftware && { nomeSoftware: nomeSoftware as string })
     };
-    
+
     const registrations = await storage.getSoftwareRegistrations(filters);
     console.log('Software registrations API returned', registrations.length, 'registrations for user', user.username);
-    
+
     res.json(registrations);
   } catch (error) {
     console.error('Get software registrations error:', error);
@@ -345,11 +344,11 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
   try {
     const registrationId = req.params.id;
     const registration = await storage.getSoftwareRegistration(registrationId);
-    
+
     if (!registration) {
       return res.status(404).json({ message: "Registration not found" });
     }
-    
+
     res.json(registration);
   } catch (error) {
     console.error('Get software registration error:', error);
@@ -361,7 +360,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
   try {
     const registrationId = req.params.id;
     const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note } = req.body;
-    
+
     const updates = {
       clienteAssegnato,
       licenzaAssegnata,
@@ -369,7 +368,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       note,
       status: 'classificato'
     };
-    
+
     const updatedRegistration = await storage.updateSoftwareRegistration(registrationId, updates);
     res.json(updatedRegistration);
   } catch (error) {
@@ -386,17 +385,17 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       id: nanoid(),
       createdAt: new Date().toISOString()
     };
-    
+
     // Validate that the user can create licenses for the specified client
     const client = await storage.getClientById(licenseData.clientId);
     if (!client) {
       return res.status(404).json({ message: "Client not found" });
     }
-    
+
     // Check permissions based on user role
     if (user.role !== 'superadmin') {
       let hasPermission = false;
-      
+
       if (user.role === 'admin') {
         // Admin can create licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
@@ -405,12 +404,12 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
         // Other roles can only create licenses for clients in their own company
         hasPermission = (client.company_id || client.companyId) === user.companyId;
       }
-      
+
       if (!hasPermission) {
         return res.status(403).json({ message: "Not authorized to create license for this client" });
       }
     }
-    
+
     const license = await storage.createLicense(licenseData);
     res.json(license);
   } catch (error) {
@@ -424,17 +423,17 @@ router.put("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
     const user = (req as any).user;
     const licenseId = req.params.id;
     const updateData = req.body;
-    
+
     // Get the existing license
     const existingLicense = await storage.getLicenseById(licenseId);
     if (!existingLicense) {
       return res.status(404).json({ message: "License not found" });
     }
-    
+
     // Check permissions based on user role
     if (user.role !== 'superadmin') {
       let hasPermission = false;
-      
+
       if (user.role === 'admin') {
         // Admin can update licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
@@ -443,12 +442,12 @@ router.put("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
         // Other roles can only update licenses for clients in their own company
         hasPermission = (existingLicense.client.company_id || existingLicense.client.companyId) === user.companyId;
       }
-      
+
       if (!hasPermission) {
         return res.status(403).json({ message: "Not authorized to update this license" });
       }
     }
-    
+
     const updatedLicense = await storage.updateLicense(licenseId, updateData);
     res.json(updatedLicense);
   } catch (error) {
@@ -461,17 +460,17 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
   try {
     const user = (req as any).user;
     const licenseId = req.params.id;
-    
+
     // Get the existing license
     const existingLicense = await storage.getLicenseById(licenseId);
     if (!existingLicense) {
       return res.status(404).json({ message: "License not found" });
     }
-    
+
     // Check permissions based on user role
     if (user.role !== 'superadmin') {
       let hasPermission = false;
-      
+
       if (user.role === 'admin') {
         // Admin can delete licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
@@ -480,12 +479,12 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
         // Other roles can only delete licenses for clients in their own company
         hasPermission = (existingLicense.client.company_id || existingLicense.client.companyId) === user.companyId;
       }
-      
+
       if (!hasPermission) {
         return res.status(403).json({ message: "Not authorized to delete this license" });
       }
     }
-    
+
     await storage.deleteLicense(licenseId);
     res.json({ message: "License deleted successfully" });
   } catch (error) {
@@ -498,7 +497,7 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
 router.post("/api/demo/populate", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Only superadmin can populate demo data
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Only superadmin can populate demo data" });
@@ -732,7 +731,7 @@ router.post("/api/demo/populate", authenticateToken, async (req: Request, res: R
       message: "Demo data populated successfully", 
       stats 
     });
-    
+
   } catch (error) {
     console.error('Demo data population error:', error);
     res.status(500).json({ message: "Internal server error" });
