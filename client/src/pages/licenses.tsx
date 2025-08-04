@@ -41,7 +41,6 @@ export default function LicensesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
-  const [licenses, setLicenses] = useState<License[]>([]);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
 
   // Always call useQuery hooks - they will be disabled when user is not available
@@ -138,22 +137,7 @@ export default function LicensesPage() {
     const statusMatch = statusFilter === "all" || license.status === statusFilter;
     const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
 
-    // Company hierarchy filtering - IMPORTANT: The server already filters by company hierarchy
-    // so we don't need additional filtering here if user is admin with company
-    let companyMatch = true;
-
-    if (user?.role === 'admin' && user?.companyId && accessibleCompanyIds.length > 0) {
-      // For admin users, the server already filtered the licenses, so we trust the server response
-      // But we can add an extra check to be sure
-      const clientCompanyId = license.client?.company_id || license.client?.companyId;
-      companyMatch = accessibleCompanyIds.includes(clientCompanyId);
-      console.log(`Admin filtering - License ${license.activationKey} - Client: ${license.client?.name}, Company ID: ${clientCompanyId}, Accessible Companies: ${accessibleCompanyIds}, Match: ${companyMatch}`);
-    } else if (user?.role === 'superadmin') {
-      // Superadmin sees all licenses
-      companyMatch = true;
-    }
-
-    return searchMatch && statusMatch && typeMatch && companyMatch;
+    return searchMatch && statusMatch && typeMatch;
   });
 
   const handleEditLicense = (license: License) => {
