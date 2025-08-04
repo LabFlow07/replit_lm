@@ -106,14 +106,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Login response user data:', data.user);
       console.log('User role:', data.user.role, 'Company ID:', data.user.companyId);
       localStorage.setItem('qlm_token', data.token);
-      
+
       // Ensure companyId is properly set from login response
       const userData = {
-        ...data.user,
-        companyId: data.user.companyId || data.user.company_id, // Handle both camelCase and snake_case
+        id: data.user.id,
+        username: data.user.username,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        companyId: data.user.companyId,
         company: data.user.company
       };
-      console.log('Setting user data in frontend:', userData);
+
+      console.log('Setting user data in auth hook:', userData);
       setUser(userData);
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');

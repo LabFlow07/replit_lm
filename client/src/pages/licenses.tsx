@@ -28,7 +28,7 @@ interface License {
   activationDate: string;
   expiryDate: string;
   computerKey: string;
-  client: { name: string; company_id?: string };
+  client: { name: string; company_id?: string; companyId?: string };
   product: { name: string };
 }
 
@@ -183,10 +183,13 @@ export default function LicensesPage() {
     const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
 
     // Company hierarchy filtering - only show licenses for accessible companies
+    const clientCompanyId = license.client?.company_id || license.client?.companyId;
     const companyMatch = user?.role === 'superadmin' || 
       !user?.companyId || 
       accessibleCompanyIds.length === 0 || 
-      accessibleCompanyIds.includes(license.client?.company_id);
+      accessibleCompanyIds.includes(clientCompanyId);
+
+    console.log(`License ${license.activationKey} - Client: ${license.client?.name}, Company ID: ${clientCompanyId}, User Company: ${user?.companyId}, Accessible: ${accessibleCompanyIds}, Match: ${companyMatch}`);
 
     return searchMatch && statusMatch && typeMatch && companyMatch;
   });
