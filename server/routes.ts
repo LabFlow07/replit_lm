@@ -87,7 +87,7 @@ router.post("/api/register", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/api/login", async (req: Request, res: Response) => {
+router.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
     
