@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { Request, Response } from 'express';
+import { insertSoftwareRegistrationSchema } from '@shared/schema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'qlm-secret-key-2024';
 
@@ -516,6 +517,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Software Registration Endpoint (senza autenticazione per i client software)
+  app.post('/api/software/registrazione', async (req, res) => {
+    try {
+      const registrationData = req.body;
+      
+      // Validazione dei dati
+      const validatedData = insertSoftwareRegistrationSchema.parse({
+        nomeSoftware: registrationData.nomeSoftware,
+        versione: registrationData.versione,
+        ragioneSociale: registrationData.ragioneSociale,
+        partitaIva: registrationData.partitaIva,
+        totaleOrdini: registrationData.totaleOrdini || 0,
+        totaleVenduto: registrationData.totaleVenduto || '0.00',
+        sistemaOperativo: registrationData.sistemaOperativo,
+        indirizzoIp: req.ip || req.connection.remoteAddress,
+        computerKey: registrationData.computerKey,
+        installationPath: registrationData.installationPath,
+        status: 'non_assegnato',
+        note: registrationData.note
+      });
+
+      // Verifica se esiste già una registrazione con lo stesso computer key
+      const existingRegistration = await storage.getSoftwareRegistrationByComputerKey(validatedData.computerKey);
+      
+      if (existingRegistration) {
+        // Aggiorna la registrazione esistente
+        const updatedRegistration = await storage.updateSoftwareRegistration(existingRegistration.id, {
+          ...validatedData,
+          ultimaAttivita: new Date()
+        });
+        
+        res.json({
+          status: 'updated',
+          message: 'Registrazione software aggiornata',
+          registrationId: updatedRegistration.id
+        });
+      } else {
+        // Crea una nuova registrazione
+        const registration = await storage.createSoftwareRegistration(validatedData);
+        
+        res.status(201).json({
+          status: 'created',
+          message: 'Software registrato con successo',
+          registrationId: registration.id
+        });
+      }
+    } catch (error) {
+      console.error('Software registration error:', error);
+      res.status(400).json({
+        status: 'error',
+        message: 'Errore durante la registrazione del software',
+        details: error instanceof z.ZodError ? error.errors : undefined
+      });
+    }
+  });
+
   // Protected routes - exclude auth endpoints
   app.use('/api', (req, res, next) => {
     if (req.path.includes('/auth/')) {
@@ -982,6 +1039,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error activating license:', error);
       res.status(500).json({ message: 'Failed to activate license' });
+    }
+  });
+
+  // Endpoint per visualizzare le registrazioni software (autenticazione richiesta)
+  app.get('/api/software/registrazioni', async (req, res) => {
+    try {
+      const registrations = await storage.getSoftwareRegistrations({
+        status: req.query.status as string,
+        nomeSoftware: req.query.nomeSoftware as string
+      });
+      
+      res.json(registrations);
+    } catch (error) {
+      console.error('Get software registrations error:', error);
+      res.status(500).json({ message: 'Failed to fetch software registrations' });
+    }
+  });
+
+  // Endpoint per classificare una registrazione (assegnare a cliente/licenza)
+  app.patch('/api/software/registrazioni/:id/classifica', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { clienteAssegnato, licenzaAssegnata, note } = req.body;
+      
+      const updated = await storage.updateSoftwareRegistration(id, {
+        status: 'classificato',
+        clienteAssegnato,
+        licenzaAssegnata,
+        note
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ message: 'Registrazione non trovata' });
+      }
+      
+      res.json({
+        status: 'success',
+        message: 'Registrazione classificata con successo',
+        registration: updated
+      });
+    } catch (error) {
+      console.error('Classify software registration error:', error);
+      res.status(500).json({ message: 'Failed to classify software registration' });
     }
   });
 

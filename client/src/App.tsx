@@ -14,6 +14,7 @@ import ProductsPage from "@/pages/products";
 import TransactionsPage from "@/pages/transactions";
 import SettingsPage from "@/pages/settings";
 import LogsPage from "@/pages/logs";
+import SoftwareRegistrationsPage from "@/pages/software-registrations";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/companies" component={CompaniesPage} />
       <Route path="/products" component={ProductsPage} />
       <Route path="/transactions" component={TransactionsPage} />
+      <Route path="/software-registrations" component={SoftwareRegistrationsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/logs" component={LogsPage} />
       <Route path="/login" component={Login} />

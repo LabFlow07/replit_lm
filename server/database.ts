@@ -190,6 +190,30 @@ class Database {
         )
       `);
 
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS software_registrations (
+          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          nome_software VARCHAR(255) NOT NULL,
+          versione VARCHAR(50) NOT NULL,
+          ragione_sociale VARCHAR(255) NOT NULL,
+          partita_iva VARCHAR(50),
+          totale_ordini INT DEFAULT 0,
+          totale_venduto DECIMAL(10,2) DEFAULT 0.00,
+          sistema_operativo VARCHAR(100),
+          indirizzo_ip VARCHAR(45),
+          computer_key VARCHAR(255),
+          installation_path TEXT,
+          status VARCHAR(50) DEFAULT 'non_assegnato',
+          cliente_assegnato VARCHAR(36),
+          licenza_assegnata VARCHAR(36),
+          note TEXT,
+          prima_registrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          ultima_attivita TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+
       console.log('Database tables initialized successfully');
     } catch (error) {
       console.error('Error initializing database tables:', error);

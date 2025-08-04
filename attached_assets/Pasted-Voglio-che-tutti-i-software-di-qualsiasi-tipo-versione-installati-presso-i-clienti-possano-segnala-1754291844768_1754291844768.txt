@@ -1,0 +1,44 @@
+Voglio che tutti i software (di qualsiasi tipo/versione) installati presso i clienti possano segnalare la loro presenza alla piattaforma licenze QLM appena creata, SENZA alcun blocco iniziale dell'uso e SENZA necessità immediata di convalida o assegnazione licenza.
+
+Flusso richiesto:
+
+Ogni software installato invia (via API endpoint) una semplice registrazione automatica appena avviato o periodicamente, comunicando i dati essenziali:
+
+nome_software
+
+versione
+
+dati cliente (ragione sociale, partita IVA)
+
+totale_ordini (numero di ordini associati)
+
+totale_venduto (volume venduto associato)
+
+L’endpoint riceve e memorizza questi dati in una tabella registrazioni “grezze” sul database della piattaforma, SENZA richiedere autenticazione o restrizioni.
+
+La piattaforma QLM consente agli amministratori di:
+
+Visualizzare e filtrare tutte le registrazioni ricevute, anche se i dati non sono ancora associati ad un’anagrafica cliente o ad una licenza.
+
+Classificare manualmente le applicazioni (“mapping” tra software rilevati e anagrafiche clienti reali, collegamento con licenze ufficiali).
+
+Assegnare, quando necessario, la licenza e i permessi alle installazioni, oppure continuare a monitorarle solo a scopo statistico.
+
+Vantaggi di questa soluzione:
+
+Permette un onboarding graduale di tutto il parco software installato senza interruzioni, blocchi o rallentamenti per i clienti.
+
+Fornisce uno strumento unico di inventario “live” di tutte le installazioni, pronto a gestire:
+
+Statistiche e report aggregati per cliente, software, versione...
+
+Pre-classificazione e successiva regolarizzazione licenze.
+
+Semplifica il futuro passaggio alla gestione delle licenze attive, visto che ogni software già “dialoga” con la piattaforma fin dall’inizio.
+
+Suggerimento implementativo su Replit.com
+Sviluppa un endpoint API semplice (es. /api/registrazione-software) che accetti POST anonimi con i dati richiesti e li inserisca su MariaDB.
+
+Prevedi una dashboard amministratore per visualizzare, filtrare, classificare e assegnare le registrazioni ricevute.
+
+Mantieni il sistema separato dal meccanismo di attivazione licenza QLM “vera”, impostando lo stato delle nuove registrazioni come “non ancora assegnato”.

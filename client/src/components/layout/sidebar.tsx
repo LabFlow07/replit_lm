@@ -12,6 +12,7 @@ const getNavigationItems = (userRole: string) => {
     { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
     { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
     { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
+    { id: 'software-registrations', label: 'Registrazioni Software', icon: 'fas fa-desktop', route: '/software-registrations' },
   ];
 
   // Only superadmin can access settings and logs

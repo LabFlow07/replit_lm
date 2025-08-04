@@ -130,6 +130,35 @@ export const accessLogs = pgTable("access_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Software Registrations (registrazioni automatiche senza autenticazione)
+export const softwareRegistrations = pgTable("software_registrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nomeSoftware: text("nome_software").notNull(),
+  versione: text("versione").notNull(),
+  ragioneSociale: text("ragione_sociale").notNull(),
+  partitaIva: text("partita_iva"),
+  totaleOrdini: integer("totale_ordini").default(0),
+  totaleVenduto: decimal("totale_venduto", { precision: 10, scale: 2 }).default('0.00'),
+  
+  // Dati tecnici aggiuntivi
+  sistemaOperativo: text("sistema_operativo"),
+  indirizzoIp: text("indirizzo_ip"),
+  computerKey: text("computer_key"), // Identificativo univoco del computer
+  installationPath: text("installation_path"),
+  
+  // Gestione classificazione
+  status: text("status").default('non_assegnato'), // non_assegnato, classificato, licenziato
+  clienteAssegnato: varchar("cliente_assegnato"),
+  licenzaAssegnata: varchar("licenza_assegnata"),
+  note: text("note"),
+  
+  // Timestamp
+  primaRegistrazione: timestamp("prima_registrazione").defaultNow(),
+  ultimaAttivita: timestamp("ultima_attivita").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ 
   id: true, 
@@ -180,6 +209,14 @@ export const insertAccessLogSchema = createInsertSchema(accessLogs).omit({
   createdAt: true 
 });
 
+export const insertSoftwareRegistrationSchema = createInsertSchema(softwareRegistrations).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true,
+  primaRegistrazione: true,
+  ultimaAttivita: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -207,6 +244,9 @@ export type InsertActivationLog = z.infer<typeof insertActivationLogSchema>;
 
 export type AccessLog = typeof accessLogs.$inferSelect;
 export type InsertAccessLog = z.infer<typeof insertAccessLogSchema>;
+
+export type SoftwareRegistration = typeof softwareRegistrations.$inferSelect;
+export type InsertSoftwareRegistration = z.infer<typeof insertSoftwareRegistrationSchema>;
 
 // API Response types
 export type LicenseWithDetails = License & {

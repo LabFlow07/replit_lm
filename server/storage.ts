@@ -9,6 +9,7 @@ import type {
   Transaction, InsertTransaction,
   ActivationLog, InsertActivationLog,
   AccessLog, InsertAccessLog,
+  SoftwareRegistration, InsertSoftwareRegistration,
   DashboardStats, UserWithCompany
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -61,6 +62,13 @@ export interface IStorage {
 
   // Statistics
   getDashboardStats(userId: string, userRole: string): Promise<DashboardStats>;
+
+  // Software Registration methods
+  getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]>;
+  getSoftwareRegistration(id: string): Promise<SoftwareRegistration | undefined>;
+  getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined>;
+  createSoftwareRegistration(registration: InsertSoftwareRegistration): Promise<SoftwareRegistration>;
+  updateSoftwareRegistration(id: string, updates: Partial<SoftwareRegistration>): Promise<SoftwareRegistration>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -785,6 +793,132 @@ export class DatabaseStorage implements IStorage {
       expiringRenewals: 47, // TODO: Calculate properly
       dailyRevenue: 1250 // TODO: Calculate properly
     };
+  }
+
+  // Software Registration methods
+  async getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]> {
+    let sql = 'SELECT * FROM software_registrations';
+    const params = [];
+
+    if (filters?.status) {
+      sql += ' WHERE status = ?';
+      params.push(filters.status);
+    }
+
+    if (filters?.nomeSoftware) {
+      sql += filters?.status ? ' AND' : ' WHERE';
+      sql += ' nome_software LIKE ?';
+      params.push(`%${filters.nomeSoftware}%`);
+    }
+
+    sql += ' ORDER BY prima_registrazione DESC';
+
+    const rows = await database.query(sql, params);
+    return rows.map((row: any) => ({
+      ...row,
+      totaleVenduto: parseFloat(row.totale_venduto || '0'),
+      primaRegistrazione: row.prima_registrazione,
+      ultimaAttivita: row.ultima_attivita,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  async getSoftwareRegistration(id: string): Promise<SoftwareRegistration | undefined> {
+    const rows = await database.query(
+      'SELECT * FROM software_registrations WHERE id = ?',
+      [id]
+    );
+    
+    if (rows.length === 0) return undefined;
+    
+    const row = rows[0];
+    return {
+      ...row,
+      totaleVenduto: parseFloat(row.totale_venduto || '0'),
+      primaRegistrazione: row.prima_registrazione,
+      ultimaAttivita: row.ultima_attivita,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined> {
+    const rows = await database.query(
+      'SELECT * FROM software_registrations WHERE computer_key = ?',
+      [computerKey]
+    );
+    
+    if (rows.length === 0) return undefined;
+    
+    const row = rows[0];
+    return {
+      ...row,
+      totaleVenduto: parseFloat(row.totale_venduto || '0'),
+      primaRegistrazione: row.prima_registrazione,
+      ultimaAttivita: row.ultima_attivita,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async createSoftwareRegistration(registration: InsertSoftwareRegistration): Promise<SoftwareRegistration> {
+    const id = randomUUID();
+    const now = new Date();
+
+    await database.query(`
+      INSERT INTO software_registrations (
+        id, nome_software, versione, ragione_sociale, partita_iva,
+        totale_ordini, totale_venduto, sistema_operativo, indirizzo_ip,
+        computer_key, installation_path, status, note,
+        prima_registrazione, ultima_attivita, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      registration.nomeSoftware,
+      registration.versione,
+      registration.ragioneSociale,
+      registration.partitaIva,
+      registration.totaleOrdini || 0,
+      registration.totaleVenduto || '0.00',
+      registration.sistemaOperativo,
+      registration.indirizzoIp,
+      registration.computerKey,
+      registration.installationPath,
+      registration.status || 'non_assegnato',
+      registration.note,
+      now,
+      now,
+      now,
+      now
+    ]);
+
+    return this.getSoftwareRegistration(id) as Promise<SoftwareRegistration>;
+  }
+
+  async updateSoftwareRegistration(id: string, updates: Partial<SoftwareRegistration>): Promise<SoftwareRegistration> {
+    const setClauses = [];
+    const params = [];
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // Convert camelCase to snake_case for database
+        const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        setClauses.push(`${dbKey} = ?`);
+        params.push(value);
+      }
+    });
+
+    setClauses.push('updated_at = ?');
+    params.push(new Date());
+    params.push(id);
+
+    await database.query(
+      `UPDATE software_registrations SET ${setClauses.join(', ')} WHERE id = ?`,
+      params
+    );
+
+    return this.getSoftwareRegistration(id) as Promise<SoftwareRegistration>;
   }
 }
 
