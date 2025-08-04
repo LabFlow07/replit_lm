@@ -440,7 +440,8 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
-    console.log(`getLicensesByCompanyHierarchy: Company hierarchy for ${companyId}:`, companyIds);
+    console.log(`getLicensesByCompanyHierarchy: Starting with company ${companyId}`);
+    console.log(`getLicensesByCompanyHierarchy: Company hierarchy IDs: [${companyIds.join(', ')}]`);
 
     const query = `
       SELECT 
@@ -456,33 +457,43 @@ export class DatabaseStorage implements IStorage {
       ORDER BY l.created_at DESC
     `;
 
-    console.log(`getLicensesByCompanyHierarchy: Executing query: ${query}`);
-    console.log(`getLicensesByCompanyHierarchy: With company IDs:`, companyIds);
+    console.log(`getLicensesByCompanyHierarchy: Executing query with placeholders: ${placeholders}`);
+    console.log(`getLicensesByCompanyHierarchy: Query parameters: [${companyIds.join(', ')}]`);
 
     const rows = await database.query(query, companyIds);
-    console.log(`getLicensesByCompanyHierarchy: Found ${rows.length} licenses`);
+    console.log(`getLicensesByCompanyHierarchy: Query returned ${rows.length} raw rows`);
 
     // Debug: let's check what clients exist in these companies
     const debugClientsQuery = `SELECT id, name, email, company_id FROM clients WHERE company_id IN (${placeholders})`;
     const debugClients = await database.query(debugClientsQuery, companyIds);
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy:`, debugClients);
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy companies:`, debugClients.map(c => ({ name: c.name, email: c.email, company_id: c.company_id })));
 
     // Debug: let's check all licenses and their client company_ids
     const debugLicensesQuery = `
       SELECT l.id, l.activation_key, c.name as client_name, c.company_id 
       FROM licenses l 
       JOIN clients c ON l.client_id = c.id
+      ORDER BY l.created_at DESC
     `;
     const debugLicenses = await database.query(debugLicensesQuery);
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses);
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses.map(l => ({ 
+      id: l.id.substring(0, 8), 
+      activation_key: l.activation_key, 
+      client_name: l.client_name, 
+      client_company_id: l.company_id 
+    })));
+
+    // Debug: specifically check which licenses should match our hierarchy
+    const matchingLicenses = debugLicenses.filter(l => companyIds.includes(l.company_id));
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - Licenses that should match our hierarchy:`, matchingLicenses.map(l => ({ 
+      id: l.id.substring(0, 8), 
+      activation_key: l.activation_key, 
+      client_name: l.client_name, 
+      client_company_id: l.company_id 
+    })));
 
     const mappedLicenses = this.mapLicenseRows(rows);
-    console.log(`getLicensesByCompanyHierarchy: Mapped licenses:`, mappedLicenses.map(l => ({ 
-      id: l.id, 
-      activationKey: l.activationKey, 
-      client: l.client.name, 
-      client_company_id: l.client.company_id || 'N/A' 
-    })));
+    console.log(`getLicensesByCompanyHierarchy: Final result - returning ${mappedLicenses.length} licenses for company hierarchy ${companyId}`);
 
     return mappedLicenses;
   }
