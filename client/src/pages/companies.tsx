@@ -205,8 +205,8 @@ export default function CompaniesPage() {
     if (user.role === 'admin') {
       const userCompanyId = user.companyId;
       if (!userCompanyId) {
-        console.log('Admin without company ID: returning all companies as fallback');
-        return companies as any[];
+        console.log('Admin without company ID: returning empty array');
+        return [];
       }
       
       // Trova l'azienda dell'admin e tutte le sue sotto-aziende (ricorsivamente)

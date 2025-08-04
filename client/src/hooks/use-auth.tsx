@@ -58,14 +58,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const payload = JSON.parse(atob(token.split('.')[1]));
             console.log('Token payload on validation:', payload);
             console.log('CompanyId from token:', payload.companyId);
+
             setUser({
               id: payload.id,
               username: payload.username,
+              name: payload.name || payload.username,
+              email: payload.email || '',
               role: payload.role,
-              name: payload.username,
-              email: `${payload.username}@qlm.com`,
-              companyId: payload.companyId || null,
-              company: payload.company || null
+              companyId: payload.companyId, // Use companyId from token
+              company: undefined
             });
           } catch (e) {
             console.error('Error parsing token:', e);
@@ -129,7 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       company: userData.company
     });
 
-      
+
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
     } catch (error) {

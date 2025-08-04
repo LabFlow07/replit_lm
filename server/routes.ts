@@ -752,16 +752,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         company: user.company
       });
 
-      const token = jwt.sign(
-        { 
-          id: user.id, 
-          username: user.username, 
-          role: user.role, 
-          companyId: user.companyId 
-        },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+      // Ensure companyId is properly included in token
+      const tokenPayload = { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role, 
+        companyId: user.companyId || null
+      };
+      
+      console.log('JWT token payload:', tokenPayload);
+
+      const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
 
       console.log(`Login successful for user ${user.username}, JWT payload will contain companyId:`, user.companyId);
 
