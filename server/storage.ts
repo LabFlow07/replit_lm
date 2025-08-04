@@ -848,7 +848,7 @@ export class DatabaseStorage implements IStorage {
       totaleVenduto: parseFloat(row.totale_venduto || '0'),
       primaRegistrazione: row.prima_registrazione,
       ultimaAttivita: row.ultima_attivita,
-      createdAt: row.created_at,```python
+      createdAt: row.created_at,
       updatedAt: row.updated_at
     };
   }
