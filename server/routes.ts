@@ -744,6 +744,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
+      console.log('User data before creating token:', {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        companyId: user.companyId,
+        company: user.company
+      });
+
       const token = jwt.sign(
         { 
           id: user.id, 
@@ -755,15 +763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { expiresIn: '24h' }
       );
 
-      console.log(`Login successful for user ${user.username}, returning user data:`, {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        companyId: user.companyId,
-        company: user.company
-      });
+      console.log(`Login successful for user ${user.username}, JWT payload will contain companyId:`, user.companyId);
 
       res.json({
         token,

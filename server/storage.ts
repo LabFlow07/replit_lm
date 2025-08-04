@@ -81,8 +81,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
-    console.log(`getUserByUsername: Looking up user: ${username}`);
-    
+    console.log('getUserByUsername: Looking up user:', username);
+
     const rows = await database.query(`
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
@@ -90,34 +90,34 @@ export class DatabaseStorage implements IStorage {
       WHERE u.username = ? AND u.is_active = TRUE
     `, [username]);
 
-    if (rows[0]) {
-      const user = rows[0];
-      console.log(`getUserByUsername: Found user ${username} with role: ${user.role}, company_id: ${user.company_id}, company_name: ${user.company_name}`);
-      
-      return {
-        id: user.id,
-        username: user.username,
-        password: user.password,
-        role: user.role,
-        companyId: user.company_id,
-        name: user.name,
-        email: user.email,
-        isActive: user.is_active,
-        createdAt: user.created_at,
-        company: user.company_id ? {
-          id: user.company_id,
-          name: user.company_name,
-          type: user.company_type,
-          parentId: user.company_parent_id,
-          status: 'active',
-          contactInfo: null,
-          createdAt: new Date()
-        } : undefined
-      };
+    if (!rows[0]) {
+      console.log('getUserByUsername: User not found:', username);
+      return undefined;
     }
-    
-    console.log(`getUserByUsername: User ${username} not found`);
-    return undefined;
+
+    const user = rows[0];
+    console.log('getUserByUsername: Found user', user.username, 'with role:', user.role, ', company_id:', user.company_id, ', company_name:', user.company_name);
+
+    return {
+      id: user.id,
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      companyId: user.company_id,
+      name: user.name,
+      email: user.email,
+      isActive: user.is_active,
+      createdAt: user.created_at,
+      company: user.company_id ? {
+        id: user.company_id,
+        name: user.company_name,
+        type: user.company_type,
+        parentId: user.company_parent_id,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    };
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -299,7 +299,7 @@ export class DatabaseStorage implements IStorage {
 
     const placeholders = companyIds.map(() => '?').join(',');
     const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
-    
+
     console.log(`getClientsByCompanyAndSubcompanies: Executing query:`, query);
     console.log(`getClientsByCompanyAndSubcompanies: With company IDs:`, companyIds);
     const rows = await database.query(query, companyIds);
@@ -461,12 +461,12 @@ export class DatabaseStorage implements IStorage {
 
     const rows = await database.query(query, companyIds);
     console.log(`getLicensesByCompanyHierarchy: Found ${rows.length} licenses`);
-    
+
     // Debug: let's check what clients exist in these companies
     const debugClientsQuery = `SELECT id, name, email, company_id FROM clients WHERE company_id IN (${placeholders})`;
     const debugClients = await database.query(debugClientsQuery, companyIds);
     console.log(`getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy:`, debugClients);
-    
+
     // Debug: let's check all licenses and their client company_ids
     const debugLicensesQuery = `
       SELECT l.id, l.activation_key, c.name as client_name, c.company_id 
@@ -475,7 +475,7 @@ export class DatabaseStorage implements IStorage {
     `;
     const debugLicenses = await database.query(debugLicensesQuery);
     console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses);
-    
+
     const mappedLicenses = this.mapLicenseRows(rows);
     console.log(`getLicensesByCompanyHierarchy: Mapped licenses:`, mappedLicenses.map(l => ({ 
       id: l.id, 
@@ -483,7 +483,7 @@ export class DatabaseStorage implements IStorage {
       client: l.client.name, 
       client_company_id: l.client.company_id || 'N/A' 
     })));
-    
+
     return mappedLicenses;
   }
 
