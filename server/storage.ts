@@ -81,6 +81,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
+    console.log(`getUserByUsername: Looking up user: ${username}`);
+    
     const rows = await database.query(`
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
@@ -90,6 +92,8 @@ export class DatabaseStorage implements IStorage {
 
     if (rows[0]) {
       const user = rows[0];
+      console.log(`getUserByUsername: Found user ${username} with role: ${user.role}, company_id: ${user.company_id}, company_name: ${user.company_name}`);
+      
       return {
         id: user.id,
         username: user.username,
@@ -111,6 +115,8 @@ export class DatabaseStorage implements IStorage {
         } : undefined
       };
     }
+    
+    console.log(`getUserByUsername: User ${username} not found`);
     return undefined;
   }
 
@@ -284,10 +290,14 @@ export class DatabaseStorage implements IStorage {
 
   async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
-    const placeholders = companyIds.map(() => '?').join(',');
+    console.log(`getClientsByCompanyAndSubcompanies: Company hierarchy for ${companyId}:`, companyIds);
 
+    const placeholders = companyIds.map(() => '?').join(',');
     const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
+    
+    console.log(`getClientsByCompanyAndSubcompanies: Executing query with company IDs:`, companyIds);
     const rows = await database.query(query, companyIds);
+    console.log(`getClientsByCompanyAndSubcompanies: Found ${rows.length} clients`);
 
     return rows.map(row => ({
       ...row,
