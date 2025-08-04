@@ -55,12 +55,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Token is valid, try to get user info from JWT payload
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
+            console.log('Token payload on validation:', payload);
             setUser({
               id: payload.id,
               username: payload.username,
               role: payload.role,
               name: payload.username,
-              email: `${payload.username}@qlm.com`
+              email: `${payload.username}@qlm.com`,
+              companyId: payload.companyId,
+              company: payload.company
             });
           } catch (e) {
             console.error('Error parsing token:', e);
@@ -102,7 +105,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Login response user data:', data.user);
       console.log('User role:', data.user.role, 'Company ID:', data.user.companyId);
       localStorage.setItem('qlm_token', data.token);
-      setUser(data.user);
+      
+      // Ensure companyId is properly set from login response
+      const userData = {
+        ...data.user,
+        companyId: data.user.companyId || data.user.company_id, // Handle both camelCase and snake_case
+        company: data.user.company
+      };
+      console.log('Setting user data in frontend:', userData);
+      setUser(userData);
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
     } catch (error) {
