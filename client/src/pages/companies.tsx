@@ -68,20 +68,42 @@ export default function CompaniesPage() {
   }, [user, loading, setLocation]);
 
   // Fetch companies
-  const { data: companies = [], isLoading } = useQuery({
+  const { data: companies = [], isLoading, error } = useQuery({
     queryKey: ['/api/companies'],
     enabled: !!user,
     queryFn: async () => {
       const token = localStorage.getItem('qlm_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
       const response = await fetch('/api/companies', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      if (response.status === 401 || response.status === 403) {
+        // Token scaduto o invalido, reindirizza al login
+        localStorage.removeItem('qlm_token');
+        setLocation('/login');
+        throw new Error('Authentication failed');
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       return response.json();
     },
+    retry: (failureCount, error: any) => {
+      // Non riprovare se è un errore di autenticazione
+      if (error?.message?.includes('Authentication failed')) {
+        return false;
+      }
+      return failureCount < 3;
+    }
   });
 
   // Fetch clients
@@ -769,13 +791,9 @@ export default function CompaniesPage() {
                     <i className="fas fa-building text-gray-400 text-2xl"></i>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna azienda trovata</h3>
-                  <p className="text-gray-500 mb-4">
-                    {companies.length === 0 ? "Inizia creando la tua prima azienda" : "Nessun risultato con i filtri selezionati"}
+                  <p className="text-gray-500">
+                    {companies.length === 0 ? "Non ci sono aziende disponibili" : "Nessun risultato con i filtri selezionati"}
                   </p>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <i className="fas fa-plus mr-2"></i>
-                    Crea Prima Azienda
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
