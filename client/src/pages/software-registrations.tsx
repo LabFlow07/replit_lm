@@ -66,11 +66,15 @@ export default function SoftwareRegistrations() {
     queryKey: ['/api/software/registrazioni', { status: statusFilter, nomeSoftware: searchTerm }],
     queryFn: async () => {
       const params = new URLSearchParams({
-        ...(statusFilter && { status: statusFilter }),
+        ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
         ...(searchTerm && { nomeSoftware: searchTerm })
       });
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch(`/api/software/registrazioni?${params}`, {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       if (!response.ok) {
         throw new Error('Failed to fetch registrations');
@@ -83,8 +87,12 @@ export default function SoftwareRegistrations() {
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
     queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/clients', {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       if (!response.ok) {
         throw new Error('Failed to fetch clients');
@@ -98,8 +106,12 @@ export default function SoftwareRegistrations() {
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
     queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
       const response = await fetch('/api/licenses', {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       if (!response.ok) {
         throw new Error('Failed to fetch licenses');
