@@ -21,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  forceReauth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -151,8 +152,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLocation('/login');
   };
 
+  const forceReauth = () => {
+    localStorage.removeItem('qlm_token');
+    setUser(null);
+    setLoading(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth }}>
       {children}
     </AuthContext.Provider>
   );
