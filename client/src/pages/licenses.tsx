@@ -1,12 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
-import LicenseTable from "@/components/license/license-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -14,6 +12,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import ActivationForm from "@/components/license/activation-form";
 import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
+import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+
+interface License {
+  id: string;
+  activationKey: string;
+  licenseType: string;
+  maxUsers: number;
+  maxDevices: number;
+  price: string;
+  status: string;
+  activationDate: string;
+  expiryDate: string;
+  computerKey: string;
+  client: { name: string };
+  product: { name: string };
+}
 
 export default function LicensesPage() {
   const { user, loading } = useAuth();
@@ -24,6 +41,8 @@ export default function LicensesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
 
   // Always call useQuery hooks - they will be disabled when user is not available
   const { data: clients = [] } = useQuery({
@@ -52,6 +71,22 @@ export default function LicensesPage() {
     }
   });
 
+  const { data: allLicenses = [] } = useQuery({
+    queryKey: ['/api/licenses'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/licenses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch licenses');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setLicenses(data);
+    }
+  });
+
   useEffect(() => {
     if (!loading && !user) {
       setLocation('/login');
@@ -69,6 +104,50 @@ export default function LicensesPage() {
   if (!user) {
     return null;
   }
+
+  const filteredLicenses = licenses.filter((license: License) => {
+    const searchTermLower = searchTerm.toLowerCase();
+    const clientName = license.client?.name?.toLowerCase() || '';
+    const productName = license.product?.name?.toLowerCase() || '';
+
+    const searchMatch =
+      clientName.includes(searchTermLower) ||
+      productName.includes(searchTermLower) ||
+      license.activationKey?.toLowerCase().includes(searchTermLower);
+
+    const statusMatch = statusFilter === "all" || license.status === statusFilter;
+    const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
+
+    return searchMatch && statusMatch && typeMatch;
+  });
+
+  const handleEditLicense = (license: License) => {
+    setEditingLicense(license);
+  };
+
+  const handleActivateLicense = (license: License) => {
+    // Logic to activate license
+    alert(`Activating license: ${license.id}`);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('it-IT', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  };
+
+  const isExpired = (expiryDate: string) => {
+    return new Date(expiryDate) < new Date();
+  };
+
+  const isExpiringSoon = (expiryDate: string) => {
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30 && diffDays > 0;
+  };
 
   return (
     <div className="min-h-screen flex bg-surface">
@@ -92,8 +171,6 @@ export default function LicensesPage() {
               Nuova Licenza
             </Button>
           </div>
-
-          
 
           {/* Main Content Grid */}
           <div className="space-y-6">
@@ -123,8 +200,171 @@ export default function LicensesPage() {
               </CardContent>
             </Card>
 
-            {/* License Table */}
-            <LicenseTable />
+            {/* Licenses Grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  <h2 className="text-xl font-semibold">Elenco Licenze</h2>
+                  <Badge variant="outline" className="ml-2">
+                    {filteredLicenses.length} licenze
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Grid Layout */}
+              {filteredLicenses.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nessuna licenza trovata</h3>
+                    <p className="text-muted-foreground">
+                      Non ci sono licenze che corrispondono ai criteri di ricerca.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredLicenses.map((license: License) => (
+                    <Card key={license.id} className="hover:shadow-lg transition-shadow duration-200">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-lg leading-tight">
+                              {license.product?.name || 'Prodotto sconosciuto'}
+                            </CardTitle>
+                            <CardDescription className="text-sm">
+                              {license.client?.name || 'Cliente sconosciuto'}
+                            </CardDescription>
+                          </div>
+                          <Badge 
+                            variant={
+                              license.status === 'attiva' ? 'default' :
+                              license.status === 'scaduta' ? 'destructive' :
+                              license.status === 'sospesa' ? 'secondary' :
+                              'outline'
+                            }
+                            className="shrink-0"
+                          >
+                            {license.status === 'attiva' ? 'Attiva' :
+                             license.status === 'scaduta' ? 'Scaduta' :
+                             license.status === 'sospesa' ? 'Sospesa' :
+                             license.status === 'in_attesa_convalida' ? 'In Attesa' :
+                             license.status}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        {/* License Key */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Key className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Chiave Licenza</span>
+                          </div>
+                          <div className="bg-muted p-2 rounded text-sm font-mono">
+                            {license.activationKey}
+                          </div>
+                        </div>
+
+                        {/* License Type and Price */}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Tipo:</span>
+                            <div className="font-medium capitalize">
+                              {license.licenseType === 'permanente' ? 'Permanente' :
+                               license.licenseType === 'abbonamento' ? 'Abbonamento' :
+                               license.licenseType === 'trial' ? 'Trial' :
+                               license.licenseType}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Prezzo:</span>
+                            <div className="font-medium">
+                              {formatCurrency(parseFloat(license.price || '0'))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Limits */}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Max Utenti:</span>
+                            <div className="font-medium">{license.maxUsers || 'Illimitati'}</div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Max Dispositivi:</span>
+                            <div className="font-medium">{license.maxDevices || 'Illimitati'}</div>
+                          </div>
+                        </div>
+
+                        {/* Dates */}
+                        {(license.activationDate || license.expiryDate) && (
+                          <div className="space-y-2 text-sm">
+                            {license.activationDate && (
+                              <div>
+                                <span className="text-muted-foreground">Attivazione:</span>
+                                <div className="font-medium">
+                                  {format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it })}
+                                </div>
+                              </div>
+                            )}
+                            {license.expiryDate && (
+                              <div>
+                                <span className="text-muted-foreground">Scadenza:</span>
+                                <div className={`font-medium ${
+                                  isExpiringSoon(license.expiryDate) ? 'text-orange-600' :
+                                  isExpired(license.expiryDate) ? 'text-red-600' : ''
+                                }`}>
+                                  {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
+                                  {isExpiringSoon(license.expiryDate) && !isExpired(license.expiryDate) && (
+                                    <span className="ml-1 text-xs">(In scadenza)</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Computer Key */}
+                        {license.computerKey && (
+                          <div className="space-y-1 text-sm">
+                            <span className="text-muted-foreground">Computer Key:</span>
+                            <div className="font-mono text-xs bg-muted p-1 rounded">
+                              {license.computerKey}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditLicense(license)}
+                            className="flex-1"
+                          >
+                            <Settings className="h-4 w-4 mr-1" />
+                            Modifica
+                          </Button>
+                          {license.status === 'in_attesa_convalida' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleActivateLicense(license)}
+                              className="flex-1"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Attiva
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
