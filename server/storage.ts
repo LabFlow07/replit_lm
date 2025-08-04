@@ -310,7 +310,7 @@ export class DatabaseStorage implements IStorage {
       contactInfo: JSON.parse(row.contact_info || '{}')
     }));
 
-    console.log(`getClientsByCompanyAndSubcompanies: Mapped clients with company_ids:`, mappedClients.map(c => ({ id: c.id, name: c.name, company_id: c.company_id })));
+    console.log(`getClientsByCompanyAndSubcompanies: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.company_id })));
 
     return mappedClients;
   }
