@@ -802,7 +802,7 @@ export class DatabaseStorage implements IStorage {
         demoLicenses: demoLicenses[0]?.count || 0,
         totalClients: totalClients[0]?.count || 0,
         monthlyRevenue: parseFloat(monthlyRevenue[0]?.total || '0'),
-        todayActivations: todayActivations[0]?..count || 0,
+        todayActivations: todayActivations[0]?.count || 0,
         demoConversions: 0,
         expiringRenewals: 0,
         dailyRevenue: 0

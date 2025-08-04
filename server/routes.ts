@@ -3,12 +3,10 @@ import express, { type Request, type Response } from "express";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { Database } from "./database";
-import { Storage } from "./storage";
+import { database } from "./database";
+import { storage } from "./storage";
 
 const router = express.Router();
-const database = new Database();
-const storage = new Storage(database);
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -437,13 +435,6 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
   }
 });
 
-export default function registerRoutes(app: express.Express): Promise<any> {
+export default function registerRoutes(app: express.Express): void {
   app.use(router);
-  
-  return new Promise((resolve) => {
-    const server = app.listen(5000, "0.0.0.0", () => {
-      console.log("Server running on http://0.0.0.0:5000");
-      resolve(server);
-    });
-  });
 }
