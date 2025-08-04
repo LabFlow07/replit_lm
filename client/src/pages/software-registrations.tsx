@@ -64,30 +64,55 @@ export default function SoftwareRegistrations() {
   // Fetch software registrations
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ['/api/software/registrazioni', { status: statusFilter, nomeSoftware: searchTerm }],
-    queryFn: () => apiRequest(`/api/software/registrazioni?${new URLSearchParams({
-      ...(statusFilter && { status: statusFilter }),
-      ...(searchTerm && { nomeSoftware: searchTerm })
-    })}`)
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        ...(statusFilter && { status: statusFilter }),
+        ...(searchTerm && { nomeSoftware: searchTerm })
+      });
+      const response = await fetch(`/api/software/registrazioni?${params}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch registrations');
+      }
+      return response.json();
+    }
   });
 
   // Fetch clients for classification
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
-    queryFn: () => apiRequest('/api/clients')
+    queryFn: async () => {
+      const response = await fetch('/api/clients', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch clients');
+      }
+      return response.json();
+    }
   });
 
   // Fetch licenses for classification
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
-    queryFn: () => apiRequest('/api/licenses')
+    queryFn: async () => {
+      const response = await fetch('/api/licenses', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch licenses');
+      }
+      return response.json();
+    }
   });
 
   // Classify registration mutation
   const classifyMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/software/registrazioni/${selectedRegistration?.id}/classifica`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    }),
+    mutationFn: async (data: any) => {
+      const response = await apiRequest('PATCH', `/api/software/registrazioni/${selectedRegistration?.id}/classifica`, data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
       setIsClassifyDialogOpen(false);
@@ -123,15 +148,15 @@ export default function SoftwareRegistrations() {
     }).format(amount);
   };
 
-  const filteredRegistrations = registrations.filter((registration: SoftwareRegistration) => {
+  const filteredRegistrations = Array.isArray(registrations) ? registrations.filter((registration: SoftwareRegistration) => {
     const matchesSearch = !searchTerm || 
       registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase()) ||
       registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !statusFilter || registration.status === statusFilter;
+    const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  });
+  }) : [];
 
   if (isLoading) {
     return (
@@ -185,7 +210,7 @@ export default function SoftwareRegistrations() {
                   <SelectValue placeholder="Tutti gli stati" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tutti gli stati</SelectItem>
+                  <SelectItem value="all">Tutti gli stati</SelectItem>
                   <SelectItem value="non_assegnato">Non Assegnato</SelectItem>
                   <SelectItem value="classificato">Classificato</SelectItem>
                   <SelectItem value="licenziato">Licenziato</SelectItem>
@@ -218,7 +243,7 @@ export default function SoftwareRegistrations() {
               <div>
                 <p className="text-sm text-muted-foreground">Non Assegnate</p>
                 <p className="text-2xl font-bold text-orange-600" data-testid="text-unassigned">
-                  {filteredRegistrations.filter(r => r.status === 'non_assegnato').length}
+                  {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'non_assegnato').length}
                 </p>
               </div>
             </div>
@@ -231,7 +256,7 @@ export default function SoftwareRegistrations() {
               <div>
                 <p className="text-sm text-muted-foreground">Classificate</p>
                 <p className="text-2xl font-bold text-green-600" data-testid="text-classified">
-                  {filteredRegistrations.filter(r => r.status === 'classificato').length}
+                  {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'classificato').length}
                 </p>
               </div>
             </div>
@@ -244,7 +269,7 @@ export default function SoftwareRegistrations() {
               <div>
                 <p className="text-sm text-muted-foreground">Licenziate</p>
                 <p className="text-2xl font-bold text-blue-600" data-testid="text-licensed">
-                  {filteredRegistrations.filter(r => r.status === 'licenziato').length}
+                  {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'licenziato').length}
                 </p>
               </div>
             </div>

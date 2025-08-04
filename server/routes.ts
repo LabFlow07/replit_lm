@@ -1043,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint per visualizzare le registrazioni software (autenticazione richiesta)
-  app.get('/api/software/registrazioni', async (req, res) => {
+  app.get('/api/software/registrazioni', authenticateToken, async (req, res) => {
     try {
       const registrations = await storage.getSoftwareRegistrations({
         status: req.query.status as string,
@@ -1058,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint per classificare una registrazione (assegnare a cliente/licenza)
-  app.patch('/api/software/registrazioni/:id/classifica', async (req, res) => {
+  app.patch('/api/software/registrazioni/:id/classifica', authenticateToken, async (req, res) => {
     try {
       const { id } = req.params;
       const { clienteAssegnato, licenzaAssegnata, note } = req.body;
