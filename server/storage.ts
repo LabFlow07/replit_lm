@@ -292,25 +292,39 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     console.log(`getClientsByCompanyAndSubcompanies: Company hierarchy for ${companyId}:`, companyIds);
 
+    if (companyIds.length === 0) {
+      console.log(`getClientsByCompanyAndSubcompanies: No companies in hierarchy, returning empty array`);
+      return [];
+    }
+
     const placeholders = companyIds.map(() => '?').join(',');
     const query = `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`;
     
-    console.log(`getClientsByCompanyAndSubcompanies: Executing query with company IDs:`, companyIds);
+    console.log(`getClientsByCompanyAndSubcompanies: Executing query:`, query);
+    console.log(`getClientsByCompanyAndSubcompanies: With company IDs:`, companyIds);
     const rows = await database.query(query, companyIds);
     console.log(`getClientsByCompanyAndSubcompanies: Found ${rows.length} clients`);
 
-    return rows.map(row => ({
+    const mappedClients = rows.map(row => ({
       ...row,
       contactInfo: JSON.parse(row.contact_info || '{}')
     }));
+
+    console.log(`getClientsByCompanyAndSubcompanies: Mapped clients with company_ids:`, mappedClients.map(c => ({ id: c.id, name: c.name, company_id: c.company_id })));
+
+    return mappedClients;
   }
 
   async getCompanyHierarchy(companyId: string): Promise<string[]> {
     const allCompanies = await this.getCompanies();
     const hierarchy: string[] = [companyId];
 
+    console.log(`getCompanyHierarchy: Starting with company ${companyId}`);
+    console.log(`getCompanyHierarchy: All companies:`, allCompanies.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })));
+
     const findSubcompanies = (parentId: string) => {
       const subcompanies = allCompanies.filter(c => c.parent_id === parentId);
+      console.log(`getCompanyHierarchy: Found ${subcompanies.length} subcompanies for parent ${parentId}:`, subcompanies.map(s => ({ id: s.id, name: s.name })));
       subcompanies.forEach(sub => {
         hierarchy.push(sub.id);
         findSubcompanies(sub.id);
@@ -318,6 +332,7 @@ export class DatabaseStorage implements IStorage {
     };
 
     findSubcompanies(companyId);
+    console.log(`getCompanyHierarchy: Final hierarchy for ${companyId}:`, hierarchy);
     return hierarchy;
   }
 

@@ -935,11 +935,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Admin ${userWithCompany.username} found ${clients.length} clients in hierarchy`);
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all clients
-        clients = await storage.getClients(req.query.companyId as string);
+        clients = await storage.getClients();
         console.log(`Superadmin ${userWithCompany.username} returning all clients`);
       } else {
         // Other roles get filtered by their company only
-        clients = await storage.getClients(userWithCompany?.companyId);
+        clients = await storage.getClients(userWithCompany?.companyId || undefined);
         console.log(`Other role ${userWithCompany?.role} - filtering by company: ${userWithCompany?.companyId}`);
       }
 
