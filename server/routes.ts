@@ -8,8 +8,8 @@ import { storage } from "./storage";
 
 const router = express.Router();
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+// JWT Secret - Use a consistent secret
+const JWT_SECRET = process.env.JWT_SECRET || "qlm-jwt-secret-key-2024";
 
 // Middleware to verify JWT token
 const authenticateToken = (req: Request, res: Response, next: any) => {
@@ -315,6 +315,65 @@ router.get("/api/products", authenticateToken, async (req: Request, res: Respons
     res.json(products);
   } catch (error) {
     console.error('Get products error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/api/software/registrazioni", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { status, nomeSoftware } = req.query;
+    
+    console.log('Fetching software registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
+    
+    const filters = {
+      ...(status && { status: status as string }),
+      ...(nomeSoftware && { nomeSoftware: nomeSoftware as string })
+    };
+    
+    const registrations = await storage.getSoftwareRegistrations(filters);
+    console.log('Software registrations API returned', registrations.length, 'registrations for user', user.username);
+    
+    res.json(registrations);
+  } catch (error) {
+    console.error('Get software registrations error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const registrationId = req.params.id;
+    const registration = await storage.getSoftwareRegistration(registrationId);
+    
+    if (!registration) {
+      return res.status(404).json({ message: "Registration not found" });
+    }
+    
+    res.json(registration);
+  } catch (error) {
+    console.error('Get software registration error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const registrationId = req.params.id;
+    const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note } = req.body;
+    
+    const updates = {
+      clienteAssegnato,
+      licenzaAssegnata,
+      prodottoAssegnato,
+      note,
+      status: 'classificato'
+    };
+    
+    const updatedRegistration = await storage.updateSoftwareRegistration(registrationId, updates);
+    res.json(updatedRegistration);
+  } catch (error) {
+    console.error('Classify software registration error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
