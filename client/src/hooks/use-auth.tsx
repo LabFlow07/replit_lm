@@ -57,14 +57,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             console.log('Token payload on validation:', payload);
+            console.log('CompanyId from token:', payload.companyId);
             setUser({
               id: payload.id,
               username: payload.username,
               role: payload.role,
               name: payload.username,
               email: `${payload.username}@qlm.com`,
-              companyId: payload.companyId,
-              company: payload.company
+              companyId: payload.companyId || null,
+              company: payload.company || null
             });
           } catch (e) {
             console.error('Error parsing token:', e);
