@@ -18,7 +18,7 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -30,34 +30,47 @@ export default function ClientsPage() {
     }
   }, [user, loading, setLocation]);
 
-  const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['/api/clients'],
+  // Fetch clients
+  const { data: clients = [] } = useQuery({
+    queryKey: ['/api/clients', user?.companyId],
     enabled: !!user,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-    cacheTime: 0,
     queryFn: async () => {
-      const token = localStorage.getItem('token') || localStorage.getItem('qlm_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      const token = localStorage.getItem('qlm_token');
+      console.log('Fetching clients for user:', user?.username, 'Role:', user?.role, 'Company ID:', user?.companyId);
 
       const response = await fetch('/api/clients', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      console.log('Clients data received:', data);
-      console.log('Number of clients:', data.length);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      return data;
+      console.log('Raw clients data received:', data.length, 'clients');
+
+      // Apply client-side filtering based on user role and company
+      let filteredClients = data;
+
+      if (user?.role === 'admin' && user?.companyId) {
+        console.log('Filtering clients for admin user with company:', user.companyId);
+
+        // Get accessible companies for this admin (their hierarchy)
+        const accessibleCompanies = getAccessibleCompanies();
+        const accessibleCompanyIds = accessibleCompanies.map((c: any) => c.id);
+        console.log('Admin accessible company IDs:', accessibleCompanyIds);
+
+        // Filter clients that belong to accessible companies
+        filteredClients = data.filter((client: any) => {
+          const clientCompanyId = client.company_id || client.companyId;
+          const isAccessible = accessibleCompanyIds.includes(clientCompanyId);
+          console.log(`Client ${client.name} (${client.email}) - Company: ${clientCompanyId} - Accessible: ${isAccessible}`);
+          return isAccessible;
+        });
+
+        console.log(`Filtered ${filteredClients.length} clients from ${data.length} total for admin ${user.username}`);
+      }
+
+      return filteredClients;
     }
   });
 
@@ -100,6 +113,14 @@ export default function ClientsPage() {
     return [...new Set(products)]; // Remove duplicates
   };
 
+    // Function to get accessible companies for admin (simulated hierarchy)
+    const getAccessibleCompanies = () => {
+        // In a real scenario, this would be fetched from an API based on the user's permissions
+        // For now, simulate a hierarchy
+        if (!user?.companyId) return [];
+        return companies.filter((company: any) => company.id === user.companyId);
+    };
+
   // Filtered clients
   const filteredClients = useMemo(() => {
     return clients.filter((client: any) => {
@@ -108,7 +129,7 @@ export default function ClientsPage() {
       const matchesStatus = statusFilter === "all" || client.status === statusFilter;
       const matchesCompany = companyFilter === "all" || 
                             (client.company_id || client.companyId) === companyFilter;
-      
+
       return matchesSearch && matchesStatus && matchesCompany;
     });
   }, [clients, searchTerm, statusFilter, companyFilter]);
@@ -144,10 +165,10 @@ export default function ClientsPage() {
   return (
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      
+
       <main className="flex-1 ml-64 bg-surface">
         <TopBar />
-        
+
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -168,7 +189,7 @@ export default function ClientsPage() {
             <CardHeader className="pb-4">
               <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <CardTitle>Elenco Clienti ({filteredClients.length} di {clients.length})</CardTitle>
-                
+
                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                   <Input
                     placeholder="Cerca per nome o email..."
@@ -176,7 +197,7 @@ export default function ClientsPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="md:w-64"
                   />
-                  
+
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="md:w-40">
                       <SelectValue placeholder="Stato" />
@@ -188,7 +209,7 @@ export default function ClientsPage() {
                       <SelectItem value="sospeso">Sospeso</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   <Select value={companyFilter} onValueChange={setCompanyFilter}>
                     <SelectTrigger className="md:w-48">
                       <SelectValue placeholder="Azienda" />
@@ -229,7 +250,7 @@ export default function ClientsPage() {
                         console.log(`Rendering client ${index + 1}:`, client);
                         const clientProducts = getClientProducts(client.id);
                         const licensesCount = getClientLicensesCount(client.id);
-                        
+
                         return (
                           <tr key={client.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -308,7 +329,7 @@ export default function ClientsPage() {
                       })}
                     </tbody>
                   </table>
-                  
+
                   {filteredClients.length === 0 && clients.length > 0 && (
                     <div className="text-center py-12">
                       <p className="text-gray-500">Nessun cliente trovato con i filtri selezionati</p>
@@ -325,7 +346,7 @@ export default function ClientsPage() {
                       </Button>
                     </div>
                   )}
-                  
+
                   {clients.length === 0 && (
                     <div className="text-center py-12">
                       <p className="text-gray-500">Nessun cliente trovato</p>
@@ -346,7 +367,7 @@ export default function ClientsPage() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
-              
+
               try {
                 const token = localStorage.getItem('qlm_token');
                 const response = await fetch('/api/clienti/registrazione', {
@@ -390,7 +411,7 @@ export default function ClientsPage() {
                     placeholder="Nome completo del cliente"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="new-client-email">Email *</Label>
                   <Input
@@ -435,7 +456,7 @@ export default function ClientsPage() {
                     placeholder="Nome dell'azienda del cliente"
                   />
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <input
@@ -460,7 +481,7 @@ export default function ClientsPage() {
                     </Label>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button 
                     type="button"
@@ -494,7 +515,7 @@ export default function ClientsPage() {
                   placeholder="Nome completo del cliente"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-client-email">Email *</Label>
                 <Input
@@ -504,7 +525,7 @@ export default function ClientsPage() {
                   placeholder="email@esempio.com"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-client-status">Stato</Label>
                 <Select defaultValue={selectedClient?.status || 'in_attesa'}>
@@ -518,7 +539,7 @@ export default function ClientsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <input
@@ -543,7 +564,7 @@ export default function ClientsPage() {
                   </Label>
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button 
                   variant="outline" 
