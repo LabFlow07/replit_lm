@@ -91,6 +91,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Create test licenses for Shadow company if they don't exist
+  const shadowCompany = await storage.getCompanies().then(companies => 
+    companies.find(c => c.name === 'Shadow')
+  );
+  
+  if (shadowCompany) {
+    const shadowClients = await storage.getClientsByCompanyAndSubcompanies(shadowCompany.id);
+    console.log(`Found ${shadowClients.length} clients in Shadow hierarchy`);
+    
+    if (shadowClients.length > 0) {
+      const products = await storage.getProducts();
+      const testProduct = products[0]; // Use first available product
+      
+      if (testProduct) {
+        // Check if licenses already exist for Shadow clients
+        const existingLicenses = await storage.getLicensesByCompanyHierarchy(shadowCompany.id);
+        console.log(`Found ${existingLicenses.length} existing licenses for Shadow hierarchy`);
+        
+        if (existingLicenses.length === 0) {
+          // Create a test license for the barlume client
+          const barlumeclient = shadowClients.find(c => c.name === 'barlume');
+          if (barlumeclient) {
+            console.log('Creating test license for barlume client');
+            await storage.createLicense({
+              clientId: barlumeclient.id,
+              productId: testProduct.id,
+              activationKey: 'LIC-SHADOW-TEST-001',
+              computerKey: null,
+              activationDate: null,
+              expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+              licenseType: 'permanente',
+              status: 'attiva',
+              maxUsers: 1,
+              maxDevices: 1,
+              price: 500,
+              discount: 0,
+              activeModules: ['core'],
+              assignedCompany: shadowCompany.id,
+              assignedAgent: null
+            });
+            console.log('Test license created for Shadow hierarchy');
+          }
+        }
+      }
+    }
+  }
+
   // Create test data - always ensure demo data exists
   try {
     const existingCompanies = await storage.getCompanies();

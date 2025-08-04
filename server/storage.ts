@@ -462,6 +462,20 @@ export class DatabaseStorage implements IStorage {
     const rows = await database.query(query, companyIds);
     console.log(`getLicensesByCompanyHierarchy: Found ${rows.length} licenses`);
     
+    // Debug: let's check what clients exist in these companies
+    const debugClientsQuery = `SELECT id, name, email, company_id FROM clients WHERE company_id IN (${placeholders})`;
+    const debugClients = await database.query(debugClientsQuery, companyIds);
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy:`, debugClients);
+    
+    // Debug: let's check all licenses and their client company_ids
+    const debugLicensesQuery = `
+      SELECT l.id, l.activation_key, c.name as client_name, c.company_id 
+      FROM licenses l 
+      JOIN clients c ON l.client_id = c.id
+    `;
+    const debugLicenses = await database.query(debugLicensesQuery);
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses);
+    
     const mappedLicenses = this.mapLicenseRows(rows);
     console.log(`getLicensesByCompanyHierarchy: Mapped licenses:`, mappedLicenses.map(l => ({ 
       id: l.id, 
