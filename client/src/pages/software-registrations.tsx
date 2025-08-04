@@ -82,35 +82,39 @@ export default function SoftwareRegistrations() {
   // Fetch clients for classification
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
-    queryFn: async () => {
-      const response = await fetch('/api/clients', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch clients');
-      }
-      return response.json();
-    }
+    queryFn: () => apiRequest('/api/clients'),
+    enabled: true
   });
 
   // Fetch licenses for classification
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
-    queryFn: async () => {
-      const response = await fetch('/api/licenses', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch licenses');
-      }
-      return response.json();
-    }
+    queryFn: () => apiRequest('/api/licenses'),
+    enabled: true
   });
 
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('PATCH', `/api/software/registrazioni/${selectedRegistration?.id}/classifica`, data);
+      const requestBody = {
+        clienteAssegnato: data.clienteAssegnato === 'none' ? null : data.clienteAssegnato,
+        licenzaAssegnata: (data.licenzaAssegnata === 'none' || !data.licenzaAssegnata) ? null : data.licenzaAssegnata,
+        note: data.note
+      };
+
+      const response = await fetch(`/api/software/registrazioni/${selectedRegistration?.id}/classifica`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to classify registration');
+      }
+
       return response.json();
     },
     onSuccess: () => {
@@ -131,9 +135,9 @@ export default function SoftwareRegistrations() {
       'classificato': { variant: 'default', label: 'Classificato' },
       'licenziato': { variant: 'secondary', label: 'Licenziato' }
     };
-    
+
     const statusInfo = statusMap[status as keyof typeof statusMap] || { variant: 'outline', label: status };
-    
+
     return (
       <Badge variant={statusInfo.variant as any} data-testid={`badge-status-${status}`}>
         {statusInfo.label}
@@ -152,9 +156,9 @@ export default function SoftwareRegistrations() {
     const matchesSearch = !searchTerm || 
       registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase()) ||
       registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   }) : [];
 
@@ -301,7 +305,7 @@ export default function SoftwareRegistrations() {
                       </h3>
                       {getStatusBadge(registration.status)}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -312,35 +316,35 @@ export default function SoftwareRegistrations() {
                           </span>
                         )}
                       </div>
-                      
+
                       {registration.sistemaOperativo && (
                         <div className="flex items-center gap-2">
                           <Monitor className="h-4 w-4 text-muted-foreground" />
                           <span>{registration.sistemaOperativo}</span>
                         </div>
                       )}
-                      
+
                       {registration.indirizzoIp && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           <span>{registration.indirizzoIp}</span>
                         </div>
                       )}
-                      
+
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>
                           {format(new Date(registration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it })}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <Activity className="h-4 w-4 text-muted-foreground" />
                         <span>
                           {format(new Date(registration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it })}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
                           {registration.totaleOrdini} ordini - {formatCurrency(registration.totaleVenduto)}
@@ -354,7 +358,7 @@ export default function SoftwareRegistrations() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex gap-2">
                     {registration.status === 'non_assegnato' && (
                       <Button
@@ -382,7 +386,7 @@ export default function SoftwareRegistrations() {
           <DialogHeader>
             <DialogTitle>Classifica Registrazione Software</DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
             <div>
               <Label htmlFor="clienteAssegnato">Cliente</Label>
@@ -391,9 +395,10 @@ export default function SoftwareRegistrations() {
                   <SelectValue placeholder="Seleziona cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((client: Client) => (
+                  <SelectItem value="none">Seleziona Cliente</SelectItem>
+                  {clients.filter((client: Client) => client.id).map((client: Client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.name} ({client.email})
+                      {client.name} - {client.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -407,12 +412,14 @@ export default function SoftwareRegistrations() {
                   <SelectValue placeholder="Seleziona licenza" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nessuna licenza</SelectItem>
-                  {licenses.map((license: License) => (
-                    <SelectItem key={license.id} value={license.id}>
-                      {license.activationKey} - {license.client?.name} ({license.product?.name})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="none">Nessuna Licenza</SelectItem>
+                  {licenses
+                    .filter((license: License) => license.id && license.status === 'attiva' && license.client.id === watch('clienteAssegnato'))
+                    .map((license: License) => (
+                      <SelectItem key={license.id} value={license.id}>
+                        {license.activationKey} - {license.product.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
