@@ -676,6 +676,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { expiresIn: '24h' }
       );
 
+      console.log(`Login successful for user ${user.username}, returning user data:`, {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        company: user.company
+      });
+
       res.json({
         token,
         user: {
@@ -930,9 +940,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If user is admin (not superadmin), filter by their company hierarchy
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
-        clients = await storage.getClientsByCompanyAndSubcompanies(userWithCompany.companyId);
         console.log(`Admin ${userWithCompany.username} filtering clients for company hierarchy starting from:`, userWithCompany.companyId);
-        console.log(`Admin ${userWithCompany.username} found ${clients.length} clients in hierarchy`);
+        clients = await storage.getClientsByCompanyAndSubcompanies(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} found ${clients.length} clients in hierarchy for companies:`, userWithCompany.companyId);
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all clients
         clients = await storage.getClients();
