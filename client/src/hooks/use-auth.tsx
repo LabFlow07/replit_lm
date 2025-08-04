@@ -59,13 +59,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.log('Token payload on validation:', payload);
             console.log('CompanyId from token:', payload.companyId);
 
+            // Log the full payload to debug
+            console.log('Full token payload:', payload);
+            console.log('CompanyId from token payload:', payload.companyId);
+
             setUser({
               id: payload.id,
               username: payload.username,
               name: payload.name || payload.username,
               email: payload.email || '',
               role: payload.role,
-              companyId: payload.companyId, // Use companyId from token
+              companyId: payload.companyId || null,
               company: undefined
             });
           } catch (e) {
