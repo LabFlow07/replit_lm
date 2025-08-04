@@ -440,6 +440,8 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
+    console.log(`getLicensesByCompanyHierarchy: Company hierarchy for ${companyId}:`, companyIds);
+
     const query = `
       SELECT 
         l.*,
@@ -453,6 +455,22 @@ export class DatabaseStorage implements IStorage {
       WHERE c.company_id IN (${placeholders})
       ORDER BY l.created_at DESC
     `;
+
+    console.log(`getLicensesByCompanyHierarchy: Executing query: ${query}`);
+    console.log(`getLicensesByCompanyHierarchy: With company IDs:`, companyIds);
+
+    const rows = await database.query(query, companyIds);
+    console.log(`getLicensesByCompanyHierarchy: Found ${rows.length} licenses`);
+    
+    const mappedLicenses = this.mapLicenseRows(rows);
+    console.log(`getLicensesByCompanyHierarchy: Mapped licenses:`, mappedLicenses.map(l => ({ 
+      id: l.id, 
+      activationKey: l.activationKey, 
+      client: l.client.name, 
+      client_company_id: l.client.company_id || 'N/A' 
+    })));
+    
+    return mappedLicenses;;
 
     const rows = await database.query(query, companyIds);
     return rows.map(row => ({

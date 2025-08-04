@@ -842,10 +842,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       let licenses;
 
+      console.log(`GET /api/licenses - User: ${userWithCompany?.username}, Role: ${userWithCompany?.role}, Company ID: ${userWithCompany?.companyId}`);
+
       // If user is admin (not superadmin), filter by their company hierarchy
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
-        licenses = await storage.getLicensesByCompanyHierarchy(userWithCompany.companyId);
         console.log(`Admin ${userWithCompany.username} filtering licenses for company hierarchy starting from:`, userWithCompany.companyId);
+        licenses = await storage.getLicensesByCompanyHierarchy(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} found ${licenses.length} licenses in hierarchy`);
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all licenses
         licenses = await storage.getLicenses(req.query);
@@ -853,6 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Other roles get basic filtering
         licenses = await storage.getLicenses(req.query);
+        console.log(`Other role ${userWithCompany?.role} - returning basic filtered licenses`);
       }
 
       console.log(`GET /api/licenses - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${licenses.length} licenses`);
