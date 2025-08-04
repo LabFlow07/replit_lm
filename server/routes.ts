@@ -868,18 +868,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userWithCompany = await storage.getUserByUsername(req.user.username);
       let licenses;
 
+      console.log(`GET /api/licenses/expiring - User: ${userWithCompany?.username}, Role: ${userWithCompany?.role}, Company ID: ${userWithCompany?.companyId}`);
+
       // If user is admin (not superadmin), filter by their company hierarchy
       if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
-        licenses = await storage.getLicensesExpiringByCompanyHierarchy(userWithCompany.companyId);
         console.log(`Admin ${userWithCompany.username} filtering expiring licenses for company hierarchy starting from:`, userWithCompany.companyId);
+        licenses = await storage.getLicensesExpiringByCompanyHierarchy(userWithCompany.companyId);
+        console.log(`Admin ${userWithCompany.username} found ${licenses.length} expiring licenses in hierarchy`);
       } else if (userWithCompany?.role === 'superadmin') {
         // Superadmin can see all expiring licenses
         licenses = await storage.getLicensesExpiringByDate();
+        console.log(`Superadmin ${userWithCompany.username} returning all expiring licenses`);
       } else {
         // Other roles get basic filtering
         licenses = await storage.getLicensesExpiringByDate();
+        console.log(`Other role ${userWithCompany?.role} - returning basic filtered expiring licenses`);
       }
 
+      console.log(`GET /api/licenses/expiring - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${licenses.length} expiring licenses`);
       res.json(licenses);
     } catch (error) {
       console.error('Get expiring licenses error:', error);
