@@ -48,29 +48,10 @@ export default function ClientsPage() {
       const data = await response.json();
       console.log('Raw clients data received:', data.length, 'clients');
 
-      // Apply client-side filtering based on user role and company
-      let filteredClients = data;
-
-      if (user?.role === 'admin' && user?.companyId) {
-        console.log('Filtering clients for admin user with company:', user.companyId);
-
-        // Get accessible companies for this admin (their hierarchy)
-        const accessibleCompanies = getAccessibleCompanies();
-        const accessibleCompanyIds = accessibleCompanies.map((c: any) => c.id);
-        console.log('Admin accessible company IDs:', accessibleCompanyIds);
-
-        // Filter clients that belong to accessible companies
-        filteredClients = data.filter((client: any) => {
-          const clientCompanyId = client.company_id || client.companyId;
-          const isAccessible = accessibleCompanyIds.includes(clientCompanyId);
-          console.log(`Client ${client.name} (${client.email}) - Company: ${clientCompanyId} - Accessible: ${isAccessible}`);
-          return isAccessible;
-        });
-
-        console.log(`Filtered ${filteredClients.length} clients from ${data.length} total for admin ${user.username}`);
-      }
-
-      return filteredClients;
+      // Server already filters clients correctly for admin users by company hierarchy
+      // No need for additional client-side filtering
+      console.log(`Clients API returned ${data.length} clients for user ${user?.username} (${user?.role})`);
+      return data;
     }
   });
 
@@ -115,10 +96,31 @@ export default function ClientsPage() {
 
     // Function to get accessible companies for admin (simulated hierarchy)
     const getAccessibleCompanies = () => {
-        // In a real scenario, this would be fetched from an API based on the user's permissions
-        // For now, simulate a hierarchy
-        if (!user?.companyId) return [];
-        return companies.filter((company: any) => company.id === user.companyId);
+        if (!user?.companyId || !companies) return [];
+        
+        // Build company hierarchy - include user's company and all its subcompanies
+        const hierarchy: any[] = [];
+        const userCompany = companies.find((c: any) => c.id === user.companyId);
+        
+        if (userCompany) {
+            hierarchy.push(userCompany);
+            
+            // Find all subcompanies recursively
+            const findSubcompanies = (parentId: string) => {
+                const subcompanies = companies.filter((c: any) => 
+                    (c.parent_id === parentId || c.parentId === parentId)
+                );
+                subcompanies.forEach((sub: any) => {
+                    hierarchy.push(sub);
+                    findSubcompanies(sub.id);
+                });
+            };
+            
+            findSubcompanies(user.companyId);
+        }
+        
+        console.log(`getAccessibleCompanies for admin ${user.username}:`, hierarchy.map(c => ({id: c.id, name: c.name})));
+        return hierarchy;
     };
 
   // Filtered clients
