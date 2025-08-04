@@ -42,7 +42,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('qlm_token');
     if (token) {
       // Validate token with a simple API call
       fetch('/api/dashboard/stats', {
@@ -64,17 +64,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
           } catch (e) {
             console.error('Error parsing token:', e);
-            localStorage.removeItem('token');
+            localStorage.removeItem('qlm_token');
           }
         } else {
           // Token is invalid
-          localStorage.removeItem('token');
+          localStorage.removeItem('qlm_token');
           setUser(null);
         }
         setLoading(false);
       })
       .catch(() => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('qlm_token');
         setUser(null);
         setLoading(false);
       });
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('qlm_token', data.token);
       setUser(data.user);
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('qlm_token');
     setUser(null);
     setLocation('/login');
   };
