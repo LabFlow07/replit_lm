@@ -95,7 +95,9 @@ export default function CompaniesPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log('Companies data received:', data);
+      return data;
     },
     retry: (failureCount, error: any) => {
       // Non riprovare se è un errore di autenticazione
@@ -190,7 +192,7 @@ export default function CompaniesPage() {
     }
     
     console.log('User role:', user.role);
-    console.log('User company ID:', user.company?.id);
+    console.log('User company ID:', user.companyId);
     console.log('Companies array length:', companies.length);
     
     // Superadmin vede tutto
@@ -201,10 +203,10 @@ export default function CompaniesPage() {
     
     // Admin vede la sua azienda e le sue sotto-aziende
     if (user.role === 'admin') {
-      const userCompanyId = user.company?.id;
+      const userCompanyId = user.companyId;
       if (!userCompanyId) {
-        console.log('Admin without company ID: returning empty array');
-        return [];
+        console.log('Admin without company ID: returning all companies as fallback');
+        return companies as any[];
       }
       
       // Trova l'azienda dell'admin e tutte le sue sotto-aziende (ricorsivamente)
@@ -231,44 +233,22 @@ export default function CompaniesPage() {
       return filtered;
     }
     
-    // Rivenditore vede se stesso e le sue sotto-aziende
-    if (user.role === 'rivenditore') {
-      const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company?.id || 
-        company.parent_id === user.company?.id ||
-        company.parentId === user.company?.id
-      );
-      console.log('Rivenditore: filtered companies:', filtered);
-      return filtered;
-    }
-    
-    // Agente vede solo la sua azienda
-    if (user.role === 'agente') {
-      const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company?.id
-      );
-      console.log('Agente: filtered companies:', filtered);
-      return filtered;
-    }
-    
-    // Cliente vede solo la sua azienda
-    if (user.role === 'cliente') {
-      const filtered = (companies as any[]).filter((company: any) => 
-        company.id === user.company?.id
-      );
-      console.log('Cliente: filtered companies:', filtered);
-      return filtered;
-    }
-    
-    console.log('Default fallback: returning all companies');
-    return companies as any[]; // Default fallback
+    // Altri ruoli vedono tutte le aziende per ora
+    console.log('Other role: returning all companies');
+    return companies as any[];
   };
 
   // Filtered companies with permission check
   const filteredHierarchy = useMemo(() => {
-    const accessibleCompanies = getAccessibleCompanies();
     console.log('filteredHierarchy: User role:', user?.role);
     console.log('filteredHierarchy: All companies count:', companies.length);
+    
+    if (!companies || companies.length === 0) {
+      console.log('No companies available');
+      return [];
+    }
+    
+    const accessibleCompanies = getAccessibleCompanies();
     console.log('filteredHierarchy: Accessible companies count:', accessibleCompanies.length);
     
     // Create hierarchy from accessible companies only
@@ -283,7 +263,9 @@ export default function CompaniesPage() {
     // Build hierarchy
     accessibleCompanies.forEach((company: any) => {
       const parentId = company.parent_id || company.parentId;
-      if (parentId) {
+      const isRoot = !parentId || parentId === '0' || parentId === 0 || parentId === '';
+      
+      if (!isRoot) {
         const parent = companyMap.get(parentId);
         if (parent) {
           parent.children.push(companyMap.get(company.id));
@@ -301,13 +283,15 @@ export default function CompaniesPage() {
     }
 
     const filterCompany = (company: any): any => {
+      if (!company) return null;
+      
       const matchesSearch = !searchTerm || 
         company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.contactInfo?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        (company.contact_info && JSON.parse(company.contact_info).email?.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesType = typeFilter === "all" || company.type === typeFilter;
       
-      const filteredChildren = company.children.map(filterCompany).filter(Boolean);
+      const filteredChildren = company.children?.map(filterCompany).filter(Boolean) || [];
       
       if (matchesSearch && matchesType) {
         return { ...company, children: filteredChildren };
@@ -319,7 +303,7 @@ export default function CompaniesPage() {
     };
 
     return rootCompanies.map(filterCompany).filter(Boolean);
-  }, [companies, clients, searchTerm, typeFilter, user]);
+  }, [companies, searchTerm, typeFilter, user]);
 
   // Mutations for CRUD operations
   const createCompanyMutation = useMutation({
