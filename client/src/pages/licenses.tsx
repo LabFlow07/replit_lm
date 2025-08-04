@@ -193,18 +193,7 @@ export default function LicensesPage() {
 
           {/* Main Content Grid */}
           <div className="space-y-6">
-            {/* Licenze in scadenza */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-clock text-orange-500"></i>
-                  Licenze in Scadenza
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ExpiringLicensesList />
-              </CardContent>
-            </Card>
+            
 
             {/* Activation Form */}
             <Card>
@@ -258,7 +247,7 @@ export default function LicensesPage() {
                         <SelectItem value="in_attesa_convalida">In Attesa</SelectItem>
                       </SelectContent>
                     </Select>
-                    
+
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
                       <SelectTrigger className="w-48">
                         <SelectValue placeholder="Tutti i tipi" />
@@ -271,7 +260,7 @@ export default function LicensesPage() {
                         <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
                       </SelectContent>
                     </Select>
-                    
+
                     <Button 
                       variant="outline"
                       onClick={() => {
@@ -330,7 +319,7 @@ export default function LicensesPage() {
                                 </div>
                               )}
                             </td>
-                            
+
                             <td className="p-3 border-r">
                               <div className="font-medium text-sm">
                                 {license.product?.name || 'N/A'}
@@ -339,13 +328,13 @@ export default function LicensesPage() {
                                 v{license.product?.version || ''}
                               </div>
                             </td>
-                            
+
                             <td className="p-3 border-r">
                               <div className="font-medium text-sm">
                                 {license.client?.name || 'N/A'}
                               </div>
                             </td>
-                            
+
                             <td className="p-3 border-r">
                               <Badge variant="outline" className="text-xs">
                                 {license.licenseType === 'permanente' ? 'Permanente' :
@@ -355,7 +344,7 @@ export default function LicensesPage() {
                                  license.licenseType}
                               </Badge>
                             </td>
-                            
+
                             <td className="p-3 border-r">
                               <Badge 
                                 variant={
@@ -375,25 +364,25 @@ export default function LicensesPage() {
                                  license.status}
                               </Badge>
                             </td>
-                            
+
                             <td className="p-3 border-r text-sm">
                               <div>{license.maxUsers || '∞'} utenti</div>
                               <div className="text-xs text-muted-foreground">
                                 {license.maxDevices || '∞'} dispositivi
                               </div>
                             </td>
-                            
+
                             <td className="p-3 border-r text-sm font-medium">
                               {formatCurrency(parseFloat(license.price || '0'))}
                             </td>
-                            
+
                             <td className="p-3 border-r text-sm">
                               {license.activationDate ? 
                                 format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it }) : 
                                 '-'
                               }
                             </td>
-                            
+
                             <td className="p-3 border-r text-sm">
                               {license.expiryDate ? (
                                 <div className={
@@ -413,7 +402,7 @@ export default function LicensesPage() {
                                 <span className="text-muted-foreground">Mai</span>
                               )}
                             </td>
-                            
+
                             <td className="p-3">
                               <div className="flex gap-1">
                                 <Button
