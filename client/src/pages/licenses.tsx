@@ -231,160 +231,219 @@ export default function LicensesPage() {
                 </div>
               </div>
 
-              {/* Grid Layout with Horizontal Scroll */}
-              {filteredLicenses.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Nessuna licenza trovata</h3>
-                    <p className="text-muted-foreground">
-                      Non ci sono licenze che corrispondono ai criteri di ricerca.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="w-full">
-                  <div className="flex gap-6 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
-                    {filteredLicenses.map((license: License) => (
-                      <Card key={license.id} className="flex-none w-80 hover:shadow-lg transition-shadow duration-200">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <CardTitle className="text-lg leading-tight">
-                                {license.product?.name || 'Prodotto sconosciuto'}
-                              </CardTitle>
-                              <CardDescription className="text-sm">
-                                {license.client?.name || 'Cliente sconosciuto'}
-                              </CardDescription>
-                            </div>
-                            <Badge 
-                              variant={
-                              license.status === 'attiva' ? 'default' :
-                              license.status === 'scaduta' ? 'destructive' :
-                              license.status === 'sospesa' ? 'secondary' :
-                              'outline'
-                            }
-                            className="shrink-0"
-                          >
-                            {license.status === 'attiva' ? 'Attiva' :
-                             license.status === 'scaduta' ? 'Scaduta' :
-                             license.status === 'sospesa' ? 'Sospesa' :
-                             license.status === 'in_attesa_convalida' ? 'In Attesa' :
-                             license.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        {/* License Key */}
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Key className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Chiave Licenza</span>
-                          </div>
-                          <div className="bg-muted p-2 rounded text-sm font-mono">
-                            {license.activationKey}
-                          </div>
-                        </div>
-
-                        {/* License Type and Price */}
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Tipo:</span>
-                            <div className="font-medium capitalize">
-                              {license.licenseType === 'permanente' ? 'Permanente' :
-                               license.licenseType === 'abbonamento' ? 'Abbonamento' :
-                               license.licenseType === 'trial' ? 'Trial' :
-                               license.licenseType}
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Prezzo:</span>
-                            <div className="font-medium">
-                              {formatCurrency(parseFloat(license.price || '0'))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Limits */}
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Max Utenti:</span>
-                            <div className="font-medium">{license.maxUsers || 'Illimitati'}</div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Max Dispositivi:</span>
-                            <div className="font-medium">{license.maxDevices || 'Illimitati'}</div>
-                          </div>
-                        </div>
-
-                        {/* Dates */}
-                        {(license.activationDate || license.expiryDate) && (
-                          <div className="space-y-2 text-sm">
-                            {license.activationDate && (
-                              <div>
-                                <span className="text-muted-foreground">Attivazione:</span>
-                                <div className="font-medium">
-                                  {format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it })}
-                                </div>
-                              </div>
-                            )}
-                            {license.expiryDate && (
-                              <div>
-                                <span className="text-muted-foreground">Scadenza:</span>
-                                <div className={`font-medium ${
-                                  isExpiringSoon(license.expiryDate) ? 'text-orange-600' :
-                                  isExpired(license.expiryDate) ? 'text-red-600' : ''
-                                }`}>
-                                  {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
-                                  {isExpiringSoon(license.expiryDate) && !isExpired(license.expiryDate) && (
-                                    <span className="ml-1 text-xs">(In scadenza)</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Computer Key */}
-                        {license.computerKey && (
-                          <div className="space-y-1 text-sm">
-                            <span className="text-muted-foreground">Computer Key:</span>
-                            <div className="font-mono text-xs bg-muted p-1 rounded">
-                              {license.computerKey}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditLicense(license)}
-                            className="flex-1"
-                          >
-                            <Settings className="h-4 w-4 mr-1" />
-                            Modifica
-                          </Button>
-                          {license.status === 'in_attesa_convalida' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleActivateLicense(license)}
-                              className="flex-1"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Attiva
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+              {/* Filters */}
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Cerca per chiave, cliente, prodotto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Tutti gli stati" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="attiva">Attiva</SelectItem>
+                        <SelectItem value="demo">Demo</SelectItem>
+                        <SelectItem value="trial">Trial</SelectItem>
+                        <SelectItem value="scaduta">Scaduta</SelectItem>
+                        <SelectItem value="sospesa">Sospesa</SelectItem>
+                        <SelectItem value="in_attesa_convalida">In Attesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Tutti i tipi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i tipi</SelectItem>
+                        <SelectItem value="permanente">Permanente</SelectItem>
+                        <SelectItem value="trial">Trial</SelectItem>
+                        <SelectItem value="abbonamento_mensile">Mensile</SelectItem>
+                        <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setStatusFilter("all");
+                        setTypeFilter("all");
+                      }}
+                    >
+                      Reset
+                    </Button>
                   </div>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+
+            {/* Excel-like Table */}
+            {filteredLicenses.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nessuna licenza trovata</h3>
+                  <p className="text-muted-foreground">
+                    Non ci sono licenze che corrispondono ai criteri di ricerca.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 font-medium text-sm border-r">Chiave Licenza</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Prodotto</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Cliente</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Tipo</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Stato</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Utenti/Dispositivi</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Prezzo</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Attivazione</th>
+                          <th className="text-left p-3 font-medium text-sm border-r">Scadenza</th>
+                          <th className="text-left p-3 font-medium text-sm">Azioni</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredLicenses.map((license: License, index: number) => (
+                          <tr key={license.id} className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? 'bg-white' : 'bg-muted/10'}`}>
+                            <td className="p-3 border-r">
+                              <div className="font-mono text-sm">
+                                {license.activationKey}
+                              </div>
+                              {license.computerKey && (
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {license.computerKey}
+                                </div>
+                              )}
+                            </td>
+                            
+                            <td className="p-3 border-r">
+                              <div className="font-medium text-sm">
+                                {license.product?.name || 'N/A'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                v{license.product?.version || ''}
+                              </div>
+                            </td>
+                            
+                            <td className="p-3 border-r">
+                              <div className="font-medium text-sm">
+                                {license.client?.name || 'N/A'}
+                              </div>
+                            </td>
+                            
+                            <td className="p-3 border-r">
+                              <Badge variant="outline" className="text-xs">
+                                {license.licenseType === 'permanente' ? 'Permanente' :
+                                 license.licenseType === 'abbonamento_mensile' ? 'Mensile' :
+                                 license.licenseType === 'abbonamento_annuale' ? 'Annuale' :
+                                 license.licenseType === 'trial' ? 'Trial' :
+                                 license.licenseType}
+                              </Badge>
+                            </td>
+                            
+                            <td className="p-3 border-r">
+                              <Badge 
+                                variant={
+                                  license.status === 'attiva' ? 'default' :
+                                  license.status === 'scaduta' ? 'destructive' :
+                                  license.status === 'sospesa' ? 'secondary' :
+                                  'outline'
+                                }
+                                className="text-xs"
+                              >
+                                {license.status === 'attiva' ? 'Attiva' :
+                                 license.status === 'scaduta' ? 'Scaduta' :
+                                 license.status === 'sospesa' ? 'Sospesa' :
+                                 license.status === 'demo' ? 'Demo' :
+                                 license.status === 'trial' ? 'Trial' :
+                                 license.status === 'in_attesa_convalida' ? 'In Attesa' :
+                                 license.status}
+                              </Badge>
+                            </td>
+                            
+                            <td className="p-3 border-r text-sm">
+                              <div>{license.maxUsers || '∞'} utenti</div>
+                              <div className="text-xs text-muted-foreground">
+                                {license.maxDevices || '∞'} dispositivi
+                              </div>
+                            </td>
+                            
+                            <td className="p-3 border-r text-sm font-medium">
+                              {formatCurrency(parseFloat(license.price || '0'))}
+                            </td>
+                            
+                            <td className="p-3 border-r text-sm">
+                              {license.activationDate ? 
+                                format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it }) : 
+                                '-'
+                              }
+                            </td>
+                            
+                            <td className="p-3 border-r text-sm">
+                              {license.expiryDate ? (
+                                <div className={
+                                  isExpired(license.expiryDate) ? 'text-red-600 font-medium' :
+                                  isExpiringSoon(license.expiryDate) ? 'text-orange-600 font-medium' :
+                                  ''
+                                }>
+                                  {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
+                                  {isExpiringSoon(license.expiryDate) && !isExpired(license.expiryDate) && (
+                                    <div className="text-xs text-orange-500">In scadenza</div>
+                                  )}
+                                  {isExpired(license.expiryDate) && (
+                                    <div className="text-xs text-red-500">Scaduta</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">Mai</span>
+                              )}
+                            </td>
+                            
+                            <td className="p-3">
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditLicense(license)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                                {license.status === 'in_attesa_convalida' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleActivateLicense(license)}
+                                    className="h-8 w-8 p-0 text-green-600"
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             </div>
           </div>
         </div>

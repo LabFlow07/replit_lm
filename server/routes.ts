@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Find Shadow company
     const companies = await storage.getCompanies();
     const shadowCompany = companies.find(c => c.name === 'Shadow');
-    
+
     if (shadowCompany) {
       await storage.createUser({
         username: 'shadow',
@@ -95,20 +95,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const shadowCompany = await storage.getCompanies().then(companies => 
     companies.find(c => c.name === 'Shadow')
   );
-  
+
   if (shadowCompany) {
     const shadowClients = await storage.getClientsByCompanyAndSubcompanies(shadowCompany.id);
     console.log(`Found ${shadowClients.length} clients in Shadow hierarchy`);
-    
+
     if (shadowClients.length > 0) {
       const products = await storage.getProducts();
       const testProduct = products[0]; // Use first available product
-      
+
       if (testProduct) {
         // Check if licenses already exist for Shadow clients
         const existingLicenses = await storage.getLicensesByCompanyHierarchy(shadowCompany.id);
         console.log(`Found ${existingLicenses.length} existing licenses for Shadow hierarchy`);
-        
+
         if (existingLicenses.length === 0) {
           // Create a test license for the barlume client
           const barlumeclient = shadowClients.find(c => c.name === 'barlume');
@@ -759,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role, 
         companyId: user.companyId || null
       };
-      
+
       console.log('JWT token payload:', tokenPayload);
 
       const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
@@ -896,33 +896,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // License endpoints
   app.get('/api/licenses', async (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ message: 'Access token required' });
+    }
+
     try {
-      // Get fresh user data with company info
-      const userWithCompany = await storage.getUserByUsername(req.user.username);
-      let licenses;
+      const decoded = jwt.verify(token, JWT_SECRET) as { username: string; role: string; companyId: string };
+      console.log(`Token decoded for user: ${decoded.username} Role: ${decoded.role}`);
 
-      console.log(`GET /api/licenses - User: ${userWithCompany?.username}, Role: ${userWithCompany?.role}, Company ID: ${userWithCompany?.companyId}`);
-
-      // If user is admin (not superadmin), filter by their company hierarchy
-      if (userWithCompany?.role === 'admin' && userWithCompany?.companyId) {
-        console.log(`Admin ${userWithCompany.username} filtering licenses for company hierarchy starting from:`, userWithCompany.companyId);
-        licenses = await storage.getLicensesByCompanyHierarchy(userWithCompany.companyId);
-        console.log(`Admin ${userWithCompany.username} found ${licenses.length} licenses in hierarchy`);
-      } else if (userWithCompany?.role === 'superadmin') {
-        // Superadmin can see all licenses
-        licenses = await storage.getLicenses(req.query);
-        console.log(`Superadmin ${userWithCompany.username} returning all licenses`);
-      } else {
-        // Other roles get basic filtering
-        licenses = await storage.getLicenses(req.query);
-        console.log(`Other role ${userWithCompany?.role} - returning basic filtered licenses`);
+      const user = await storage.getUserByUsername(decoded.username);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid user' });
       }
 
-      console.log(`GET /api/licenses - User: ${userWithCompany?.username} (${userWithCompany?.role}) - Company: ${userWithCompany?.company?.name} - Returning ${licenses.length} licenses`);
-      res.json(licenses);
+      console.log(`Authenticated user: ${user.username} Role: ${user.role} Company ID: ${user.company_id}`);
+
+      let licenses;
+
+      if (user.role === 'superadmin') {
+        console.log(`Superadmin ${user.username} returning all licenses`);
+        licenses = await storage.getAllLicenses();
+        console.log(`GET /api/licenses - User: ${user.username} (${user.role}) - Company: ${user.company?.name} - Returning ${licenses.length} licenses`);
+        return res.json(licenses);
+      } else if (user.role === 'admin') {
+        console.log(`Admin ${user.username} fetching licenses in hierarchy for company ${user.company_id}`);
+        licenses = await storage.getLicensesByCompanyHierarchy(user.company_id);
+        console.log(`Admin ${user.username} found ${licenses.length} licenses in hierarchy`);
+        console.log(`GET /api/licenses - User: ${user.username} (${user.role}) - Company: ${user.company?.name} - Returning ${licenses.length} licenses`);
+        return res.json(licenses);
+      } else {
+        // Regular users see only their company's licenses
+        licenses = await storage.getLicensesByCompany(user.company_id);
+        console.log(`GET /api/licenses - User: ${user.username} (${user.role}) - Company: ${user.company?.name} - Returning ${licenses.length} licenses`);
+        return res.json(licenses);
+      }
     } catch (error) {
-      console.error('Get licenses error:', error);
-      res.status(500).json({ message: 'Failed to fetch licenses' });
+      console.error('Error fetching licenses:', error);
+      return res.status(500).json({ message: 'Internal server error' });
     }
   });
 
