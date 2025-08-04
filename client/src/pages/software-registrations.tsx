@@ -122,7 +122,7 @@ export default function SoftwareRegistrations() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
         },
         body: JSON.stringify(requestBody)
       });
@@ -207,7 +207,7 @@ export default function SoftwareRegistrations() {
               const response = await fetch('/api/software/registrazioni/demo', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                  'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`,
                   'Content-Type': 'application/json'
                 }
               });
