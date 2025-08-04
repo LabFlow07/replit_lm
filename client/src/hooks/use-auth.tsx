@@ -79,12 +79,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         } else {
           // Token is invalid
+          console.log('Token invalid, clearing and redirecting to login...');
           localStorage.removeItem('qlm_token');
           setUser(null);
         }
         setLoading(false);
       })
       .catch(() => {
+        console.log('Token verification failed, clearing token...');
         localStorage.removeItem('qlm_token');
         setUser(null);
         setLoading(false);
@@ -156,6 +158,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('qlm_token');
     setUser(null);
     setLoading(false);
+  };
+
+  // Function to manually update token (for debugging)
+  const updateToken = (newToken: string) => {
+    localStorage.setItem('qlm_token', newToken);
+    try {
+      const payload = JSON.parse(atob(newToken.split('.')[1]));
+      setUser({
+        id: payload.id,
+        username: payload.username,
+        name: payload.name || payload.username,
+        email: payload.email || '',
+        role: payload.role,
+        companyId: payload.companyId || null,
+        company: undefined
+      });
+      console.log('Token updated successfully:', payload);
+    } catch (e) {
+      console.error('Error parsing new token:', e);
+    }
   };
 
   return (
