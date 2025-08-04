@@ -21,13 +21,20 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await storage.getUser(decoded.id);
-    if (!user) {
+    console.log('Token decoded for user:', decoded.username, 'Role:', decoded.role);
+
+    // Get fresh user data with company info using username
+    const userWithCompany = await storage.getUserByUsername(decoded.username);
+    if (!userWithCompany) {
+      console.log('User not found in database:', decoded.username);
       return res.status(403).json({ message: 'Invalid token' });
     }
-    req.user = user;
+
+    console.log('Authenticated user:', userWithCompany.username, 'Role:', userWithCompany.role, 'Company ID:', userWithCompany.companyId);
+    req.user = userWithCompany;
     next();
   } catch (error) {
+    console.error('Token verification error:', error);
     return res.status(403).json({ message: 'Invalid token' });
   }
 };
@@ -691,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, username: user.username, role: user.role, companyId: user.companyId },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
