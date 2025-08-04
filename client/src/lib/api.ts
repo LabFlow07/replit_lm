@@ -4,11 +4,11 @@ export async function apiRequest(
   data?: unknown
 ): Promise<Response> {
   const token = localStorage.getItem('token');
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

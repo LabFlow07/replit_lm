@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ExpiringLicense {
   id: string;
@@ -10,6 +11,8 @@ interface ExpiringLicense {
   client: {
     name: string;
     email: string;
+    company_id?: string;
+    companyId?: string;
   };
   product: {
     name: string;
@@ -18,15 +21,21 @@ interface ExpiringLicense {
 }
 
 export default function ExpiringLicensesList() {
+  const { user } = useAuth();
+
   const { data: expiringLicenses = [], isLoading } = useQuery({
     queryKey: ['/api/licenses/expiring'],
+    enabled: !!user,
     queryFn: async () => {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/licenses/expiring', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Failed to fetch expiring licenses');
-      return response.json();
+      const data = await response.json();
+      
+      console.log(`Expiring licenses API returned ${data.length} licenses for user ${user?.username}`);
+      return data;
     },
     refetchInterval: 5 * 60 * 1000, // Aggiorna ogni 5 minuti
   });
@@ -77,6 +86,10 @@ export default function ExpiringLicensesList() {
       </div>
     );
   }
+
+  // Since the server already filters licenses by company hierarchy for admin users,
+  // we trust the server response like in the main licenses page
+  console.log(`Expiring licenses: User ${user?.username} (${user?.role}) has ${expiringLicenses.length} expiring licenses from server`);
 
   if (expiringLicenses.length === 0) {
     return (
