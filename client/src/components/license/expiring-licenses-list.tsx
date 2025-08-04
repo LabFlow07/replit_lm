@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,7 @@ export default function ExpiringLicensesList() {
 
   const getExpiryBadge = (expiryDate: string) => {
     const days = getDaysUntilExpiry(expiryDate);
-    
+
     if (days < 0) {
       return <Badge variant="destructive">Scaduta</Badge>;
     } else if (days <= 7) {
@@ -61,9 +60,9 @@ export default function ExpiringLicensesList() {
       'permanente': { label: 'Permanente', color: 'bg-gray-100 text-gray-800' },
       'trial': { label: 'Trial', color: 'bg-yellow-100 text-yellow-800' }
     };
-    
+
     const type = typeMap[licenseType as keyof typeof typeMap] || { label: licenseType, color: 'bg-gray-100 text-gray-800' };
-    
+
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${type.color}`}>
         {type.label}
@@ -117,7 +116,7 @@ export default function ExpiringLicensesList() {
           </div>
         </div>
       ))}
-      
+
       {expiringLicenses.length > 10 && (
         <div className="text-center pt-3">
           <Button variant="outline" size="sm">

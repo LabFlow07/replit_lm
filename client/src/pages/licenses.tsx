@@ -87,7 +87,7 @@ export default function LicensesPage() {
     queryKey: ['/api/licenses'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/licenses', {
         headers: {
           'Authorization': `Bearer ${token}`,
