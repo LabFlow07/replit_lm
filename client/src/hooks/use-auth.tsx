@@ -99,6 +99,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const data = await response.json();
+      console.log('Login response user data:', data.user);
+      console.log('User role:', data.user.role, 'Company ID:', data.user.companyId);
       localStorage.setItem('qlm_token', data.token);
       setUser(data.user);
       setLoading(false);

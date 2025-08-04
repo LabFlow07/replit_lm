@@ -64,6 +64,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Default admin user created: admin/admin123');
   }
 
+  // Create shadow test user if not exists
+  const shadowUser = await storage.getUserByUsername('shadow');
+  if (!shadowUser) {
+    // Find Shadow company
+    const companies = await storage.getCompanies();
+    const shadowCompany = companies.find(c => c.name === 'Shadow');
+    
+    if (shadowCompany) {
+      await storage.createUser({
+        username: 'shadow',
+        password: 'shadow123',
+        role: 'admin',
+        name: 'Shadow Admin',
+        email: 'admin@shadow.com',
+        companyId: shadowCompany.id
+      });
+      console.log('Shadow admin user created: shadow/shadow123');
+    }
+  }
+
   // Create test data - always ensure demo data exists
   try {
     const existingCompanies = await storage.getCompanies();
