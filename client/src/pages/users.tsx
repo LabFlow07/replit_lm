@@ -475,6 +475,14 @@ export default function UsersPage() {
                 isActive: formData.get('isActive') === 'true'
               };
               
+              // Gestisci il companyId
+              const companyId = formData.get('companyId') as string;
+              if (companyId && companyId !== 'none') {
+                updates.companyId = companyId;
+              } else {
+                updates.companyId = null;
+              }
+              
               // Solo includi la password se è stata inserita
               const password = formData.get('password') as string;
               if (password && password.trim()) {
@@ -512,15 +520,15 @@ export default function UsersPage() {
                 </p>
               </div>
 
-              {user.role === 'superadmin' && editingUser.company && (
+              {user.role === 'superadmin' && (
                 <div>
                   <Label htmlFor="edit-company">Azienda</Label>
-                  <Select name="companyId" defaultValue={editingUser.companyId || ''}>
+                  <Select name="companyId" defaultValue={editingUser.companyId || 'none'}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleziona azienda" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nessuna azienda</SelectItem>
+                      <SelectItem value="none">Nessuna azienda</SelectItem>
                       {companies.map((company: Company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name} ({company.type})
