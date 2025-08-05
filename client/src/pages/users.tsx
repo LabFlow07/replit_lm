@@ -253,6 +253,17 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-4 mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation('/')}
+              className="flex items-center gap-2"
+            >
+              <i className="fas fa-home"></i>
+              Ritorna alla Home
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Users className="h-8 w-8 text-primary" />
             Gestione Utenti
