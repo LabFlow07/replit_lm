@@ -1103,6 +1103,11 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     console.log('getLicensesByCompanyHierarchy: Company hierarchy IDs:', companyIds);
     
+    if (companyIds.length === 0) {
+      console.log('getLicensesByCompanyHierarchy: No companies in hierarchy, returning empty array');
+      return [];
+    }
+    
     const placeholders = companyIds.map(() => '?').join(',');
     console.log('getLicensesByCompanyHierarchy: Executing query with placeholders:', placeholders);
     console.log('getLicensesByCompanyHierarchy: Query parameters:', companyIds);
@@ -1114,7 +1119,7 @@ export class DatabaseStorage implements IStorage {
         p.name as product_name, p.version as product_version,
         comp.name as company_name
       FROM licenses l
-      LEFT JOIN clients c ON l.client_id = c.id
+      INNER JOIN clients c ON l.client_id = c.id
       LEFT JOIN products p ON l.product_id = p.id
       LEFT JOIN companies comp ON l.assigned_company = comp.id
       WHERE c.company_id IN (${placeholders})
@@ -1232,9 +1237,17 @@ export class DatabaseStorage implements IStorage {
     if (companyId) {
       // If companyId is provided, filter by company hierarchy
       const companyIds = await this.getCompanyHierarchy(companyId);
-      const placeholders = companyIds.map(() => '?').join(',');
-      conditions.push(`(u.company_id IN (${placeholders}) OR u.company_id IS NULL)`);
-      params.push(...companyIds);
+      console.log(`getUsers: Filtering users for company hierarchy: ${companyIds.join(', ')}`);
+      
+      if (companyIds.length > 0) {
+        const placeholders = companyIds.map(() => '?').join(',');
+        // Admin users should only see users from their company hierarchy, not null company users
+        conditions.push(`u.company_id IN (${placeholders})`);
+        params.push(...companyIds);
+      } else {
+        // If no companies in hierarchy, return empty result
+        conditions.push('1 = 0');
+      }
     }
 
     if (conditions.length > 0) {
