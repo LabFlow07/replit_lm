@@ -1215,21 +1215,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User management methods
-  async getUsers(companyId?: string): Promise<UserWithCompany[]> {
+  async getUsers(companyId?: string, includingInactive?: boolean): Promise<UserWithCompany[]> {
     let sql = `
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
       LEFT JOIN companies c ON u.company_id = c.id
-      WHERE u.is_active = TRUE
     `;
     const params: any[] = [];
+    const conditions: string[] = [];
+
+    // Only filter out inactive users if not explicitly including them
+    if (!includingInactive) {
+      conditions.push('u.is_active = TRUE');
+    }
 
     if (companyId) {
       // If companyId is provided, filter by company hierarchy
       const companyIds = await this.getCompanyHierarchy(companyId);
       const placeholders = companyIds.map(() => '?').join(',');
-      sql += ` AND (u.company_id IN (${placeholders}) OR u.company_id IS NULL)`;
+      conditions.push(`(u.company_id IN (${placeholders}) OR u.company_id IS NULL)`);
       params.push(...companyIds);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
     sql += ' ORDER BY u.created_at DESC';

@@ -745,11 +745,11 @@ router.get('/api/users', authenticateToken, async (req: AuthenticatedRequest, re
     
     let users;
     if (req.user.role === 'superadmin') {
-      // Superadmin can see all users
-      users = await storage.getUsers();
+      // Superadmin can see all users including inactive ones
+      users = await storage.getUsers(undefined, true);
     } else if (req.user.role === 'admin' && req.user.companyId) {
-      // Admin can see users in their company hierarchy
-      users = await storage.getUsers(req.user.companyId);
+      // Admin can see users in their company hierarchy (only active)
+      users = await storage.getUsers(req.user.companyId, false);
     } else {
       return res.status(403).json({ message: "Access denied" });
     }
