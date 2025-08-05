@@ -555,8 +555,8 @@ export default function CompaniesPage() {
                 </div>
 
                 <div className="flex space-x-1">
-                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.company)) && (
+                  {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
                     <>
                       <Button
                         variant="ghost"
@@ -584,8 +584,8 @@ export default function CompaniesPage() {
                     </>
                   )}
                   
-                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.company)) && (
+                  {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -599,8 +599,8 @@ export default function CompaniesPage() {
                     </Button>
                   )}
                   
-                  {(user?.role === 'superadmin' || user?.role === 'rivenditore' || 
-                    (user?.role === 'agente' && company.id === user?.company)) && (
+                  {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore' || 
+                    (user?.role === 'agente' && company.id === user?.companyId)) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -706,12 +706,13 @@ export default function CompaniesPage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Aziende</h1>
               <p className="text-gray-600">
                 {user?.role === 'superadmin' ? 'Visualizza la struttura gerarchica completa delle aziende' :
+                 user?.role === 'admin' ? 'Gestisci la tua azienda e le sotto-aziende associate' :
                  user?.role === 'rivenditore' ? 'Gestisci la tua rete di sotto-aziende e agenti' :
                  'Visualizza i dettagli della tua azienda'}
               </p>
             </div>
             
-            {(user?.role === 'superadmin' || user?.role === 'rivenditore') && (
+            {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore') && (
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="bg-primary hover:bg-blue-700"
