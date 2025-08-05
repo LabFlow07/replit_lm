@@ -471,14 +471,20 @@ router.post("/api/clienti/registrazione", authenticateToken, async (req: Request
 router.post("/api/licenses", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const licenseData = {
-      ...req.body,
-      id: nanoid(),
-      createdAt: new Date().toISOString()
-    };
+    const {
+      clientId,
+      productId,
+      licenseType,
+      maxUsers,
+      maxDevices,
+      price,
+      discount,
+      status,
+      activeModules
+    } = req.body;
 
     // Validate that the user can create licenses for the specified client
-    const client = await storage.getClientById(licenseData.clientId);
+    const client = await storage.getClientById(clientId);
     if (!client) {
       return res.status(404).json({ message: "Client not found" });
     }
@@ -501,7 +507,24 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       }
     }
 
+    const licenseData = {
+      clientId,
+      productId,
+      licenseType,
+      maxUsers: maxUsers || 1,
+      maxDevices: maxDevices || 1,
+      price: price || 0,
+      discount: discount || 0,
+      status: status || 'in_attesa_convalida',
+      activeModules: activeModules || ['core'],
+      assignedCompany: client.company_id || client.companyId,
+      assignedAgent: user.id
+    };
+
+    console.log('Creating license with data:', licenseData);
     const license = await storage.createLicense(licenseData);
+    
+    console.log('License created successfully:', license.id);
     res.json(license);
   } catch (error) {
     console.error('Create license error:', error);

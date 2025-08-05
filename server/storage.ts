@@ -591,8 +591,11 @@ export class DatabaseStorage implements IStorage {
   async createLicense(insertLicense: InsertLicense): Promise<License> {
     const id = randomUUID();
 
+    // Genera automaticamente la chiave di attivazione se non fornita
+    const activationKey = insertLicense.activationKey || `${insertLicense.licenseType.toUpperCase()}-${randomUUID().substring(0, 8).toUpperCase()}`;
+
     // Calcola automaticamente la data di scadenza per gli abbonamenti
-    let expiryDate = insertLicense.expiryDate;
+    let expiryDate = insertLicense.expiryDate || null;
     if (insertLicense.licenseType === 'abbonamento_mensile') {
       const now = new Date();
       expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -611,12 +614,12 @@ export class DatabaseStorage implements IStorage {
       id, 
       insertLicense.clientId, 
       insertLicense.productId, 
-      insertLicense.activationKey,
+      activationKey,
       insertLicense.computerKey || null, 
       insertLicense.activationDate || null, 
-      expiryDate || null,
+      expiryDate,
       insertLicense.licenseType, 
-      insertLicense.status || 'pending', 
+      insertLicense.status || 'in_attesa_convalida', 
       insertLicense.maxUsers || 1,
       insertLicense.maxDevices || 1, 
       insertLicense.price || 0, 
@@ -626,7 +629,35 @@ export class DatabaseStorage implements IStorage {
       insertLicense.assignedAgent || null
     ]);
 
-    return { ...insertLicense, id, expiryDate, createdAt: new Date() };
+    // Crea automaticamente una transazione se il prezzo è specificato
+    if (insertLicense.price && insertLicense.price > 0) {
+      await this.createTransaction({
+        licenseId: id,
+        type: 'purchase',
+        amount: insertLicense.price,
+        paymentMethod: 'manual',
+        status: 'completed',
+        notes: 'Transazione creata automaticamente durante la creazione della licenza'
+      });
+    } else {
+      // Crea una transazione gratuita anche per prezzo 0
+      await this.createTransaction({
+        licenseId: id,
+        type: 'free',
+        amount: 0,
+        paymentMethod: 'free',
+        status: 'completed',
+        notes: 'Licenza gratuita'
+      });
+    }
+
+    return { 
+      ...insertLicense, 
+      id, 
+      activationKey,
+      expiryDate, 
+      createdAt: new Date() 
+    };
   }
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
