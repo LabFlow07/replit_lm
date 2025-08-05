@@ -237,7 +237,29 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
       console.log('Admin: fetched', licenses.length, 'licenses in company hierarchy', user.companyId);
     } else {
       // Other roles can only see licenses from their own company
-      licenses = await storage.getLicensesByCompany(user.companyId);
+      const companyLicenses = await storage.getLicensesByCompany(user.companyId);
+      licenses = companyLicenses.map(license => ({
+        ...license,
+        client: {
+          id: license.client_id || '',
+          name: license.client?.name || '',
+          email: license.client?.email || '',
+          status: license.client?.status || '',
+          companyId: license.client?.companyId || '',
+          contactInfo: {},
+          isMultiSite: false,
+          isMultiUser: false,
+          createdAt: new Date()
+        },
+        product: {
+          id: license.product_id || '',
+          name: license.product?.name || '',
+          version: license.product?.version || '',
+          description: '',
+          supportedLicenseTypes: [],
+          createdAt: new Date()
+        }
+      }));
       console.log('User role', user.role, ': fetched', licenses.length, 'licenses from company', user.companyId);
     }
 

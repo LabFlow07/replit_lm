@@ -500,7 +500,7 @@ export class DatabaseStorage implements IStorage {
     return licenses.find(l => l.activationKey === key);
   }
 
-  async getAllLicenses(): Promise<License[]> {
+  async getAllLicenses(): Promise<LicenseWithDetails[]> {
     const query = `
       SELECT 
         l.*,
@@ -518,10 +518,11 @@ export class DatabaseStorage implements IStorage {
     `;
 
     const rows = await database.query(query);
+    console.log(`getAllLicenses: Query returned ${rows.length} raw rows`);
     return this.mapLicenseRows(rows);
   }
 
-  async getLicensesByCompanyHierarchy(companyId: string): Promise<License[]> {
+  async getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
