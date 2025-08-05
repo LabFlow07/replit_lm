@@ -738,6 +738,156 @@ router.post("/api/demo/populate", authenticateToken, async (req: Request, res: R
   }
 });
 
+// User management routes
+router.get('/api/users', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    console.log(`Fetching users for user: ${req.user.username} Role: ${req.user.role} Company ID: ${req.user.companyId}`);
+    
+    let users;
+    if (req.user.role === 'superadmin') {
+      // Superadmin can see all users
+      users = await storage.getUsers();
+    } else if (req.user.role === 'admin' && req.user.companyId) {
+      // Admin can see users in their company hierarchy
+      users = await storage.getUsers(req.user.companyId);
+    } else {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    console.log(`Found ${users.length} users`);
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post('/api/users', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Permission check
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { username, name, email, password, role, companyId } = req.body;
+
+    // Validate role permissions
+    if (req.user.role === 'admin') {
+      // Admin can only create users within their company hierarchy or subcompanies
+      if (role === 'superadmin') {
+        return res.status(403).json({ message: "Cannot create superadmin users" });
+      }
+      if (companyId && companyId !== req.user.companyId) {
+        // Check if target company is in user's hierarchy
+        const hierarchy = await storage.getCompanyHierarchy(req.user.companyId || '');
+        if (!hierarchy.includes(companyId)) {
+          return res.status(403).json({ message: "Cannot create users outside your company hierarchy" });
+        }
+      }
+    }
+
+    const newUser = await storage.createUser({
+      username,
+      name,
+      email,
+      password,
+      role,
+      companyId: companyId || req.user.companyId,
+      isActive: true
+    });
+
+    console.log(`Created new user: ${newUser.username} with role: ${newUser.role}`);
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.patch('/api/users/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Permission check
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const userId = req.params.id;
+    const updates = req.body;
+
+    // Additional checks for admin users
+    if (req.user.role === 'admin') {
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Admin cannot modify superadmin users
+      if (targetUser.role === 'superadmin') {
+        return res.status(403).json({ message: "Cannot modify superadmin users" });
+      }
+
+      // Admin can only modify users in their company hierarchy
+      if (targetUser.companyId && req.user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(req.user.companyId);
+        if (!hierarchy.includes(targetUser.companyId)) {
+          return res.status(403).json({ message: "Cannot modify users outside your company hierarchy" });
+        }
+      }
+    }
+
+    const updatedUser = await storage.updateUser(userId, updates);
+    console.log(`Updated user: ${updatedUser.username}`);
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete('/api/users/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Permission check
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const userId = req.params.id;
+
+    // Cannot delete self
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: "Cannot delete yourself" });
+    }
+
+    // Additional checks for admin users
+    if (req.user.role === 'admin') {
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Admin cannot delete superadmin users
+      if (targetUser.role === 'superadmin') {
+        return res.status(403).json({ message: "Cannot delete superadmin users" });
+      }
+
+      // Admin can only delete users in their company hierarchy
+      if (targetUser.companyId && req.user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(req.user.companyId);
+        if (!hierarchy.includes(targetUser.companyId)) {
+          return res.status(403).json({ message: "Cannot delete users outside your company hierarchy" });
+        }
+      }
+    }
+
+    await storage.deleteUser(userId);
+    console.log(`Deleted user: ${userId}`);
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }

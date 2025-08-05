@@ -16,6 +16,11 @@ const getNavigationItems = (userRole: string) => {
     { id: 'software-registrations', label: 'Registrazioni Software', icon: 'fas fa-desktop', route: '/software-registrations' },
   ];
 
+  // User management with role-based permissions
+  if (userRole === 'superadmin' || userRole === 'admin') {
+    baseItems.push({ id: 'users', label: 'Gestione Utenti', icon: 'fas fa-user-cog', route: '/users' });
+  }
+
   // Only superadmin can access settings and logs
   if (userRole === 'superadmin') {
     baseItems.push(

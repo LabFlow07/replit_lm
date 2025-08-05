@@ -20,6 +20,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<UserWithCompany | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsers(companyId?: string): Promise<UserWithCompany[]>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
 
   // Company methods
   getCompany(id: string): Promise<Company | undefined>;
@@ -40,6 +43,7 @@ export interface IStorage {
   // Client methods
   getClients(companyId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
+  getClientById(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClientStatus(id: string, status: string): Promise<void>;
 
@@ -62,6 +66,15 @@ export interface IStorage {
 
   // Statistics
   getDashboardStats(userId: string, userRole: string): Promise<DashboardStats>;
+  getActiveLicensesCount(): Promise<number>;
+  getActiveLicensesCountByCompanyHierarchy(companyId: string): Promise<number>;
+  getActiveLicensesCountByCompany(companyId: string): Promise<number>;
+  
+  // Company hierarchy methods
+  getCompanyHierarchy(companyId: string): Promise<string[]>;
+  getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]>;
+  getClientsByCompanyHierarchy(companyId: string): Promise<Client[]>;
+  getAllProducts(): Promise<Product[]>;
 
   // Software Registration methods
   getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]>;
@@ -392,6 +405,10 @@ export class DatabaseStorage implements IStorage {
       };
     }
     return undefined;
+  }
+
+  async getClientById(id: string): Promise<Client | undefined> {
+    return this.getClient(id);
   }
 
   async createClient(insertClient: InsertClient): Promise<Client> {
@@ -1019,6 +1036,271 @@ export class DatabaseStorage implements IStorage {
     );
 
     return this.getSoftwareRegistration(id) as Promise<SoftwareRegistration>;
+  }
+
+  // Additional methods for licenses count and company hierarchy
+  async getActiveLicensesCount(): Promise<number> {
+    const rows = await database.query('SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"');
+    return rows[0]?.count || 0;
+  }
+
+  async getActiveLicensesCountByCompanyHierarchy(companyId: string): Promise<number> {
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const rows = await database.query(
+      `SELECT COUNT(*) as count FROM licenses l 
+       JOIN clients c ON l.client_id = c.id 
+       WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
+      companyIds
+    );
+    return rows[0]?.count || 0;
+  }
+
+  async getActiveLicensesCountByCompany(companyId: string): Promise<number> {
+    const rows = await database.query(
+      `SELECT COUNT(*) as count FROM licenses l 
+       JOIN clients c ON l.client_id = c.id 
+       WHERE l.status = "attiva" AND c.company_id = ?`,
+      [companyId]
+    );
+    return rows[0]?.count || 0;
+  }
+
+  async getCompanyHierarchy(companyId: string): Promise<string[]> {
+    console.log('getCompanyHierarchy: Starting with company', companyId);
+    
+    const hierarchy = [companyId];
+    
+    // Get all companies to build the tree
+    const allCompanies = await database.query('SELECT id, name, parent_id FROM companies WHERE status = "active"');
+    console.log('getCompanyHierarchy: All companies:', allCompanies);
+    
+    // Helper function to find all children of a company
+    const findChildren = (parentId: string): string[] => {
+      const children = allCompanies.filter((company: any) => company.parent_id === parentId);
+      console.log(`getCompanyHierarchy: Found ${children.length} subcompanies for parent ${parentId}:`, children);
+      let allChildren: string[] = [];
+      
+      for (const child of children) {
+        allChildren.push(child.id);
+        // Recursively find children of children
+        allChildren = allChildren.concat(findChildren(child.id));
+      }
+      
+      return allChildren;
+    };
+    
+    const subCompanies = findChildren(companyId);
+    hierarchy.push(...subCompanies);
+    
+    console.log(`getCompanyHierarchy: Final hierarchy for ${companyId}:`, hierarchy);
+    return hierarchy;
+  }
+
+  async getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]> {
+    console.log('getLicensesByCompanyHierarchy: Starting with company', companyId);
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    console.log('getLicensesByCompanyHierarchy: Company hierarchy IDs:', companyIds);
+    
+    const placeholders = companyIds.map(() => '?').join(',');
+    console.log('getLicensesByCompanyHierarchy: Executing query with placeholders:', placeholders);
+    console.log('getLicensesByCompanyHierarchy: Query parameters:', companyIds);
+    
+    const rows = await database.query(`
+      SELECT 
+        l.*,
+        c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
+        p.name as product_name, p.version as product_version,
+        comp.name as company_name
+      FROM licenses l
+      LEFT JOIN clients c ON l.client_id = c.id
+      LEFT JOIN products p ON l.product_id = p.id
+      LEFT JOIN companies comp ON l.assigned_company = comp.id
+      WHERE c.company_id IN (${placeholders})
+      ORDER BY l.created_at DESC
+    `, companyIds);
+    
+    console.log(`getLicensesByCompanyHierarchy: Query returned ${rows.length} raw rows`);
+    
+    // Debug information about company filtering
+    const allClients = await database.query('SELECT name, email, company_id FROM clients WHERE company_id IN (' + placeholders + ')', companyIds);
+    console.log('getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy companies:', allClients);
+    
+    const allLicensesWithClients = await database.query(`
+      SELECT l.id, l.activation_key, c.name as client_name, c.company_id as client_company_id
+      FROM licenses l
+      LEFT JOIN clients c ON l.client_id = c.id
+    `);
+    console.log('getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:', allLicensesWithClients);
+    
+    const matchingLicenses = allLicensesWithClients.filter((license: any) => companyIds.includes(license.client_company_id));
+    console.log('getLicensesByCompanyHierarchy: DEBUG - Licenses that should match our hierarchy:', matchingLicenses);
+    
+    const result = rows.map((row: any) => ({
+      id: row.id,
+      activationKey: row.activation_key,
+      licenseType: row.license_type,
+      status: row.status,
+      maxUsers: row.max_users,
+      maxDevices: row.max_devices,
+      expiryDate: row.expiry_date,
+      activationDate: row.activation_date,
+      computerKey: row.computer_key,
+      deviceInfo: row.device_info ? JSON.parse(row.device_info) : null,
+      price: parseFloat(row.price || '0'),
+      discount: parseFloat(row.discount || '0'),
+      activeModules: JSON.parse(row.active_modules || '[]'),
+      assignedCompany: row.assigned_company,
+      assignedAgent: row.assigned_agent,
+      createdAt: row.created_at,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        email: row.client_email,
+        status: row.client_status,
+        companyId: row.company_id,
+        contactInfo: {},
+        isMultiSite: false,
+        isMultiUser: false,
+        createdAt: new Date()
+      },
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        version: row.product_version,
+        description: '',
+        supportedLicenseTypes: [],
+        createdAt: new Date()
+      },
+      company: row.company_name ? {
+        id: row.assigned_company,
+        name: row.company_name,
+        type: '',
+        parentId: null,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    }));
+    
+    console.log(`getLicensesByCompanyHierarchy: Final result - returning ${result.length} licenses for company hierarchy ${companyId}`);
+    return result;
+  }
+
+  async getClientsByCompanyHierarchy(companyId: string): Promise<Client[]> {
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const rows = await database.query(
+      `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`,
+      companyIds
+    );
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      status: row.status,
+      companyId: row.company_id,
+      contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
+      isMultiSite: Boolean(row.is_multi_site),
+      isMultiUser: Boolean(row.is_multi_user),
+      createdAt: row.created_at
+    }));
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return this.getProducts();
+  }
+
+  // User management methods
+  async getUsers(companyId?: string): Promise<UserWithCompany[]> {
+    let sql = `
+      SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
+      FROM users u
+      LEFT JOIN companies c ON u.company_id = c.id
+      WHERE u.is_active = TRUE
+    `;
+    const params: any[] = [];
+
+    if (companyId) {
+      // If companyId is provided, filter by company hierarchy
+      const companyIds = await this.getCompanyHierarchy(companyId);
+      const placeholders = companyIds.map(() => '?').join(',');
+      sql += ` AND (u.company_id IN (${placeholders}) OR u.company_id IS NULL)`;
+      params.push(...companyIds);
+    }
+
+    sql += ' ORDER BY u.created_at DESC';
+
+    const rows = await database.query(sql, params);
+    
+    return rows.map((user: any) => ({
+      id: user.id,
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      companyId: user.company_id,
+      name: user.name,
+      email: user.email,
+      isActive: user.is_active,
+      createdAt: user.created_at,
+      company: user.company_id ? {
+        id: user.company_id,
+        name: user.company_name,
+        type: user.company_type,
+        parentId: user.company_parent_id,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
+    }));
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const setClauses = [];
+    const params = [];
+
+    if (updates.name !== undefined) {
+      setClauses.push('name = ?');
+      params.push(updates.name);
+    }
+    if (updates.email !== undefined) {
+      setClauses.push('email = ?');
+      params.push(updates.email);
+    }
+    if (updates.isActive !== undefined) {
+      setClauses.push('is_active = ?');
+      params.push(updates.isActive);
+    }
+    if (updates.password !== undefined) {
+      const hashedPassword = await bcrypt.hash(updates.password, 10);
+      setClauses.push('password = ?');
+      params.push(hashedPassword);
+    }
+
+    if (setClauses.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    params.push(id);
+
+    await database.query(
+      `UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`,
+      params
+    );
+
+    const updatedUser = await this.getUser(id);
+    if (!updatedUser) {
+      throw new Error('User not found after update');
+    }
+
+    return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await database.query('UPDATE users SET is_active = FALSE WHERE id = ?', [id]);
   }
 }
 
