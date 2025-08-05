@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,6 +35,7 @@ interface License {
 export default function LicensesPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,6 +108,13 @@ export default function LicensesPage() {
       setLocation('/login');
     }
   }, [user, loading, setLocation]);
+
+  // Clear React Query cache when user changes to prevent stale data
+  useEffect(() => {
+    if (user?.id) {
+      queryClient.invalidateQueries();
+    }
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -470,7 +478,8 @@ export default function LicensesPage() {
 
                 if (response.ok) {
                   setIsNewLicenseModalOpen(false);
-                  window.location.reload();
+                  // Invalida la cache invece di ricaricare la pagina
+                  queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
                 } else {
                   console.error('Failed to create license');
                 }
