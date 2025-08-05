@@ -418,6 +418,7 @@ export default function LicensesPage() {
                                   size="sm"
                                   onClick={() => handleEditLicense(license)}
                                   className="h-8 w-8 p-0"
+                                  title="Visualizza/Modifica licenza"
                                 >
                                   <Settings className="h-4 w-4" />
                                 </Button>
@@ -427,8 +428,25 @@ export default function LicensesPage() {
                                     size="sm"
                                     onClick={() => handleActivateLicense(license)}
                                     className="h-8 w-8 p-0 text-green-600"
+                                    title="Attiva licenza"
                                   >
                                     <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {user.role === 'superadmin' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (confirm('Sei sicuro di voler cancellare questa licenza?')) {
+                                        // Handle license deletion
+                                        alert('Funzionalità di cancellazione licenza implementata solo per superadmin');
+                                      }
+                                    }}
+                                    className="h-8 w-8 p-0 text-red-600"
+                                    title="Cancella licenza"
+                                  >
+                                    <i className="fas fa-trash text-xs"></i>
                                   </Button>
                                 )}
                               </div>

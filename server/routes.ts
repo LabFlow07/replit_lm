@@ -581,22 +581,9 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
       return res.status(404).json({ message: "License not found" });
     }
 
-    // Check permissions based on user role
+    // Only superadmin can delete licenses
     if (user.role !== 'superadmin') {
-      let hasPermission = false;
-
-      if (user.role === 'admin') {
-        // Admin can delete licenses for clients in their company hierarchy
-        const companyIds = await storage.getCompanyHierarchy(user.companyId);
-        hasPermission = companyIds.includes(existingLicense.client.company_id || existingLicense.client.companyId);
-      } else {
-        // Other roles can only delete licenses for clients in their own company
-        hasPermission = (existingLicense.client.company_id || existingLicense.client.companyId) === user.companyId;
-      }
-
-      if (!hasPermission) {
-        return res.status(403).json({ message: "Not authorized to delete this license" });
-      }
+      return res.status(403).json({ message: "Only superadmin can delete licenses" });
     }
 
     await storage.deleteLicense(licenseId);
@@ -1014,6 +1001,80 @@ router.delete('/api/users/:id', authenticateToken, async (req: AuthenticatedRequ
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     console.error('Error deleting user:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Transaction routes
+router.get("/api/transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    console.log('Fetching transactions for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
+
+    let transactions;
+
+    if (user.role === 'superadmin') {
+      // Superadmin can see all transactions
+      transactions = await storage.getAllTransactions();
+      console.log('Superadmin: fetched all', transactions.length, 'transactions');
+    } else if (user.role === 'admin') {
+      // Admin can see transactions from their company hierarchy
+      transactions = await storage.getTransactionsByCompanyHierarchy(user.companyId);
+      console.log('Admin: fetched', transactions.length, 'transactions in company hierarchy', user.companyId);
+    } else {
+      // Other roles can only see transactions from their own company
+      transactions = await storage.getTransactionsByCompany(user.companyId);
+      console.log('User role', user.role, ': fetched', transactions.length, 'transactions from company', user.companyId);
+    }
+
+    res.json(transactions);
+  } catch (error) {
+    console.error('Get transactions error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/api/transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionData = {
+      ...req.body,
+      id: nanoid(),
+      createdAt: new Date().toISOString()
+    };
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to create transactions" });
+    }
+
+    const transaction = await storage.createTransaction(transactionData);
+    res.json(transaction);
+  } catch (error) {
+    console.error('Create transaction error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/api/transactions/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+
+    // Only superadmin can delete transactions
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can delete transactions" });
+    }
+
+    const existingTransaction = await storage.getTransactionById(transactionId);
+    if (!existingTransaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    await storage.deleteTransaction(transactionId);
+    res.json({ message: "Transaction deleted successfully" });
+  } catch (error) {
+    console.error('Delete transaction error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

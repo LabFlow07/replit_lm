@@ -738,6 +738,70 @@ export class DatabaseStorage implements IStorage {
     return rows;
   }
 
+  async getAllTransactions(): Promise<Transaction[]> {
+    const rows = await database.query(
+      'SELECT * FROM transactions ORDER BY created_at DESC'
+    );
+    return rows;
+  }
+
+  async getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]> {
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+    
+    const rows = await database.query(`
+      SELECT t.* FROM transactions t
+      JOIN licenses l ON t.license_id = l.id
+      JOIN clients c ON l.client_id = c.id
+      WHERE c.company_id IN (${placeholders})
+      ORDER BY t.created_at DESC
+    `, companyIds);
+    return rows;
+  }
+
+  async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
+    const rows = await database.query(`
+      SELECT t.* FROM transactions t
+      JOIN licenses l ON t.license_id = l.id
+      JOIN clients c ON l.client_id = c.id
+      WHERE c.company_id = ?
+      ORDER BY t.created_at DESC
+    `, [companyId]);
+    return rows;
+  }
+
+  async getTransactionById(id: string): Promise<Transaction | null> {
+    const rows = await database.query(
+      'SELECT * FROM transactions WHERE id = ?',
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async createTransaction(transaction: any): Promise<Transaction> {
+    const id = transaction.id || randomUUID();
+    await database.query(`
+      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      transaction.licenseId,
+      transaction.type,
+      transaction.amount,
+      transaction.paymentMethod,
+      transaction.status || 'pending',
+      transaction.notes || '',
+      transaction.createdAt || new Date().toISOString()
+    ]);
+
+    const rows = await database.query('SELECT * FROM transactions WHERE id = ?', [id]);
+    return rows[0];
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    await database.query('DELETE FROM transactions WHERE id = ?', [id]);
+  }
+
   async logActivation(log: InsertActivationLog): Promise<void> {
     const id = randomUUID();
     await database.query(`

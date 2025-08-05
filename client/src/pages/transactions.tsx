@@ -5,6 +5,8 @@ import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 export default function TransactionsPage() {
   const { user, loading } = useAuth();
@@ -66,13 +68,19 @@ export default function TransactionsPage() {
     );
   };
 
+  const handleDeleteTransaction = (id: string) => {
+    console.log(`Deleting transaction: ${id}`);
+    // In a real app, you would call an API here to delete the transaction
+    // For now, we'll just log it and potentially remove it from the mock data if needed for state management
+  };
+
   return (
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      
+
       <main className="flex-1 ml-64 bg-surface">
         <TopBar />
-        
+
         <div className="p-6 space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Transazioni</h1>
@@ -153,6 +161,9 @@ export default function TransactionsPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metodo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                      {user.role === 'superadmin' && (
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -179,6 +190,19 @@ export default function TransactionsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(transaction.createdAt).toLocaleDateString('it-IT')}
                         </td>
+                        {user.role === 'superadmin' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTransaction(transaction.id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Cancella transazione"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
