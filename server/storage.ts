@@ -534,7 +534,8 @@ export class DatabaseStorage implements IStorage {
         l.*,
         c.name as client_name,
         c.email as client_email,
-        c.company_id as client_company_id,
+        c.status as client_status,
+        c.company_id,
         p.name as product_name,
         p.version as product_version,
         comp.name as company_name
@@ -790,7 +791,7 @@ export class DatabaseStorage implements IStorage {
         name: row.client_name,
         email: row.client_email,
         status: row.client_status,
-        companyId: row.company_id,
+        companyId: row.client_company_id || row.company_id,
         contactInfo: {},
         isMultiSite: false,
         isMultiUser: false,
