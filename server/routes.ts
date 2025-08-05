@@ -377,6 +377,75 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
   }
 });
 
+router.post("/api/clients", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const clientData = {
+      ...req.body,
+      id: nanoid(),
+      createdAt: new Date().toISOString()
+    };
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to create clients" });
+    }
+
+    // Validate company assignment for admin users
+    if (user.role === 'admin' && clientData.companyId) {
+      const companyIds = await storage.getCompanyHierarchy(user.companyId);
+      if (!companyIds.includes(clientData.companyId)) {
+        return res.status(403).json({ message: "Not authorized to create client for this company" });
+      }
+    }
+
+    const client = await storage.createClient(clientData);
+    res.json(client);
+  } catch (error) {
+    console.error('Create client error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/api/clienti/registrazione", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { name, email, companyId, status, isMultiSite, isMultiUser, contactInfo } = req.body;
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to create clients" });
+    }
+
+    // Validate company assignment for admin users
+    if (user.role === 'admin' && companyId) {
+      const companyIds = await storage.getCompanyHierarchy(user.companyId);
+      if (!companyIds.includes(companyId)) {
+        return res.status(403).json({ message: "Not authorized to create client for this company" });
+      }
+    }
+
+    const clientData = {
+      id: nanoid(),
+      name,
+      email,
+      companyId: companyId || user.companyId,
+      status: status || 'in_attesa',
+      isMultiSite: isMultiSite || false,
+      isMultiUser: isMultiUser || false,
+      contactInfo: contactInfo || {},
+      createdAt: new Date().toISOString()
+    };
+
+    const client = await storage.createClient(clientData);
+    console.log('Created new client:', client.name, 'for company:', clientData.companyId);
+    res.json(client);
+  } catch (error) {
+    console.error('Create client registration error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.post("/api/licenses", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

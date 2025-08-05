@@ -372,35 +372,44 @@ export default function ClientsPage() {
 
               try {
                 const token = localStorage.getItem('qlm_token');
+                const clientData = {
+                  name: formData.get('name') as string,
+                  email: formData.get('email') as string,
+                  companyId: formData.get('companyId') as string,
+                  status: 'convalidato',
+                  isMultiSite: formData.get('multiSite') === 'on',
+                  isMultiUser: formData.get('multiUser') === 'on',
+                  contactInfo: {
+                    phone: formData.get('phone') as string || '',
+                    company: formData.get('company') as string || ''
+                  }
+                };
+
+                console.log('Creating client with data:', clientData);
+
                 const response = await fetch('/api/clienti/registrazione', {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify({
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    companyId: formData.get('companyId'),
-                    status: 'convalidato',
-                    isMultiSite: formData.get('multiSite') === 'on',
-                    isMultiUser: formData.get('multiUser') === 'on',
-                    contactInfo: {
-                      phone: formData.get('phone'),
-                      company: formData.get('company')
-                    }
-                  })
+                  body: JSON.stringify(clientData)
                 });
 
                 if (response.ok) {
+                  const result = await response.json();
+                  console.log('Client created successfully:', result);
                   setIsNewModalOpen(false);
                   // Refresh clients list
                   window.location.reload();
                 } else {
-                  console.error('Failed to create client');
+                  const error = await response.json();
+                  console.error('Failed to create client:', error);
+                  alert(`Errore nella creazione del cliente: ${error.message || 'Errore sconosciuto'}`);
                 }
               } catch (error) {
                 console.error('Error creating client:', error);
+                alert('Errore di connessione durante la creazione del cliente');
               }
             }}>
               <div className="space-y-4">
