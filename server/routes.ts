@@ -814,6 +814,14 @@ router.patch('/api/users/:id', authenticateToken, async (req: AuthenticatedReque
     const userId = req.params.id;
     const updates = req.body;
 
+    // Check if username is being changed and if it already exists
+    if (updates.username) {
+      const existingUser = await storage.getUserByUsername(updates.username);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+    }
+
     // Additional checks for admin users
     if (req.user.role === 'admin') {
       const targetUser = await storage.getUser(userId);
@@ -831,6 +839,14 @@ router.patch('/api/users/:id', authenticateToken, async (req: AuthenticatedReque
         const hierarchy = await storage.getCompanyHierarchy(req.user.companyId);
         if (!hierarchy.includes(targetUser.companyId)) {
           return res.status(403).json({ message: "Cannot modify users outside your company hierarchy" });
+        }
+      }
+
+      // Admin cannot change company assignment outside their hierarchy
+      if (updates.companyId && req.user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(req.user.companyId);
+        if (!hierarchy.includes(updates.companyId)) {
+          return res.status(403).json({ message: "Cannot assign users to companies outside your hierarchy" });
         }
       }
     }

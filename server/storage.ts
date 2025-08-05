@@ -1271,6 +1271,10 @@ export class DatabaseStorage implements IStorage {
     const setClauses = [];
     const params = [];
 
+    if (updates.username !== undefined) {
+      setClauses.push('username = ?');
+      params.push(updates.username);
+    }
     if (updates.name !== undefined) {
       setClauses.push('name = ?');
       params.push(updates.name);
@@ -1278,6 +1282,10 @@ export class DatabaseStorage implements IStorage {
     if (updates.email !== undefined) {
       setClauses.push('email = ?');
       params.push(updates.email);
+    }
+    if (updates.companyId !== undefined) {
+      setClauses.push('company_id = ?');
+      params.push(updates.companyId);
     }
     if (updates.isActive !== undefined) {
       setClauses.push('is_active = ?');

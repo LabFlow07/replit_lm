@@ -468,22 +468,68 @@ export default function UsersPage() {
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
-              const updates = {
+              const updates: any = {
+                username: formData.get('username'),
                 name: formData.get('name'),
                 email: formData.get('email'),
                 isActive: formData.get('isActive') === 'true'
               };
+              
+              // Solo includi la password se è stata inserita
+              const password = formData.get('password') as string;
+              if (password && password.trim()) {
+                updates.password = password;
+              }
+              
               handleUpdateUser(editingUser.id, updates);
             }} className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Nome Completo</Label>
-                <Input id="edit-name" name="name" defaultValue={editingUser.name} required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-username">Username *</Label>
+                  <Input id="edit-username" name="username" defaultValue={editingUser.username} required />
+                </div>
+                <div>
+                  <Label htmlFor="edit-name">Nome Completo *</Label>
+                  <Input id="edit-name" name="name" defaultValue={editingUser.name} required />
+                </div>
               </div>
               
               <div>
-                <Label htmlFor="edit-email">Email</Label>
+                <Label htmlFor="edit-email">Email *</Label>
                 <Input id="edit-email" name="email" type="email" defaultValue={editingUser.email} required />
               </div>
+              
+              <div>
+                <Label htmlFor="edit-password">Nuova Password</Label>
+                <Input 
+                  id="edit-password" 
+                  name="password" 
+                  type="password" 
+                  placeholder="Lascia vuoto per mantenere la password attuale"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inserisci una nuova password solo se vuoi cambiarla
+                </p>
+              </div>
+
+              {user.role === 'superadmin' && editingUser.company && (
+                <div>
+                  <Label htmlFor="edit-company">Azienda</Label>
+                  <Select name="companyId" defaultValue={editingUser.companyId || ''}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona azienda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nessuna azienda</SelectItem>
+                      {companies.map((company: Company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name} ({company.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div>
                 <Label htmlFor="edit-isActive">Stato</Label>
@@ -503,7 +549,7 @@ export default function UsersPage() {
                   Annulla
                 </Button>
                 <Button type="submit" disabled={updateUserMutation.isPending}>
-                  {updateUserMutation.isPending ? 'Aggiornamento...' : 'Aggiorna'}
+                  {updateUserMutation.isPending ? 'Aggiornamento...' : 'Aggiorna Utente'}
                 </Button>
               </div>
             </form>
