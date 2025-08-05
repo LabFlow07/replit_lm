@@ -1300,7 +1300,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await database.query('UPDATE users SET is_active = FALSE WHERE id = ?', [id]);
+    await database.query('DELETE FROM users WHERE id = ?', [id]);
   }
 }
 
