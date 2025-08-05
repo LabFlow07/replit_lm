@@ -48,7 +48,7 @@ export default function UsersPage() {
 
   // Fetch users based on role permissions
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['/api/users'],
+    queryKey: ['/api/users', user?.id, user?.role, user?.companyId],
     enabled: !!user,
     queryFn: async () => {
       const token = localStorage.getItem('qlm_token');
@@ -62,7 +62,7 @@ export default function UsersPage() {
 
   // Fetch companies for user creation
   const { data: companies = [] } = useQuery({
-    queryKey: ['/api/companies'],
+    queryKey: ['/api/companies', user?.id, user?.role, user?.companyId],
     enabled: !!user,
     queryFn: async () => {
       const token = localStorage.getItem('qlm_token');
@@ -155,6 +155,13 @@ export default function UsersPage() {
       setLocation('/login');
     }
   }, [user, loading, setLocation]);
+
+  // Clear React Query cache when user changes to prevent stale data
+  useEffect(() => {
+    if (user?.id) {
+      queryClient.invalidateQueries();
+    }
+  }, [user?.id, queryClient]);
 
   if (loading) {
     return (
