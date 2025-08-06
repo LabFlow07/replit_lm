@@ -99,6 +99,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Define logout function before using it
+  const logout = () => {
+    localStorage.removeItem('qlm_token');
+    setUser(null);
+    setLocation('/login');
+  };
+
+  const forceReauth = () => {
+    localStorage.removeItem('qlm_token');
+    setUser(null);
+    setLoading(false);
+    setLocation('/login'); // Ensure redirect on forced reauthentication
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('qlm_token');
@@ -129,7 +143,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => clearInterval(interval); // Cleanup interval on component unmount or user change
   }, [user, logout, setLocation]); // Rerun effect if user, logout, or setLocation changes
-
 
   const login = async (username: string, password: string) => {
     try {
@@ -172,7 +185,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         company: userData.company
       });
 
-
       setLoading(false);
       console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
     } catch (error) {
@@ -180,39 +192,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null);
       setLoading(false);
       throw error;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('qlm_token');
-    setUser(null);
-    setLocation('/login');
-  };
-
-  const forceReauth = () => {
-    localStorage.removeItem('qlm_token');
-    setUser(null);
-    setLoading(false);
-    setLocation('/login'); // Ensure redirect on forced reauthentication
-  };
-
-  // Function to manually update token (for debugging)
-  const updateToken = (newToken: string) => {
-    localStorage.setItem('qlm_token', newToken);
-    try {
-      const payload = JSON.parse(atob(newToken.split('.')[1]));
-      setUser({
-        id: payload.id,
-        username: payload.username,
-        name: payload.name || payload.username,
-        email: payload.email || '',
-        role: payload.role,
-        companyId: payload.companyId || null,
-        company: undefined // Company data might need to be fetched separately if not in token
-      });
-      console.log('Token updated successfully:', payload);
-    } catch (e) {
-      console.error('Error parsing new token:', e);
     }
   };
 
