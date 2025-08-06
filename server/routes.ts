@@ -523,7 +523,7 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
 
     console.log('Creating license with data:', licenseData);
     const license = await storage.createLicense(licenseData);
-    
+
     console.log('License created successfully:', license.id);
     res.json(license);
   } catch (error) {
@@ -539,7 +539,7 @@ router.put("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
     const updateData = req.body;
 
     // Get the existing license
-    const existingLicense = await storage.getLicenseById(licenseId);
+    const existingLicense = await storage.getLicense(licenseId);
     if (!existingLicense) {
       return res.status(404).json({ message: "License not found" });
     }
@@ -843,7 +843,7 @@ router.post("/api/demo/populate", authenticateToken, async (req: Request, res: R
 router.get('/api/users', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     console.log(`Fetching users for user: ${req.user.username} Role: ${req.user.role} Company ID: ${req.user.companyId}`);
-    
+
     let users;
     if (req.user.role === 'superadmin') {
       // Superadmin can see all users including inactive ones

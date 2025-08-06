@@ -668,6 +668,10 @@ export class DatabaseStorage implements IStorage {
     await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
   }
 
+  async deleteLicense(id: string): Promise<void> {
+    await database.query('DELETE FROM licenses WHERE id = ?', [id]);
+  }
+
   async activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License> {
     const license = await this.getLicenseByActivationKey(activationKey);
     if (!license) {
