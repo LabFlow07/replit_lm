@@ -43,58 +43,93 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
+  const checkTokenValidity = async (): Promise<boolean> => {
     const token = localStorage.getItem('qlm_token');
-    if (token) {
+    if (!token) {
+      return false;
+    }
+
+    try {
       // Validate token with a simple API call
-      fetch('/api/dashboard/stats', {
+      const response = await fetch('/api/dashboard/stats', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
-      })
-      .then(response => {
-        if (response.ok) {
-          // Token is valid, try to get user info from JWT payload
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('Token payload on validation:', payload);
-            console.log('CompanyId from token:', payload.companyId);
+      });
 
-            // Log the full payload to debug
-            console.log('Full token payload:', payload);
-            console.log('CompanyId from token payload:', payload.companyId);
+      if (response.ok) {
+        // Token is valid, try to get user info from JWT payload
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('Token payload on validation:', payload);
+          console.log('CompanyId from token:', payload.companyId);
 
-            setUser({
-              id: payload.id,
-              username: payload.username,
-              name: payload.name || payload.username,
-              email: payload.email || '',
-              role: payload.role,
-              companyId: payload.companyId || null,
-              company: undefined
-            });
-          } catch (e) {
-            console.error('Error parsing token:', e);
-            localStorage.removeItem('qlm_token');
-          }
-        } else {
-          // Token is invalid
-          console.log('Token invalid, clearing and redirecting to login...');
+          // Log the full payload to debug
+          console.log('Full token payload:', payload);
+          console.log('CompanyId from token payload:', payload.companyId);
+
+          setUser({
+            id: payload.id,
+            username: payload.username,
+            name: payload.name || payload.username,
+            email: payload.email || '',
+            role: payload.role,
+            companyId: payload.companyId || null,
+            company: undefined // Company data might need to be fetched separately if not in token
+          });
+          return true;
+        } catch (e) {
+          console.error('Error parsing token:', e);
           localStorage.removeItem('qlm_token');
           setUser(null);
+          return false;
         }
-        setLoading(false);
-      })
-      .catch(() => {
-        console.log('Token verification failed, clearing token...');
+      } else {
+        // Token is invalid
+        console.log('Token invalid, clearing and redirecting to login...');
         localStorage.removeItem('qlm_token');
         setUser(null);
-        setLoading(false);
-      });
-    } else {
-      setLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      localStorage.removeItem('qlm_token');
+      setUser(null);
+      return false;
     }
-  }, []);
+  };
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('qlm_token');
+      if (token) {
+        const isValid = await checkTokenValidity();
+        if (!isValid) {
+          setLocation('/login'); // Redirect to login if token is invalid on initial load
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+  }, [setLocation]); // Depend on setLocation for redirection
+
+  // Check token validity periodically
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (user) { // Only check if there's a user logged in
+        const isValid = await checkTokenValidity();
+        if (!isValid) {
+          console.log('Token expired, user will be redirected to login');
+          logout(); // Use logout to handle state reset and redirection
+          setLocation('/login'); // Explicitly redirect to login
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(interval); // Cleanup interval on component unmount or user change
+  }, [user, logout, setLocation]); // Rerun effect if user, logout, or setLocation changes
+
 
   const login = async (username: string, password: string) => {
     try {
@@ -118,24 +153,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Ensure companyId is properly set from login response
       const userData = data.user;
-    console.log('Login successful, user data received:', userData);
+      console.log('Login successful, user data received:', userData);
 
-    // Set user data from response - ensure all company data is properly mapped
-    setUser({
-      id: userData.id,
-      username: userData.username,
-      name: userData.name,
-      email: userData.email, 
-      role: userData.role,
-      companyId: userData.companyId || userData.company_id,
-      company: userData.company
-    });
+      // Set user data from response - ensure all company data is properly mapped
+      setUser({
+        id: userData.id,
+        username: userData.username,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        companyId: userData.companyId || userData.company_id,
+        company: userData.company
+      });
 
-    console.log('User state set with company info:', {
-      role: userData.role,
-      companyId: userData.companyId || userData.company_id,
-      company: userData.company
-    });
+      console.log('User state set with company info:', {
+        role: userData.role,
+        companyId: userData.companyId || userData.company_id,
+        company: userData.company
+      });
 
 
       setLoading(false);
@@ -158,6 +193,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('qlm_token');
     setUser(null);
     setLoading(false);
+    setLocation('/login'); // Ensure redirect on forced reauthentication
   };
 
   // Function to manually update token (for debugging)
@@ -172,7 +208,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         email: payload.email || '',
         role: payload.role,
         companyId: payload.companyId || null,
-        company: undefined
+        company: undefined // Company data might need to be fetched separately if not in token
       });
       console.log('Token updated successfully:', payload);
     } catch (e) {

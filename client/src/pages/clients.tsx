@@ -30,6 +30,29 @@ export default function ClientsPage() {
     }
   }, [user, loading, setLocation]);
 
+  // Helper function to check token validity
+  const checkTokenValidity = async () => {
+    const token = localStorage.getItem('qlm_token');
+    if (!token) return false;
+
+    try {
+      // Assuming a /api/auth/validate endpoint that checks token validity and returns true/false or a status
+      const response = await fetch('/api/auth/validate', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.isValid; // Assuming the API returns { isValid: true } or { isValid: false }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      return false;
+    }
+  };
+
   // Fetch clients
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients', user?.companyId],
@@ -44,7 +67,14 @@ export default function ClientsPage() {
           'Content-Type': 'application/json'
         }
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('La sessione è scaduta. Verrai reindirizzato al login.');
+          setLocation('/login');
+          return []; // Return empty array if redirected
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       console.log('Raw clients data received:', data.length, 'clients');
 
@@ -66,7 +96,14 @@ export default function ClientsPage() {
           'Content-Type': 'application/json'
         }
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('La sessione è scaduta. Verrai reindirizzato al login.');
+          setLocation('/login');
+          return []; // Return empty array if redirected
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       return response.json();
     },
   });
@@ -74,6 +111,24 @@ export default function ClientsPage() {
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
     enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/licenses', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('La sessione è scaduta. Verrai reindirizzato al login.');
+          setLocation('/login');
+          return []; // Return empty array if redirected
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
   });
 
   // Function to get company name by ID
@@ -97,14 +152,14 @@ export default function ClientsPage() {
     // Function to get accessible companies for admin (simulated hierarchy)
     const getAccessibleCompanies = () => {
         if (!user?.companyId || !companies) return [];
-        
+
         // Build company hierarchy - include user's company and all its subcompanies
         const hierarchy: any[] = [];
         const userCompany = companies.find((c: any) => c.id === user.companyId);
-        
+
         if (userCompany) {
             hierarchy.push(userCompany);
-            
+
             // Find all subcompanies recursively
             const findSubcompanies = (parentId: string) => {
                 const subcompanies = companies.filter((c: any) => 
@@ -115,10 +170,10 @@ export default function ClientsPage() {
                     findSubcompanies(sub.id);
                 });
             };
-            
+
             findSubcompanies(user.companyId);
         }
-        
+
         console.log(`getAccessibleCompanies for admin ${user.username}:`, hierarchy.map(c => ({id: c.id, name: c.name})));
         return hierarchy;
     };
@@ -401,30 +456,39 @@ export default function ClientsPage() {
             </DialogHeader>
             <form onSubmit={async (e) => {
               e.preventDefault();
+
+              // Check token validity before proceeding
+              const tokenValid = await checkTokenValidity();
+              if (!tokenValid) {
+                alert('La sessione è scaduta. Verrai reindirizzato al login.');
+                setLocation('/login');
+                return;
+              }
+
               const formData = new FormData(e.target as HTMLFormElement);
 
+              const clientData = {
+                name: formData.get('name') as string,
+                email: formData.get('email') as string,
+                companyId: formData.get('companyId') as string,
+                // The status field was missing in the original form data but present in the original logic,
+                // so it's kept here assuming it might be managed elsewhere or needs a default.
+                // If it's intended to be a selectable field, it should be added to the form.
+                status: 'convalidato', // Defaulting to 'convalidato' as per original logic if not in form
+                isMultiSite: formData.get('multiSite') === 'on',
+                isMultiUser: formData.get('multiUser') === 'on',
+                contactInfo: {
+                  phone: formData.get('phone') as string || '',
+                  company: formData.get('company') as string || ''
+                }
+              };
+
               try {
-                const token = localStorage.getItem('qlm_token');
-                const clientData = {
-                  name: formData.get('name') as string,
-                  email: formData.get('email') as string,
-                  companyId: formData.get('companyId') as string,
-                  status: 'convalidato',
-                  isMultiSite: formData.get('multiSite') === 'on',
-                  isMultiUser: formData.get('multiUser') === 'on',
-                  contactInfo: {
-                    phone: formData.get('phone') as string || '',
-                    company: formData.get('company') as string || ''
-                  }
-                };
-
-                console.log('Creating client with data:', clientData);
-
                 const response = await fetch('/api/clienti/registrazione', {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('qlm_token')}` // Use qlm_token consistently
                   },
                   body: JSON.stringify(clientData)
                 });
@@ -435,6 +499,9 @@ export default function ClientsPage() {
                   setIsNewModalOpen(false);
                   // Refresh clients list
                   window.location.reload();
+                } else if (response.status === 401 || response.status === 403) {
+                  alert('La sessione è scaduta. Verrai reindirizzato al login.');
+                  setLocation('/login');
                 } else {
                   const error = await response.json();
                   console.error('Failed to create client:', error);
