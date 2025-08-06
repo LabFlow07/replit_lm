@@ -199,11 +199,11 @@ export class DatabaseStorage implements IStorage {
     const updateFields = [];
     const updateValues = [];
 
-    if (updates.name) {
+    if (updates.name !== undefined) {
       updateFields.push('name = ?');
       updateValues.push(updates.name);
     }
-    if (updates.type) {
+    if (updates.type !== undefined) {
       updateFields.push('type = ?');
       updateValues.push(updates.type);
     }
@@ -211,26 +211,56 @@ export class DatabaseStorage implements IStorage {
       updateFields.push('parent_id = ?');
       updateValues.push(updates.parentId);
     }
-    if (updates.status) {
+    if (updates.status !== undefined) {
       updateFields.push('status = ?');
       updateValues.push(updates.status);
     }
-    if (updates.contactInfo) {
+    if (updates.contactInfo !== undefined) {
       updateFields.push('contact_info = ?');
       updateValues.push(JSON.stringify(updates.contactInfo));
     }
 
+    if (updateFields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
     updateValues.push(id);
+
+    console.log('Executing update query:', `UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?`);
+    console.log('With values:', updateValues);
 
     await database.query(`
       UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?
     `, updateValues);
 
     const updatedCompany = await this.getCompany(id);
-    return updatedCompany!;
+    if (!updatedCompany) {
+      throw new Error('Company not found after update');
+    }
+
+    // Normalize the response
+    return {
+      ...updatedCompany,
+      parentId: updatedCompany.parent_id,
+      contactInfo: typeof updatedCompany.contact_info === 'string' 
+        ? JSON.parse(updatedCompany.contact_info) 
+        : (updatedCompany.contact_info || {})
+    };
   }
 
   async deleteCompany(id: string): Promise<void> {
+    // First check if company has clients
+    const clients = await database.query('SELECT COUNT(*) as count FROM clients WHERE company_id = ?', [id]);
+    if (clients[0].count > 0) {
+      throw new Error('Cannot delete company with existing clients');
+    }
+
+    // Check if company has subcompanies
+    const subcompanies = await database.query('SELECT COUNT(*) as count FROM companies WHERE parent_id = ?', [id]);
+    if (subcompanies[0].count > 0) {
+      throw new Error('Cannot delete company with subcompanies');
+    }
+
     await database.query('DELETE FROM companies WHERE id = ?', [id]);
   }
 
