@@ -271,12 +271,36 @@ router.delete("/api/companies/:id", authenticateToken, async (req: Request, res:
       return res.status(404).json({ message: "Company not found" });
     }
 
-    console.log(`Found company to delete: ${existingCompany.name}`);
+    console.log(`Found company to delete: ${existingCompany.name} (${existingCompany.id})`);
+
+    // Check if company has clients before attempting deletion
+    const clients = await storage.getClientsByCompany(companyId);
+    if (clients.length > 0) {
+      return res.status(400).json({ 
+        message: `Cannot delete company "${existingCompany.name}" because it has ${clients.length} associated clients. Please move or remove all clients first.` 
+      });
+    }
+
+    // Get subcompanies info for logging
+    const allCompanies = await storage.getAllCompanies();
+    const subcompanies = allCompanies.filter((company: any) => 
+      (company.parent_id === companyId || company.parentId === companyId)
+    );
+
+    if (subcompanies.length > 0) {
+      console.log(`Company ${existingCompany.name} has ${subcompanies.length} subcompanies that will be moved to parent`);
+    }
 
     await storage.deleteCompany(companyId);
     console.log(`Company ${existingCompany.name} deleted successfully`);
     
-    res.json({ message: "Company deleted successfully" });
+    res.json({ 
+      message: "Company deleted successfully",
+      details: {
+        deletedCompany: existingCompany.name,
+        movedSubcompanies: subcompanies.length
+      }
+    });
   } catch (error) {
     console.error('Delete company error:', error);
     if (error instanceof Error) {

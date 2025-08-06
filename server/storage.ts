@@ -249,28 +249,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCompany(id: string): Promise<void> {
+    console.log(`deleteCompany: Starting deletion for company ID: ${id}`);
+    
     // First check if company has clients
     const clients = await database.query('SELECT COUNT(*) as count FROM clients WHERE company_id = ?', [id]);
+    console.log(`deleteCompany: Found ${clients[0].count} clients for company ${id}`);
+    
     if (clients[0].count > 0) {
       throw new Error('Cannot delete company with existing clients');
     }
 
     // Get the company to find its parent
-    const company = await database.query('SELECT parent_id FROM companies WHERE id = ?', [id]);
+    const company = await database.query('SELECT parent_id, name FROM companies WHERE id = ?', [id]);
     if (company.length === 0) {
       throw new Error('Company not found');
     }
 
     const parentId = company[0].parent_id;
+    const companyName = company[0].name;
+    console.log(`deleteCompany: Company ${companyName} has parent_id: ${parentId}`);
 
-    // Move subcompanies to the parent company (or make them root if no parent)
-    await database.query(
-      'UPDATE companies SET parent_id = ? WHERE parent_id = ?', 
-      [parentId, id]
-    );
+    // Check for subcompanies
+    const subcompanies = await database.query('SELECT id, name FROM companies WHERE parent_id = ?', [id]);
+    console.log(`deleteCompany: Found ${subcompanies.length} subcompanies for company ${id}`);
+
+    if (subcompanies.length > 0) {
+      console.log(`deleteCompany: Moving ${subcompanies.length} subcompanies to parent ${parentId || 'root'}`);
+      
+      // Move subcompanies to the parent company (or make them root if no parent)
+      const result = await database.query(
+        'UPDATE companies SET parent_id = ? WHERE parent_id = ?', 
+        [parentId, id]
+      );
+      console.log(`deleteCompany: Updated ${result.affectedRows || 'unknown'} subcompanies`);
+    }
 
     // Now delete the company
-    await database.query('DELETE FROM companies WHERE id = ?', [id]);
+    console.log(`deleteCompany: Deleting company ${companyName} (${id})`);
+    const deleteResult = await database.query('DELETE FROM companies WHERE id = ?', [id]);
+    console.log(`deleteCompany: Delete result - affected rows: ${deleteResult.affectedRows || 'unknown'}`);
+    
+    if (deleteResult.affectedRows === 0) {
+      throw new Error('Company deletion failed - no rows affected');
+    }
+    
+    console.log(`deleteCompany: Successfully deleted company ${companyName}`);
   }
 
   async getProducts(): Promise<Product[]> {
