@@ -405,6 +405,7 @@ export default function ProductsPage() {
                         <Button 
                           variant="outline" 
                           size="sm"
+                          className="mr-2"
                           onClick={() => {
                             setSelectedProduct(product);
                             setIsEditModalOpen(true);
@@ -413,6 +414,39 @@ export default function ProductsPage() {
                           <i className="fas fa-edit mr-1"></i>
                           Modifica
                         </Button>
+                        {user?.role === 'superadmin' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                            onClick={async () => {
+                              if (confirm(`Sei sicuro di voler eliminare il prodotto "${product.name}"? Questa azione non può essere annullata.`)) {
+                                try {
+                                  const response = await fetch(`/api/products/${product.id}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                      'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+                                    }
+                                  });
+
+                                  if (response.ok) {
+                                    // Refresh the page to show updated list
+                                    window.location.reload();
+                                  } else {
+                                    const error = await response.json();
+                                    alert(`Errore nell'eliminazione: ${error.message}`);
+                                  }
+                                } catch (error) {
+                                  console.error('Error deleting product:', error);
+                                  alert('Errore di connessione durante l\'eliminazione del prodotto');
+                                }
+                              }
+                            }}
+                          >
+                            <i className="fas fa-trash mr-1"></i>
+                            Elimina
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

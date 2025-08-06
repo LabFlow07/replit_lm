@@ -430,6 +430,20 @@ export class DatabaseStorage implements IStorage {
     await database.query('DELETE FROM clients WHERE id = ?', [id]);
   }
 
+  async getProductById(id: string): Promise<any> {
+    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  async getLicensesByProduct(productId: string): Promise<any[]> {
+    const rows = await database.query('SELECT * FROM licenses WHERE product_id = ?', [productId]);
+    return rows;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await database.query('DELETE FROM products WHERE id = ?', [id]);
+  }
+
   async getLicenses(filters?: any): Promise<LicenseWithDetails[]> {
     let query = `
       SELECT 

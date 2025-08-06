@@ -1079,6 +1079,37 @@ router.post("/api/transactions", authenticateToken, async (req: Request, res: Re
   }
 });
 
+router.delete("/api/products/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const productId = req.params.id;
+
+    // Only superadmin can delete products
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can delete products" });
+    }
+
+    const existingProduct = await storage.getProductById(productId);
+    if (!existingProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Check if product has active licenses
+    const productLicenses = await storage.getLicensesByProduct(productId);
+    if (productLicenses.length > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete product with active licenses. Please remove all licenses first." 
+      });
+    }
+
+    await storage.deleteProduct(productId);
+    res.json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.delete("/api/transactions/:id", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
