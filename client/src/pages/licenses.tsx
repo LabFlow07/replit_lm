@@ -437,10 +437,31 @@ export default function LicensesPage() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => {
-                                      if (confirm('Sei sicuro di voler cancellare questa licenza?')) {
-                                        // Handle license deletion
-                                        alert('Funzionalità di cancellazione licenza implementata solo per superadmin');
+                                    onClick={async () => {
+                                      if (confirm('Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.')) {
+                                        try {
+                                          const token = localStorage.getItem('qlm_token');
+                                          const response = await fetch(`/api/licenses/${license.id}`, {
+                                            method: 'DELETE',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`,
+                                              'Content-Type': 'application/json'
+                                            }
+                                          });
+
+                                          if (response.ok) {
+                                            // Invalida la cache e ricarica i dati
+                                            queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                                            // Ricarica anche la pagina per essere sicuri
+                                            setTimeout(() => window.location.reload(), 500);
+                                          } else {
+                                            const errorData = await response.json().catch(() => ({}));
+                                            alert(`Errore nella cancellazione: ${errorData.message || 'Errore sconosciuto'}`);
+                                          }
+                                        } catch (error) {
+                                          console.error('Error deleting license:', error);
+                                          alert('Errore nella cancellazione della licenza');
+                                        }
                                       }
                                     }}
                                     className="h-8 w-8 p-0 text-red-600"
