@@ -255,12 +255,21 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Cannot delete company with existing clients');
     }
 
-    // Check if company has subcompanies
-    const subcompanies = await database.query('SELECT COUNT(*) as count FROM companies WHERE parent_id = ?', [id]);
-    if (subcompanies[0].count > 0) {
-      throw new Error('Cannot delete company with subcompanies');
+    // Get the company to find its parent
+    const company = await database.query('SELECT parent_id FROM companies WHERE id = ?', [id]);
+    if (company.length === 0) {
+      throw new Error('Company not found');
     }
 
+    const parentId = company[0].parent_id;
+
+    // Move subcompanies to the parent company (or make them root if no parent)
+    await database.query(
+      'UPDATE companies SET parent_id = ? WHERE parent_id = ?', 
+      [parentId, id]
+    );
+
+    // Now delete the company
     await database.query('DELETE FROM companies WHERE id = ?', [id]);
   }
 

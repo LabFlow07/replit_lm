@@ -57,7 +57,7 @@ export default function CompaniesPage() {
     role: 'cliente',
     status: 'active'
   });
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,25 +76,25 @@ export default function CompaniesPage() {
       if (!token) {
         throw new Error('No authentication token found');
       }
-      
+
       const response = await fetch('/api/companies', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (response.status === 401 || response.status === 403) {
         // Token scaduto o invalido, reindirizza al login
         localStorage.removeItem('qlm_token');
         setLocation('/login');
         throw new Error('Authentication failed');
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Companies data received:', data);
       return data;
@@ -166,7 +166,7 @@ export default function CompaniesPage() {
       const parentId = company.parent_id || company.parentId;
       // Check if parentId is null, undefined, 0, '0', or empty string
       const isRoot = !parentId || parentId === '0' || parentId === 0 || parentId === '';
-      
+
       if (!isRoot) {
         const parent = companyMap.get(parentId);
         if (parent) {
@@ -190,17 +190,17 @@ export default function CompaniesPage() {
       console.log('No user found');
       return [];
     }
-    
+
     console.log('User role:', user.role);
     console.log('User company ID:', user.companyId);
     console.log('Companies array length:', companies.length);
-    
+
     // Superadmin vede tutto
     if (user.role === 'superadmin') {
       console.log('Superadmin: returning all companies');
       return companies as any[];
     }
-    
+
     // Admin vede la sua azienda e le sue sotto-aziende
     if (user.role === 'admin') {
       const userCompanyId = user.companyId;
@@ -208,31 +208,31 @@ export default function CompaniesPage() {
         console.log('Admin without company ID: returning empty array');
         return [];
       }
-      
+
       // Trova l'azienda dell'admin e tutte le sue sotto-aziende (ricorsivamente)
       const getCompanyHierarchy = (companyId: string): string[] => {
         const result = [companyId];
         const children = (companies as any[]).filter((c: any) => 
           c.parent_id === companyId || c.parentId === companyId
         );
-        
+
         children.forEach(child => {
           result.push(...getCompanyHierarchy(child.id));
         });
-        
+
         return result;
       };
-      
+
       const accessibleIds = getCompanyHierarchy(userCompanyId);
       const filtered = (companies as any[]).filter((company: any) => 
         accessibleIds.includes(company.id)
       );
-      
+
       console.log(`Admin: user company ${userCompanyId}, hierarchy IDs:`, accessibleIds);
       console.log(`Admin: filtered ${filtered.length} companies from ${companies.length}`);
       return filtered;
     }
-    
+
     // Altri ruoli vedono tutte le aziende per ora
     console.log('Other role: returning all companies');
     return companies as any[];
@@ -242,15 +242,15 @@ export default function CompaniesPage() {
   const filteredHierarchy = useMemo(() => {
     console.log('filteredHierarchy: User role:', user?.role);
     console.log('filteredHierarchy: All companies count:', companies.length);
-    
+
     if (!companies || companies.length === 0) {
       console.log('No companies available');
       return [];
     }
-    
+
     const accessibleCompanies = getAccessibleCompanies();
     console.log('filteredHierarchy: Accessible companies count:', accessibleCompanies.length);
-    
+
     // Create hierarchy from accessible companies only
     const companyMap = new Map();
     const rootCompanies: any[] = [];
@@ -264,7 +264,7 @@ export default function CompaniesPage() {
     accessibleCompanies.forEach((company: any) => {
       const parentId = company.parent_id || company.parentId;
       const isRoot = !parentId || parentId === '0' || parentId === 0 || parentId === '';
-      
+
       if (!isRoot) {
         const parent = companyMap.get(parentId);
         if (parent) {
@@ -277,28 +277,28 @@ export default function CompaniesPage() {
         rootCompanies.push(companyMap.get(company.id));
       }
     });
-    
+
     if (!searchTerm && typeFilter === "all") {
       return rootCompanies;
     }
 
     const filterCompany = (company: any): any => {
       if (!company) return null;
-      
+
       const matchesSearch = !searchTerm || 
         company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.contact_info && JSON.parse(company.contact_info).email?.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+
       const matchesType = typeFilter === "all" || company.type === typeFilter;
-      
+
       const filteredChildren = company.children?.map(filterCompany).filter(Boolean) || [];
-      
+
       if (matchesSearch && matchesType) {
         return { ...company, children: filteredChildren };
       } else if (filteredChildren.length > 0) {
         return { ...company, children: filteredChildren };
       }
-      
+
       return null;
     };
 
@@ -522,7 +522,7 @@ export default function CompaniesPage() {
                     <i className={`fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'} text-xs`}></i>
                   </Button>
                 )}
-                
+
                 <div className="flex items-center space-x-2">
                   <i className={`${getTypeIcon(company.type)} text-blue-600`}></i>
                   <div>
@@ -545,9 +545,9 @@ export default function CompaniesPage() {
                     <i className="fas fa-users mr-1"></i>
                     {clientCount} clienti
                   </button>
-                  
+
                   <span className="text-gray-300">|</span>
-                  
+
                   <span className="flex items-center">
                     <i className="fas fa-user-tie mr-1"></i>
                     {agentCount} agenti
@@ -569,7 +569,7 @@ export default function CompaniesPage() {
                       >
                         <i className="fas fa-key text-purple-600"></i>
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
                         size="sm"
@@ -583,7 +583,7 @@ export default function CompaniesPage() {
                       </Button>
                     </>
                   )}
-                  
+
                   {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore' || 
                     (user?.role === 'agente' && company.id === user?.companyId)) && (
                     <Button
@@ -598,7 +598,7 @@ export default function CompaniesPage() {
                       <i className="fas fa-user-tie text-blue-600"></i>
                     </Button>
                   )}
-                  
+
                   {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore' || 
                     (user?.role === 'agente' && company.id === user?.companyId)) && (
                     <Button
@@ -664,18 +664,17 @@ export default function CompaniesPage() {
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Clienti ({clientCount})</h4>
                       <div className="space-y-1">
-                        {(clients as any[])
-                          .filter((client: any) => (client.company_id || client.companyId) === company.id)
-                          .slice(0, 3)
-                          .map((client: any) => (
-                            <div key={client.id} className="flex items-center text-sm text-gray-600">
-                              <i className="fas fa-user text-green-500 mr-2"></i>
-                              <span>{client.name}</span>
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                {client.status}
-                              </Badge>
-                            </div>
-                          ))}
+                        {(clients as any[]).filter((client: any) => 
+                          (client.company_id || client.companyId) === company.id
+                        ).slice(0, 3).map((client: any) => (
+                          <div key={client.id} className="flex items-center text-sm text-gray-600">
+                            <i className="fas fa-user text-green-500 mr-2"></i>
+                            <span>{client.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {client.status}
+                            </Badge>
+                          </div>
+                        ))}
                         {clientCount > 3 && (
                           <div className="text-sm text-gray-500">
                             ...e altri {clientCount - 3} clienti
@@ -738,10 +737,10 @@ export default function CompaniesPage() {
   return (
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      
+
       <main className="flex-1 ml-64 bg-surface">
         <TopBar />
-        
+
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -753,7 +752,7 @@ export default function CompaniesPage() {
                  'Visualizza i dettagli della tua azienda'}
               </p>
             </div>
-            
+
             {(user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'rivenditore') && (
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
@@ -778,7 +777,7 @@ export default function CompaniesPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1"
                 />
-                
+
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger className="md:w-48">
                     <SelectValue placeholder="Tipo azienda" />
@@ -791,7 +790,7 @@ export default function CompaniesPage() {
                     <SelectItem value="cliente">Cliente</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Button 
                   variant="outline"
                   onClick={() => {
@@ -858,7 +857,7 @@ export default function CompaniesPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="type">Tipo</Label>
               <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
@@ -957,7 +956,7 @@ export default function CompaniesPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="agentEmail">Email</Label>
               <Input
@@ -1027,7 +1026,7 @@ export default function CompaniesPage() {
               Gestisci le credenziali di accesso degli utenti dell'azienda. 
               Puoi modificare username, password e ruoli.
             </div>
-            
+
             {/* Users Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b">
@@ -1072,7 +1071,7 @@ export default function CompaniesPage() {
                       </div>
                     </div>
                   ))}
-                
+
                 {(users as any[]).filter((user: any) => user.company === selectedCompany?.id).length === 0 && (
                   <div className="p-8 text-center text-gray-500">
                     <i className="fas fa-users text-2xl mb-2"></i>
@@ -1109,7 +1108,7 @@ export default function CompaniesPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="editName">Nome Completo</Label>
               <Input
@@ -1203,7 +1202,7 @@ export default function CompaniesPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="userName">Nome Completo</Label>
               <Input
