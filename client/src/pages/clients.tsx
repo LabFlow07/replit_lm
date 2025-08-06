@@ -484,7 +484,7 @@ export default function ClientsPage() {
               };
 
               try {
-                const response = await fetch('/api/clienti/registrazione', {
+                const response = await fetch('/api/clients', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -536,18 +536,18 @@ export default function ClientsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="new-client-company-select">Azienda *</Label>
-                  <Select name="companyId" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona azienda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((company: any) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select 
+                    name="companyId" 
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Seleziona azienda</option>
+                    {companies.map((company: any) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">

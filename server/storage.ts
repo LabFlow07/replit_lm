@@ -434,6 +434,51 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`getClientsByCompanyHierarchy: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.companyId })));
     return mappedClients;
+
+  async createClient(clientData: any): Promise<Client> {
+    const {
+      id,
+      name,
+      email,
+      companyId,
+      status,
+      isMultiSite,
+      isMultiUser,
+      contactInfo,
+      createdAt
+    } = clientData;
+
+    console.log('Creating client with data:', clientData);
+
+    await database.query(`
+      INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      companyId,
+      name,
+      email,
+      status || 'in_attesa',
+      JSON.stringify(contactInfo || {}),
+      isMultiSite || false,
+      isMultiUser || false,
+      createdAt || new Date().toISOString()
+    ]);
+
+    console.log('Client created successfully:', name);
+
+    return {
+      id,
+      name,
+      email,
+      companyId,
+      status: status || 'in_attesa',
+      contactInfo: contactInfo || {},
+      isMultiSite: isMultiSite || false,
+      isMultiUser: isMultiUser || false,
+      createdAt: new Date()
+    };
+  }
   }
 
   async getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]> {
