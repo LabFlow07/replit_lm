@@ -318,6 +318,7 @@ export default function ClientsPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
+                                className="mr-2"
                                 onClick={() => {
                                   setSelectedClient(client);
                                   setIsEditModalOpen(true);
@@ -325,6 +326,38 @@ export default function ClientsPage() {
                               >
                                 <i className="fas fa-edit"></i>
                               </Button>
+                              {user?.role === 'superadmin' && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-800"
+                                  onClick={async () => {
+                                    if (confirm(`Sei sicuro di voler eliminare il cliente "${client.name}"? Questa azione non può essere annullata.`)) {
+                                      try {
+                                        const response = await fetch(`/api/clients/${client.id}`, {
+                                          method: 'DELETE',
+                                          headers: {
+                                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                          }
+                                        });
+
+                                        if (response.ok) {
+                                          // Refresh the page to show updated list
+                                          window.location.reload();
+                                        } else {
+                                          const error = await response.json();
+                                          alert(`Errore nell'eliminazione: ${error.message}`);
+                                        }
+                                      } catch (error) {
+                                        console.error('Error deleting client:', error);
+                                        alert('Errore di connessione durante l\'eliminazione del cliente');
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </Button>
+                              )}
                             </td>
                           </tr>
                         );

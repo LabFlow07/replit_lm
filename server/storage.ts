@@ -426,6 +426,10 @@ export class DatabaseStorage implements IStorage {
     await database.query('UPDATE clients SET status = ? WHERE id = ?', [status, id]);
   }
 
+  async deleteClient(id: string): Promise<void> {
+    await database.query('DELETE FROM clients WHERE id = ?', [id]);
+  }
+
   async getLicenses(filters?: any): Promise<LicenseWithDetails[]> {
     let query = `
       SELECT 

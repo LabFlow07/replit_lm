@@ -468,6 +468,29 @@ router.post("/api/clienti/registrazione", authenticateToken, async (req: Request
   }
 });
 
+router.delete("/api/clients/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const clientId = req.params.id;
+
+    // Only superadmin can delete clients
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can delete clients" });
+    }
+
+    const existingClient = await storage.getClientById(clientId);
+    if (!existingClient) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    await storage.deleteClient(clientId);
+    res.json({ message: "Client deleted successfully" });
+  } catch (error) {
+    console.error('Delete client error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.post("/api/licenses", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
