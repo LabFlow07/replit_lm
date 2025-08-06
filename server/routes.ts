@@ -1079,6 +1079,36 @@ router.post("/api/transactions", authenticateToken, async (req: Request, res: Re
   }
 });
 
+router.put("/api/products/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const productId = req.params.id;
+    const { name, version, description, supportedLicenseTypes } = req.body;
+
+    // Only superadmin and admin can update products
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to update products" });
+    }
+
+    const existingProduct = await storage.getProductById(productId);
+    if (!existingProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const updatedProduct = await storage.updateProduct(productId, {
+      name,
+      version,
+      description,
+      supportedLicenseTypes
+    });
+
+    res.json(updatedProduct);
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.delete("/api/products/:id", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

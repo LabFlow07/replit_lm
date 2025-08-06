@@ -26,6 +26,12 @@ export default function ProductsPage() {
     description: '',
     supportedLicenseTypes: [] as string[]
   });
+  const [editProduct, setEditProduct] = useState({
+    name: '',
+    version: '',
+    description: '',
+    supportedLicenseTypes: [] as string[]
+  });
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,7 +106,7 @@ export default function ProductsPage() {
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: typeof newProduct) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('qlm_token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -139,6 +145,47 @@ export default function ProductsPage() {
     }
   });
 
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, productData }: { id: string, productData: typeof editProduct }) => {
+      const token = localStorage.getItem('qlm_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      toast({
+        title: "Successo",
+        description: "Prodotto aggiornato con successo!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'aggiornamento del prodotto",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleCreateProduct = () => {
     if (!newProduct.name || !newProduct.version) {
       toast({
@@ -158,6 +205,32 @@ export default function ProductsPage() {
         ? prev.supportedLicenseTypes.filter(t => t !== type)
         : [...prev.supportedLicenseTypes, type]
     }));
+  };
+
+  const handleEditLicenseTypeToggle = (type: string) => {
+    setEditProduct(prev => ({
+      ...prev,
+      supportedLicenseTypes: prev.supportedLicenseTypes.includes(type)
+        ? prev.supportedLicenseTypes.filter(t => t !== type)
+        : [...prev.supportedLicenseTypes, type]
+    }));
+  };
+
+  const handleEditProduct = () => {
+    if (!editProduct.name || !editProduct.version) {
+      toast({
+        title: "Errore",
+        description: "Nome e versione sono obbligatori",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!selectedProduct) return;
+    
+    updateProductMutation.mutate({ 
+      id: selectedProduct.id, 
+      productData: editProduct 
+    });
   };
 
   if (loading) {
@@ -408,6 +481,12 @@ export default function ProductsPage() {
                           className="mr-2"
                           onClick={() => {
                             setSelectedProduct(product);
+                            setEditProduct({
+                              name: product.name || '',
+                              version: product.version || '',
+                              description: product.description || '',
+                              supportedLicenseTypes: product.supportedLicenseTypes || []
+                            });
                             setIsEditModalOpen(true);
                           }}
                         >
@@ -487,7 +566,8 @@ export default function ProductsPage() {
                 <Label htmlFor="edit-name">Nome Prodotto *</Label>
                 <Input
                   id="edit-name"
-                  defaultValue={selectedProduct?.name || ''}
+                  value={editProduct.name}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="es. QLM Professional"
                 />
               </div>
@@ -496,35 +576,35 @@ export default function ProductsPage() {
                 <Label htmlFor="edit-version">Versione *</Label>
                 <Input
                   id="edit-version"
-                  defaultValue={selectedProduct?.version || ''}
+                  value={editProduct.version}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev, version: e.target.value }))}
                   placeholder="es. 2024.1"
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Descrizione</Label>
-                <Input
+                <Textarea
                   id="edit-description"
-                  defaultValue={selectedProduct?.description || ''}
-                  placeholder="Descrivi il prodotto..."
+                  value={editProduct.description}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descrizione del prodotto software..."
+                  rows={3}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label>Tipi di licenza supportati</Label>
+                <Label>Tipi di Licenza Supportati</Label>
                 <div className="flex flex-wrap gap-2">
                   {['permanente', 'trial', 'abbonamento'].map((type) => (
-                    <div key={type} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`edit-${type}`}
-                        defaultChecked={selectedProduct?.supportedLicenseTypes?.includes(type)}
-                        className="rounded border-gray-300"
-                      />
-                      <Label htmlFor={`edit-${type}`} className="text-sm capitalize">
-                        {type}
-                      </Label>
-                    </div>
+                    <Badge
+                      key={type}
+                      variant={editProduct.supportedLicenseTypes.includes(type) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => handleEditLicenseTypeToggle(type)}
+                    >
+                      {type}
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -536,9 +616,13 @@ export default function ProductsPage() {
                 >
                   Annulla
                 </Button>
-                <Button className="bg-primary hover:bg-blue-700">
+                <Button 
+                  className="bg-primary hover:bg-blue-700"
+                  onClick={handleEditProduct}
+                  disabled={updateProductMutation.isPending}
+                >
                   <i className="fas fa-save mr-2"></i>
-                  Aggiorna Prodotto
+                  {updateProductMutation.isPending ? 'Aggiornamento...' : 'Aggiorna Prodotto'}
                 </Button>
               </div>
             </div>

@@ -440,6 +440,40 @@ export class DatabaseStorage implements IStorage {
     return rows;
   }
 
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    const updateFields = [];
+    const updateValues = [];
+
+    if (updates.name) {
+      updateFields.push('name = ?');
+      updateValues.push(updates.name);
+    }
+    if (updates.version) {
+      updateFields.push('version = ?');
+      updateValues.push(updates.version);
+    }
+    if (updates.description !== undefined) {
+      updateFields.push('description = ?');
+      updateValues.push(updates.description);
+    }
+    if (updates.supportedLicenseTypes) {
+      updateFields.push('supported_license_types = ?');
+      updateValues.push(JSON.stringify(updates.supportedLicenseTypes));
+    }
+
+    updateValues.push(id);
+
+    await database.query(`
+      UPDATE products SET ${updateFields.join(', ')} WHERE id = ?
+    `, updateValues);
+
+    const updatedProduct = await this.getProductById(id);
+    return {
+      ...updatedProduct,
+      supportedLicenseTypes: JSON.parse(updatedProduct.supported_license_types || '[]')
+    };
+  }
+
   async deleteProduct(id: string): Promise<void> {
     await database.query('DELETE FROM products WHERE id = ?', [id]);
   }
