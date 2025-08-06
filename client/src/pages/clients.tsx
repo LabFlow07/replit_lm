@@ -13,10 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ClientsPage() {
-  const { user, loading, isTokenValid } = useAuth();
+  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   // Filter states
@@ -125,7 +126,7 @@ export default function ClientsPage() {
   const getClientProducts = (clientId: string) => {
     const clientLicenses = licenses.filter((license: any) => license.clientId === clientId);
     const products = clientLicenses.map((license: any) => license.product?.name).filter(Boolean);
-    return [...new Set(products)]; // Remove duplicates
+    return Array.from(new Set(products)); // Remove duplicates
   };
 
     // Function to get accessible companies for admin (simulated hierarchy)
@@ -346,7 +347,16 @@ export default function ClientsPage() {
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <Button variant="ghost" size="sm" className="mr-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="mr-2"
+                                onClick={() => {
+                                  setSelectedClient(client);
+                                  setIsViewModalOpen(true);
+                                }}
+                                title="Visualizza dettagli cliente"
+                              >
                                 <i className="fas fa-eye"></i>
                               </Button>
                               <Button 
@@ -595,13 +605,50 @@ export default function ClientsPage() {
             <DialogHeader>
               <DialogTitle>Modifica Cliente</DialogTitle>
             </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              
+              const updateData = {
+                name: formData.get('name') as string,
+                email: formData.get('email') as string,
+                status: formData.get('status') as string,
+                isMultiSite: formData.get('multiSite') === 'on',
+                isMultiUser: formData.get('multiUser') === 'on',
+              };
+
+              try {
+                const token = localStorage.getItem('qlm_token');
+                const response = await fetch(`/api/clients/${selectedClient?.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                  setIsEditModalOpen(false);
+                  window.location.reload();
+                } else {
+                  const error = await response.json();
+                  alert(`Errore nell'aggiornamento: ${error.message || 'Errore sconosciuto'}`);
+                }
+              } catch (error) {
+                console.error('Error updating client:', error);
+                alert('Errore di connessione durante l\'aggiornamento del cliente');
+              }
+            }}>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-client-name">Nome Cliente *</Label>
                 <Input
                   id="edit-client-name"
+                  name="name"
                   defaultValue={selectedClient?.name || ''}
                   placeholder="Nome completo del cliente"
+                  required
                 />
               </div>
 
@@ -609,24 +656,25 @@ export default function ClientsPage() {
                 <Label htmlFor="edit-client-email">Email *</Label>
                 <Input
                   id="edit-client-email"
+                  name="email"
                   type="email"
                   defaultValue={selectedClient?.email || ''}
                   placeholder="email@esempio.com"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-client-status">Stato</Label>
-                <Select defaultValue={selectedClient?.status || 'in_attesa'}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in_attesa">In Attesa</SelectItem>
-                    <SelectItem value="convalidato">Convalidato</SelectItem>
-                    <SelectItem value="sospeso">Sospeso</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select 
+                  name="status" 
+                  defaultValue={selectedClient?.status || 'in_attesa'}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="in_attesa">In Attesa</option>
+                  <option value="convalidato">Convalidato</option>
+                  <option value="sospeso">Sospeso</option>
+                </select>
               </div>
 
               <div className="flex items-center space-x-4">
@@ -634,7 +682,8 @@ export default function ClientsPage() {
                   <input
                     type="checkbox"
                     id="edit-multi-site"
-                    defaultChecked={selectedClient?.isMultiSite}
+                    name="multiSite"
+                    defaultChecked={selectedClient?.is_multi_site || selectedClient?.isMultiSite}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="edit-multi-site" className="text-sm">
@@ -645,7 +694,8 @@ export default function ClientsPage() {
                   <input
                     type="checkbox"
                     id="edit-multi-user"
-                    defaultChecked={selectedClient?.isMultiUser}
+                    name="multiUser"
+                    defaultChecked={selectedClient?.is_multi_user || selectedClient?.isMultiUser}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="edit-multi-user" className="text-sm">
@@ -656,14 +706,90 @@ export default function ClientsPage() {
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button 
+                  type="button"
                   variant="outline" 
                   onClick={() => setIsEditModalOpen(false)}
                 >
                   Annulla
                 </Button>
-                <Button className="bg-primary hover:bg-blue-700">
+                <Button type="submit" className="bg-primary hover:bg-blue-700">
                   <i className="fas fa-save mr-2"></i>
                   Aggiorna Cliente
+                </Button>
+              </div>
+            </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Modal */}
+        <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Dettagli Cliente: {selectedClient?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold">Nome:</Label>
+                  <p className="text-gray-600">{selectedClient?.name}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Email:</Label>
+                  <p className="text-gray-600">{selectedClient?.email}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Azienda:</Label>
+                  <p className="text-gray-600">{getCompanyName(selectedClient?.company_id)}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Stato:</Label>
+                  {selectedClient && getStatusBadge(selectedClient.status)}
+                </div>
+                <div>
+                  <Label className="font-semibold">Multi-Sede:</Label>
+                  <p className="text-gray-600">{selectedClient?.is_multi_site ? 'Sì' : 'No'}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Multi-Utente:</Label>
+                  <p className="text-gray-600">{selectedClient?.is_multi_user ? 'Sì' : 'No'}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Data Creazione:</Label>
+                  <p className="text-gray-600">
+                    {selectedClient?.created_at ? new Date(selectedClient.created_at).toLocaleDateString('it-IT') : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Licenze Attive:</Label>
+                  <p className="text-gray-600">{getClientLicensesCount(selectedClient?.id || '')}</p>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="font-semibold">Informazioni Contatto:</Label>
+                <div className="mt-2 p-3 bg-gray-50 rounded">
+                  {selectedClient?.contactInfo ? (
+                    <div>
+                      {selectedClient.contactInfo.phone && (
+                        <p><strong>Telefono:</strong> {selectedClient.contactInfo.phone}</p>
+                      )}
+                      {selectedClient.contactInfo.company && (
+                        <p><strong>Azienda Cliente:</strong> {selectedClient.contactInfo.company}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">Nessuna informazione di contatto</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsViewModalOpen(false)}
+                >
+                  Chiudi
                 </Button>
               </div>
             </div>
