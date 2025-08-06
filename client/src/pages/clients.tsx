@@ -337,7 +337,7 @@ export default function ClientsPage() {
                                         const response = await fetch(`/api/clients/${client.id}`, {
                                           method: 'DELETE',
                                           headers: {
-                                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                            'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
                                           }
                                         });
 
