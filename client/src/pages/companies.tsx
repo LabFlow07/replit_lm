@@ -610,6 +610,48 @@ export default function CompaniesPage() {
                       <i className="fas fa-edit text-gray-600"></i>
                     </Button>
                   )}
+
+                  {user?.role === 'superadmin' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        if (confirm(`Sei sicuro di voler eliminare l'azienda "${company.name}"? Questa azione non può essere annullata.`)) {
+                          try {
+                            const response = await fetch(`/api/companies/${company.id}`, {
+                              method: 'DELETE',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+                              }
+                            });
+
+                            if (response.ok) {
+                              queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+                              toast({ title: "Azienda eliminata con successo" });
+                            } else {
+                              const error = await response.json();
+                              toast({ 
+                                title: "Errore nell'eliminazione", 
+                                description: error.message,
+                                variant: "destructive"
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Error deleting company:', error);
+                            toast({ 
+                              title: "Errore di connessione", 
+                              description: "Errore durante l'eliminazione dell'azienda",
+                              variant: "destructive" 
+                            });
+                          }
+                        }
+                      }}
+                      title="Elimina Azienda"
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

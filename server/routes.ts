@@ -189,6 +189,111 @@ router.get("/api/companies", authenticateToken, async (req: Request, res: Respon
   }
 });
 
+router.post("/api/companies", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const companyData = {
+      ...req.body,
+      id: nanoid(),
+      createdAt: new Date().toISOString()
+    };
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to create companies" });
+    }
+
+    const company = await storage.createCompany(companyData);
+    res.json(company);
+  } catch (error) {
+    console.error('Create company error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.put("/api/companies/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const companyId = req.params.id;
+    const { name, type, parentId, status, contactInfo } = req.body;
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to update companies" });
+    }
+
+    const existingCompany = await storage.getCompany(companyId);
+    if (!existingCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Admin can only update companies in their hierarchy
+    if (user.role === 'admin' && user.companyId) {
+      const companyIds = await storage.getCompanyHierarchy(user.companyId);
+      if (!companyIds.includes(companyId)) {
+        return res.status(403).json({ message: "Not authorized to update this company" });
+      }
+    }
+
+    const updatedCompany = await storage.updateCompany(companyId, {
+      name,
+      type,
+      parentId,
+      status,
+      contactInfo
+    });
+
+    res.json(updatedCompany);
+  } catch (error) {
+    console.error('Update company error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/api/companies/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const companyId = req.params.id;
+
+    // Only superadmin can delete companies
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can delete companies" });
+    }
+
+    const existingCompany = await storage.getCompany(companyId);
+    if (!existingCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Check if company has clients
+    const companyClients = await storage.getClientsByCompany(companyId);
+    if (companyClients.length > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete company with existing clients. Please move or remove all clients first." 
+      });
+    }
+
+    // Check if company has subcompanies
+    const allCompanies = await storage.getAllCompanies();
+    const hasSubcompanies = allCompanies.some((company: any) => 
+      (company.parent_id === companyId || company.parentId === companyId)
+    );
+
+    if (hasSubcompanies) {
+      return res.status(400).json({ 
+        message: "Cannot delete company with subcompanies. Please move or remove all subcompanies first." 
+      });
+    }
+
+    await storage.deleteCompany(companyId);
+    res.json({ message: "Company deleted successfully" });
+  } catch (error) {
+    console.error('Delete company error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 router.get("/api/clients", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

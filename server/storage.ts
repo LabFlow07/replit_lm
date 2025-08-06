@@ -230,6 +230,10 @@ export class DatabaseStorage implements IStorage {
     return updatedCompany!;
   }
 
+  async deleteCompany(id: string): Promise<void> {
+    await database.query('DELETE FROM companies WHERE id = ?', [id]);
+  }
+
   async getProducts(): Promise<Product[]> {
     const rows = await database.query('SELECT * FROM products ORDER BY name');
     return rows.map(row => ({
