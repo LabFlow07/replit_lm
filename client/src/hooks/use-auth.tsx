@@ -22,6 +22,8 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   forceReauth: () => void;
+  isTokenValid: () => boolean;
+  refreshAuth: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,54 +52,58 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      // Validate token with a simple API call
-      const response = await fetch('/api/dashboard/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        // Token is valid, try to get user info from JWT payload
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          console.log('Token payload on validation:', payload);
-          console.log('CompanyId from token:', payload.companyId);
-
-          // Log the full payload to debug
-          console.log('Full token payload:', payload);
-          console.log('CompanyId from token payload:', payload.companyId);
-
-          setUser({
-            id: payload.id,
-            username: payload.username,
-            name: payload.name || payload.username,
-            email: payload.email || '',
-            role: payload.role,
-            companyId: payload.companyId || null,
-            company: undefined // Company data might need to be fetched separately if not in token
-          });
-          return true;
-        } catch (e) {
-          console.error('Error parsing token:', e);
-          localStorage.removeItem('qlm_token');
-          setUser(null);
-          return false;
-        }
-      } else {
-        // Token is invalid
-        console.log('Token invalid, clearing and redirecting to login...');
-        localStorage.removeItem('qlm_token');
-        setUser(null);
-        return false;
-      }
-    } catch (error) {
-      console.error('Token verification failed:', error);
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp > currentTime;
+    } catch (e) {
+      console.error('Error parsing or validating token:', e);
       localStorage.removeItem('qlm_token');
       setUser(null);
       return false;
     }
   };
+
+  const refreshAuth = async (): Promise<boolean> => {
+    const token = localStorage.getItem('qlm_token');
+
+    if (!token || !checkTokenValidity()) {
+      logout();
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('User data after refresh:', userData);
+        setUser({
+          id: userData.id,
+          username: userData.username,
+          name: userData.name || userData.username,
+          email: userData.email || '',
+          role: userData.role,
+          companyId: userData.companyId || null,
+          company: userData.company
+        });
+        return true;
+      } else {
+        console.log('Token refresh failed (API returned error), clearing and redirecting to login...');
+        logout();
+        return false;
+      }
+    } catch (error) {
+      console.error('Token refresh failed (network error):', error);
+      logout();
+      return false;
+    }
+  };
+
 
   // Define logout function before using it
   const logout = () => {
@@ -118,9 +124,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const token = localStorage.getItem('qlm_token');
       if (token) {
         const isValid = await checkTokenValidity();
-        if (!isValid) {
+        if (isValid) {
+          const refreshed = await refreshAuth();
+          if (!refreshed) {
+            setLocation('/login');
+          }
+        } else {
+          console.log('Token invalid on initial load, redirecting to login...');
           setLocation('/login'); // Redirect to login if token is invalid on initial load
         }
+      } else {
+        setLocation('/login'); // Redirect to login if no token is found
       }
       setLoading(false);
     };
@@ -132,14 +146,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const interval = setInterval(async () => {
       if (user) { // Only check if there's a user logged in
-        const isValid = await checkTokenValidity();
+        const isValid = checkTokenValidity();
         if (!isValid) {
-          console.log('Token expired, user will be redirected to login');
+          console.log('Token expired, user will be logged out and redirected to login');
           logout(); // Use logout to handle state reset and redirection
-          setLocation('/login'); // Explicitly redirect to login
+        } else {
+          // Optionally refresh auth data if token is valid but might be stale
+          await refreshAuth();
         }
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 15 * 60 * 1000); // Check every 15 minutes
 
     return () => clearInterval(interval); // Cleanup interval on component unmount or user change
   }, [user, logout, setLocation]); // Rerun effect if user, logout, or setLocation changes
@@ -196,7 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth, isTokenValid, refreshAuth }}>
       {children}
     </AuthContext.Provider>
   );

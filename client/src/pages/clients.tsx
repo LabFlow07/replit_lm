@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ClientsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isTokenValid } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -30,28 +30,7 @@ export default function ClientsPage() {
     }
   }, [user, loading, setLocation]);
 
-  // Helper function to check token validity
-  const checkTokenValidity = async () => {
-    const token = localStorage.getItem('qlm_token');
-    if (!token) return false;
-
-    try {
-      // Assuming a /api/auth/validate endpoint that checks token validity and returns true/false or a status
-      const response = await fetch('/api/auth/validate', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return data.isValid; // Assuming the API returns { isValid: true } or { isValid: false }
-      }
-      return false;
-    } catch (error) {
-      console.error('Error validating token:', error);
-      return false;
-    }
-  };
+  
 
   // Fetch clients
   const { data: clients = [] } = useQuery({
@@ -458,8 +437,7 @@ export default function ClientsPage() {
               e.preventDefault();
 
               // Check token validity before proceeding
-              const tokenValid = await checkTokenValidity();
-              if (!tokenValid) {
+              if (!isTokenValid()) {
                 alert('La sessione è scaduta. Verrai reindirizzato al login.');
                 setLocation('/login');
                 return;
@@ -471,10 +449,7 @@ export default function ClientsPage() {
                 name: formData.get('name') as string,
                 email: formData.get('email') as string,
                 companyId: formData.get('companyId') as string,
-                // The status field was missing in the original form data but present in the original logic,
-                // so it's kept here assuming it might be managed elsewhere or needs a default.
-                // If it's intended to be a selectable field, it should be added to the form.
-                status: 'convalidato', // Defaulting to 'convalidato' as per original logic if not in form
+                status: 'convalidato',
                 isMultiSite: formData.get('multiSite') === 'on',
                 isMultiUser: formData.get('multiUser') === 'on',
                 contactInfo: {
@@ -484,11 +459,18 @@ export default function ClientsPage() {
               };
 
               try {
+                const token = localStorage.getItem('qlm_token');
+                if (!token) {
+                  alert('Sessione scaduta. Effettua di nuovo il login.');
+                  setLocation('/login');
+                  return;
+                }
+
                 const response = await fetch('/api/clients', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('qlm_token')}` // Use qlm_token consistently
+                    'Authorization': `Bearer ${token}`
                   },
                   body: JSON.stringify(clientData)
                 });
@@ -500,6 +482,8 @@ export default function ClientsPage() {
                   // Refresh clients list
                   window.location.reload();
                 } else if (response.status === 401 || response.status === 403) {
+                  // Remove expired token and redirect to login
+                  localStorage.removeItem('qlm_token');
                   alert('La sessione è scaduta. Verrai reindirizzato al login.');
                   setLocation('/login');
                 } else {

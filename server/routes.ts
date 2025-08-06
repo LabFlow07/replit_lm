@@ -137,6 +137,10 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/api/auth/validate", authenticateToken, async (req: Request, res: Response) => {
+  res.json({ isValid: true });
+});
+
 router.get("/api/user", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
