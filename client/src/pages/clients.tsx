@@ -436,8 +436,9 @@ export default function ClientsPage() {
             <form onSubmit={async (e) => {
               e.preventDefault();
 
-              // Check token validity before proceeding
-              if (!isTokenValid()) {
+              // Check if token exists
+              const token = localStorage.getItem('qlm_token');
+              if (!token) {
                 alert('La sessione è scaduta. Verrai reindirizzato al login.');
                 setLocation('/login');
                 return;
@@ -459,13 +460,6 @@ export default function ClientsPage() {
               };
 
               try {
-                const token = localStorage.getItem('qlm_token');
-                if (!token) {
-                  alert('Sessione scaduta. Effettua di nuovo il login.');
-                  setLocation('/login');
-                  return;
-                }
-
                 const response = await fetch('/api/clients', {
                   method: 'POST',
                   headers: {

@@ -212,7 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth, isTokenValid, refreshAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth }}>
       {children}
     </AuthContext.Provider>
   );
