@@ -576,7 +576,7 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
     const licenseId = req.params.id;
 
     // Get the existing license
-    const existingLicense = await storage.getLicenseById(licenseId);
+    const existingLicense = await storage.getLicense(licenseId);
     if (!existingLicense) {
       return res.status(404).json({ message: "License not found" });
     }
