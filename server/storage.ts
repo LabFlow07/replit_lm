@@ -442,6 +442,17 @@ export class DatabaseStorage implements IStorage {
     return this.getClientsByCompanyHierarchy(companyId);
   }
 
+  async createClient(insertClient: InsertClient): Promise<Client> {
+    const id = randomUUID();
+    await database.query(`
+      INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
+        JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
+
+    return { ...insertClient, id, createdAt: new Date() };
+  }
+
   async getCompanyHierarchy(companyId: string): Promise<string[]> {
     const allCompanies = await this.getCompanies();
     const hierarchy: string[] = [companyId];
