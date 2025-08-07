@@ -506,8 +506,8 @@ export default function LicensesPage() {
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    clientId: formData.get('clientId') === 'none' ? null : formData.get('clientId'),
-                    productId: formData.get('productId') === 'none' ? null : formData.get('productId'),
+                    clientId: formData.get('clientId'),
+                    productId: formData.get('productId'),
                     licenseType: formData.get('licenseType'),
                     maxUsers: parseInt(formData.get('maxUsers') as string) || 1,
                     maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
@@ -545,13 +545,12 @@ export default function LicensesPage() {
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-client">Cliente (Opzionale)</Label>
-                      <Select name="clientId">
+                      <Label htmlFor="new-license-client">Cliente *</Label>
+                      <Select name="clientId" required>
                         <SelectTrigger>
-                          <SelectValue placeholder="Nessun cliente assegnato" />
+                          <SelectValue placeholder="Seleziona cliente" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Nessun cliente</SelectItem>
                           {clients.map((client: any) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name} - {client.email}
@@ -562,13 +561,12 @@ export default function LicensesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-product">Prodotto (Opzionale)</Label>
-                      <Select name="productId">
+                      <Label htmlFor="new-license-product">Prodotto *</Label>
+                      <Select name="productId" required>
                         <SelectTrigger>
-                          <SelectValue placeholder="Nessun prodotto assegnato" />
+                          <SelectValue placeholder="Seleziona prodotto" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Nessun prodotto</SelectItem>
                           {products.map((product: any) => (
                             <SelectItem key={product.id} value={product.id}>
                               {product.name} - {product.version}

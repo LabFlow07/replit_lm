@@ -750,44 +750,47 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       activeModules
     } = req.body;
 
-    // Validate client only if clientId is provided
-    let client = null;
-    if (clientId) {
-      client = await storage.getClientById(clientId);
-      if (!client) {
-        return res.status(404).json({ message: "Client not found" });
+    // Validate required fields
+    if (!clientId) {
+      return res.status(400).json({ message: "Client is required" });
+    }
+    if (!productId) {
+      return res.status(400).json({ message: "Product is required" });
+    }
+
+    // Validate client
+    const client = await storage.getClientById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin') {
+      let hasPermission = false;
+
+      if (user.role === 'admin') {
+        // Admin can create licenses for clients in their company hierarchy
+        const companyIds = await storage.getCompanyHierarchy(user.companyId);
+        hasPermission = companyIds.includes(client.company_id || client.companyId);
+      } else {
+        // Other roles can only create licenses for clients in their own company
+        hasPermission = (client.company_id || client.companyId) === user.companyId;
       }
 
-      // Check permissions based on user role only if client is specified
-      if (user.role !== 'superadmin') {
-        let hasPermission = false;
-
-        if (user.role === 'admin') {
-          // Admin can create licenses for clients in their company hierarchy
-          const companyIds = await storage.getCompanyHierarchy(user.companyId);
-          hasPermission = companyIds.includes(client.company_id || client.companyId);
-        } else {
-          // Other roles can only create licenses for clients in their own company
-          hasPermission = (client.company_id || client.companyId) === user.companyId;
-        }
-
-        if (!hasPermission) {
-          return res.status(403).json({ message: "Not authorized to create license for this client" });
-        }
+      if (!hasPermission) {
+        return res.status(403).json({ message: "Not authorized to create license for this client" });
       }
     }
 
-    // Validate product only if productId is provided
-    if (productId) {
-      const product = await storage.getProduct(productId);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
+    // Validate product
+    const product = await storage.getProduct(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
     const licenseData = {
-      clientId: clientId || null,
-      productId: productId || null,
+      clientId,
+      productId,
       licenseType,
       maxUsers: maxUsers || 1,
       maxDevices: maxDevices || 1,
@@ -795,7 +798,7 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       discount: discount || 0,
       status: status || 'in_attesa_convalida',
       activeModules: activeModules || ['core'],
-      assignedCompany: client ? (client.company_id || client.companyId) : user.companyId,
+      assignedCompany: client.company_id || client.companyId,
       assignedAgent: user.id,
       activationKey: req.body.activationKey || undefined,
       computerKey: req.body.computerKey || undefined

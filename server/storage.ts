@@ -821,8 +821,8 @@ export class DatabaseStorage implements IStorage {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, 
-      insertLicense.clientId || null, 
-      insertLicense.productId || null, 
+      insertLicense.clientId, 
+      insertLicense.productId, 
       activationKey,
       insertLicense.computerKey || null, 
       activationDate, 
