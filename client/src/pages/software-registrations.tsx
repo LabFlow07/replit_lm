@@ -63,8 +63,9 @@ interface License {
   id: string;
   activationKey: string;
   client: Client;
-  product: { name: string };
+  product: { name: string, version?: string, id: string }; // Added product id and version for completeness
   status: string;
+  licenseType?: string; // Added for potential display
 }
 
 interface Product {
@@ -156,7 +157,12 @@ export default function SoftwareRegistrations() {
       if (!response.ok) {
         throw new Error('Failed to fetch licenses');
       }
-      return response.json();
+      // Ensure each license has a product object with id and name
+      const data = await response.json();
+      return data.map((license: any) => ({
+        ...license,
+        product: license.product || { id: license.productId, name: license.productName, version: license.productVersion }
+      }));
     },
     enabled: true
   });
@@ -185,17 +191,18 @@ export default function SoftwareRegistrations() {
     mutationFn: async (data: any) => {
       // Auto-determina la licenza se cliente e prodotto sono selezionati
       let finalLicenseId = data.licenzaAssegnata;
-      
-      if (data.clienteAssegnato && data.clienteAssegnato !== 'none' && 
+
+      if (data.clienteAssegnato && data.clienteAssegnato !== 'none' &&
           data.prodottoAssegnato && data.prodottoAssegnato !== 'none') {
-        
-        // Trova le licenze del cliente per il prodotto selezionato
-        const clientLicenses = licenses.filter((license: License) => 
-          license.client?.id === data.clienteAssegnato && 
-          license.product?.id === data.prodottoAssegnato &&
+
+        // Auto-determina la licenza se cliente e prodotto sono selezionati
+        const clientLicenses = licenses.filter((license: License) =>
+          license.client?.id === data.clienteAssegnato &&
+          (license.product?.id === data.prodottoAssegnato ||
+           license.product?.name === data.prodottoAssegnato) &&
           license.status === 'attiva'
         );
-        
+
         // Se c'è una sola licenza, la usa automaticamente
         if (clientLicenses.length === 1) {
           finalLicenseId = clientLicenses[0].id;
@@ -263,7 +270,7 @@ export default function SoftwareRegistrations() {
   };
 
   const filteredRegistrations = Array.isArray(registrations) ? registrations.filter((registration: SoftwareRegistration) => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       (registration.nomeSoftware && registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (registration.ragioneSociale && registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -649,7 +656,7 @@ export default function SoftwareRegistrations() {
               <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
               {(() => {
                 const selectedClientId = watch('clienteAssegnato');
-                
+
                 if (!selectedClientId || selectedClientId === 'none') {
                   return (
                     <div className="p-3 bg-gray-50 rounded-md border">
@@ -660,8 +667,8 @@ export default function SoftwareRegistrations() {
 
                 // Trova i prodotti per cui il cliente ha licenze attive
                 const clientProducts = [...new Set(licenses
-                  .filter((license: License) => 
-                    license.client?.id === selectedClientId && 
+                  .filter((license: License) =>
+                    license.client?.id === selectedClientId &&
                     license.status === 'attiva'
                   )
                   .map((license: License) => license.product)
@@ -686,7 +693,7 @@ export default function SoftwareRegistrations() {
                   if (watch('prodottoAssegnato') !== product.id) {
                     setValue('prodottoAssegnato', product.id);
                   }
-                  
+
                   return (
                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
                       <div className="flex items-center justify-between">
@@ -738,7 +745,7 @@ export default function SoftwareRegistrations() {
               {(() => {
                 const selectedClientId = watch('clienteAssegnato');
                 const selectedProductId = watch('prodottoAssegnato');
-                
+
                 if (!selectedClientId || selectedClientId === 'none') {
                   return (
                     <div className="p-3 bg-gray-50 rounded-md border">
@@ -746,7 +753,7 @@ export default function SoftwareRegistrations() {
                     </div>
                   );
                 }
-                
+
                 if (!selectedProductId || selectedProductId === 'none') {
                   return (
                     <div className="p-3 bg-gray-50 rounded-md border">
@@ -756,9 +763,9 @@ export default function SoftwareRegistrations() {
                 }
 
                 // Trova le licenze del cliente selezionato per il prodotto selezionato
-                const clientLicenses = licenses.filter((license: License) => 
-                  license.client?.id === selectedClientId && 
-                  license.product?.id === selectedProductId &&
+                const clientLicenses = licenses.filter((license: License) =>
+                  license.client?.id === selectedClientId &&
+                  (license.product?.id === selectedProductId || license.product?.name === selectedProductId) && // Check by ID or Name
                   license.status === 'attiva'
                 );
 
@@ -780,7 +787,7 @@ export default function SoftwareRegistrations() {
                   if (watch('licenzaAssegnata') !== license.id) {
                     setValue('licenzaAssegnata', license.id);
                   }
-                  
+
                   return (
                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
                       <div className="flex items-center justify-between">
