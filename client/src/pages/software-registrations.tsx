@@ -647,19 +647,90 @@ export default function SoftwareRegistrations() {
 
             <div>
               <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
-              <Select onValueChange={(value) => setValue('prodottoAssegnato', value)} defaultValue={selectedRegistration?.prodottoAssegnato || 'none'}>
-                <SelectTrigger data-testid="select-assign-product">
-                  <SelectValue placeholder="Seleziona software" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nessun Software</SelectItem>
-                  {products.filter((product: Product) => product.id).map((product: Product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} v{product.version}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const selectedClientId = watch('clienteAssegnato');
+                
+                if (!selectedClientId || selectedClientId === 'none') {
+                  return (
+                    <div className="p-3 bg-gray-50 rounded-md border">
+                      <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
+                    </div>
+                  );
+                }
+
+                // Trova i prodotti per cui il cliente ha licenze attive
+                const clientProducts = [...new Set(licenses
+                  .filter((license: License) => 
+                    license.client?.id === selectedClientId && 
+                    license.status === 'attiva'
+                  )
+                  .map((license: License) => license.product)
+                  .filter(product => product)
+                )];
+
+                if (clientProducts.length === 0) {
+                  return (
+                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                      <p className="text-sm text-yellow-700">
+                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                        Questo cliente non ha prodotti licenziati
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Se c'è un solo prodotto, lo seleziona automaticamente
+                if (clientProducts.length === 1) {
+                  const product = clientProducts[0];
+                  // Auto-seleziona il prodotto
+                  if (watch('prodottoAssegnato') !== product.id) {
+                    setValue('prodottoAssegnato', product.id);
+                  }
+                  
+                  return (
+                    <div className="p-3 bg-green-50 rounded-md border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-green-800">
+                            <i className="fas fa-link mr-2"></i>
+                            Prodotto collegato automaticamente
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            {product.name} {product.version && `v${product.version}`}
+                          </p>
+                        </div>
+                        <i className="fas fa-check-circle text-green-500"></i>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Se ci sono multiple prodotti, mostra la lista ma rendi non modificabile
+                return (
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">Prodotti licenziati per questo cliente:</p>
+                    <Select onValueChange={(value) => setValue('prodottoAssegnato', value)} defaultValue={selectedRegistration?.prodottoAssegnato || clientProducts[0].id}>
+                      <SelectTrigger data-testid="select-assign-product">
+                        <SelectValue placeholder="Seleziona prodotto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clientProducts.map((product: any) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{product.name}</span>
+                              <span className="text-xs text-gray-500">{product.version && `v${product.version}`}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-blue-600">
+                      <i className="fas fa-info-circle mr-1"></i>
+                      Solo i prodotti per cui questo cliente ha licenze attive
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
