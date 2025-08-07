@@ -808,6 +808,11 @@ export class DatabaseStorage implements IStorage {
       expiryDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
     }
 
+    // Se viene fornita una chiave di attivazione e chiave computer, attiva automaticamente
+    const shouldActivate = insertLicense.activationKey && insertLicense.computerKey;
+    const finalStatus = shouldActivate ? 'attiva' : (insertLicense.status || 'in_attesa_convalida');
+    const activationDate = shouldActivate ? new Date() : (insertLicense.activationDate || null);
+
     await database.query(`
       INSERT INTO licenses (
         id, client_id, product_id, activation_key, computer_key, activation_date,
@@ -820,10 +825,10 @@ export class DatabaseStorage implements IStorage {
       insertLicense.productId || null, 
       activationKey,
       insertLicense.computerKey || null, 
-      insertLicense.activationDate || null, 
+      activationDate, 
       expiryDate,
       insertLicense.licenseType, 
-      insertLicense.status || 'in_attesa_convalida', 
+      finalStatus, 
       insertLicense.maxUsers || 1,
       insertLicense.maxDevices || 1, 
       insertLicense.price || 0, 
