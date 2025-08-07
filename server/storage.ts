@@ -934,13 +934,14 @@ export class DatabaseStorage implements IStorage {
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
+    const now = new Date();
     await database.query(`
-      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, insertTransaction.licenseId, insertTransaction.type, insertTransaction.amount,
-        insertTransaction.paymentMethod, insertTransaction.status, insertTransaction.notes]);
+        insertTransaction.paymentMethod, insertTransaction.status, insertTransaction.notes, now]);
 
-    return { ...insertTransaction, id, createdAt: new Date() };
+    return { ...insertTransaction, id, createdAt: now };
   }
 
   async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
@@ -991,25 +992,7 @@ export class DatabaseStorage implements IStorage {
     return rows[0] || null;
   }
 
-  async createTransaction(transaction: any): Promise<Transaction> {
-    const id = transaction.id || randomUUID();
-    await database.query(`
-      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id,
-      transaction.licenseId,
-      transaction.type,
-      transaction.amount,
-      transaction.paymentMethod,
-      transaction.status || 'pending',
-      transaction.notes || '',
-      transaction.createdAt || new Date().toISOString()
-    ]);
-
-    const rows = await database.query('SELECT * FROM transactions WHERE id = ?', [id]);
-    return rows[0];
-  }
+  
 
   async deleteTransaction(id: string): Promise<void> {
     await database.query('DELETE FROM transactions WHERE id = ?', [id]);
