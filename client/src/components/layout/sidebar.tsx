@@ -9,11 +9,11 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
   const baseItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
     { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: activeLicensesCount > 0 ? activeLicensesCount.toString() : undefined, route: '/licenses' },
-    { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
+    { id: 'software-registrations', label: 'QLMRegister', icon: 'fas fa-desktop', route: '/software-registrations' },
     { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
+    { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
     { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
     { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
-    { id: 'software-registrations', label: 'Registrazioni Software', icon: 'fas fa-desktop', route: '/software-registrations' },
   ];
 
   // User management with role-based permissions
