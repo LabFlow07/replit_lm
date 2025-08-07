@@ -609,22 +609,7 @@ export default function LicensesPage() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="new-license-client">Cliente *</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setIsNewLicenseModalOpen(false);
-                            setIsNewClientModalOpen(true);
-                          }}
-                          className="text-xs h-7 px-2"
-                        >
-                          <i className="fas fa-plus mr-1"></i>
-                          Nuovo
-                        </Button>
-                      </div>
+                      <Label htmlFor="new-license-client">Cliente *</Label>
                       <Select name="clientId" required>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona cliente" />
@@ -640,22 +625,7 @@ export default function LicensesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="new-license-product">Prodotto *</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setIsNewLicenseModalOpen(false);
-                            setIsNewProductModalOpen(true);
-                          }}
-                          className="text-xs h-7 px-2"
-                        >
-                          <i className="fas fa-plus mr-1"></i>
-                          Nuovo
-                        </Button>
-                      </div>
+                      <Label htmlFor="new-license-product">Prodotto *</Label>
                       <Select name="productId" required>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona prodotto" />
