@@ -183,9 +183,31 @@ export default function SoftwareRegistrations() {
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Auto-determina la licenza se cliente e prodotto sono selezionati
+      let finalLicenseId = data.licenzaAssegnata;
+      
+      if (data.clienteAssegnato && data.clienteAssegnato !== 'none' && 
+          data.prodottoAssegnato && data.prodottoAssegnato !== 'none') {
+        
+        // Trova le licenze del cliente per il prodotto selezionato
+        const clientLicenses = licenses.filter((license: License) => 
+          license.client?.id === data.clienteAssegnato && 
+          license.product?.id === data.prodottoAssegnato &&
+          license.status === 'attiva'
+        );
+        
+        // Se c'è una sola licenza, la usa automaticamente
+        if (clientLicenses.length === 1) {
+          finalLicenseId = clientLicenses[0].id;
+        } else if (clientLicenses.length > 1 && !finalLicenseId) {
+          // Se ci sono multiple licenze ma nessuna è stata selezionata, usa la prima
+          finalLicenseId = clientLicenses[0].id;
+        }
+      }
+
       const requestBody = {
         clienteAssegnato: data.clienteAssegnato === 'none' ? null : data.clienteAssegnato,
-        licenzaAssegnata: (data.licenzaAssegnata === 'none' || !data.licenzaAssegnata) ? null : data.licenzaAssegnata,
+        licenzaAssegnata: (finalLicenseId === 'none' || !finalLicenseId) ? null : finalLicenseId,
         prodottoAssegnato: data.prodottoAssegnato === 'none' ? null : data.prodottoAssegnato,
         note: data.note
       };
@@ -641,22 +663,93 @@ export default function SoftwareRegistrations() {
             </div>
 
             <div>
-              <Label htmlFor="licenzaAssegnata">Licenza (opzionale)</Label>
-              <Select onValueChange={(value) => setValue('licenzaAssegnata', value)} defaultValue={selectedRegistration?.licenzaAssegnata || 'none'}>
-                <SelectTrigger data-testid="select-assign-license">
-                  <SelectValue placeholder="Seleziona licenza" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nessuna Licenza</SelectItem>
-                  {licenses
-                    .filter((license: License) => license.id && license.status === 'attiva' && license.client.id === watch('clienteAssegnato'))
-                    .map((license: License) => (
-                      <SelectItem key={license.id} value={license.id}>
-                        {license.activationKey} - {license.product.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="licenzaAssegnata">Licenza Collegata</Label>
+              {(() => {
+                const selectedClientId = watch('clienteAssegnato');
+                const selectedProductId = watch('prodottoAssegnato');
+                
+                if (!selectedClientId || selectedClientId === 'none') {
+                  return (
+                    <div className="p-3 bg-gray-50 rounded-md border">
+                      <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
+                    </div>
+                  );
+                }
+                
+                if (!selectedProductId || selectedProductId === 'none') {
+                  return (
+                    <div className="p-3 bg-gray-50 rounded-md border">
+                      <p className="text-sm text-gray-500">Seleziona prima un prodotto</p>
+                    </div>
+                  );
+                }
+
+                // Trova le licenze del cliente selezionato per il prodotto selezionato
+                const clientLicenses = licenses.filter((license: License) => 
+                  license.client?.id === selectedClientId && 
+                  license.product?.id === selectedProductId &&
+                  license.status === 'attiva'
+                );
+
+                if (clientLicenses.length === 0) {
+                  return (
+                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                      <p className="text-sm text-yellow-700">
+                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                        Nessuna licenza attiva trovata per questo cliente e prodotto
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Se c'è una sola licenza, la seleziona automaticamente
+                if (clientLicenses.length === 1) {
+                  const license = clientLicenses[0];
+                  // Auto-seleziona la licenza
+                  if (watch('licenzaAssegnata') !== license.id) {
+                    setValue('licenzaAssegnata', license.id);
+                  }
+                  
+                  return (
+                    <div className="p-3 bg-green-50 rounded-md border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-green-800">
+                            <i className="fas fa-link mr-2"></i>
+                            Licenza collegata automaticamente
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            {license.activationKey} - {license.product.name}
+                          </p>
+                        </div>
+                        <i className="fas fa-check-circle text-green-500"></i>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Se ci sono multiple licenze, mostra la lista e permetti selezione
+                return (
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">Licenze disponibili per questo cliente/prodotto:</p>
+                    <Select onValueChange={(value) => setValue('licenzaAssegnata', value)} defaultValue={selectedRegistration?.licenzaAssegnata || clientLicenses[0].id}>
+                      <SelectTrigger data-testid="select-assign-license">
+                        <SelectValue placeholder="Seleziona licenza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clientLicenses.map((license: License) => (
+                          <SelectItem key={license.id} value={license.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{license.activationKey}</span>
+                              <span className="text-xs text-gray-500">{license.product.name} - {license.licenseType}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
