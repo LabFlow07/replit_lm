@@ -5,10 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const getNavigationItems = (userRole: string) => {
+const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
   const baseItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
-    { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: '245', route: '/licenses' },
+    { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: activeLicensesCount > 0 ? activeLicensesCount.toString() : undefined, route: '/licenses' },
     { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
     { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
     { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
@@ -53,7 +53,7 @@ export default function Sidebar() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const navigationItems = getNavigationItems(user?.role || 'superadmin');
+  const navigationItems = getNavigationItems(user?.role || 'superadmin', activeLicensesCount);
 
   // Determine active item based on current route
   const getActiveItem = () => {
