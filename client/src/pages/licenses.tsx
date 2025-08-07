@@ -615,7 +615,10 @@ export default function LicensesPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setIsNewClientModalOpen(true)}
+                          onClick={() => {
+                            setIsNewLicenseModalOpen(false);
+                            setIsNewClientModalOpen(true);
+                          }}
                           className="text-xs h-7 px-2"
                         >
                           <i className="fas fa-plus mr-1"></i>
@@ -643,7 +646,10 @@ export default function LicensesPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setIsNewProductModalOpen(true)}
+                          onClick={() => {
+                            setIsNewLicenseModalOpen(false);
+                            setIsNewProductModalOpen(true);
+                          }}
                           className="text-xs h-7 px-2"
                         >
                           <i className="fas fa-plus mr-1"></i>
@@ -894,6 +900,8 @@ export default function LicensesPage() {
                     isMultiUser: true,
                     contactInfo: { phone: '', company: '' }
                   });
+                  // Re-open the new license modal
+                  setIsNewLicenseModalOpen(true);
                 } else {
                   const errorData = await response.json().catch(() => ({}));
                   alert(`Errore nella creazione del cliente: ${errorData.message || 'Errore sconosciuto'}`);
@@ -1037,6 +1045,8 @@ export default function LicensesPage() {
                     description: '',
                     supportedLicenseTypes: ['permanente']
                   });
+                  // Re-open the new license modal
+                  setIsNewLicenseModalOpen(true);
                 } else {
                   const errorData = await response.json().catch(() => ({}));
                   alert(`Errore nella creazione del prodotto: ${errorData.message || 'Errore sconosciuto'}`);
