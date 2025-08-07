@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Users, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Sidebar from '@/components/layout/sidebar';
 
 interface User {
   id: string;
@@ -256,32 +257,24 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-4 mb-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation('/')}
-              className="flex items-center gap-2"
-            >
-              <i className="fas fa-home"></i>
-              Ritorna alla Home
-            </Button>
-          </div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8 text-primary" />
-            Gestione Utenti
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {user.role === 'superadmin' 
-              ? 'Gestisci tutti gli utenti del sistema'
-              : 'Gestisci gli utenti della tua azienda e sotto-aziende'
-            }
-          </p>
-        </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 ml-64 overflow-auto">
+        <div className="p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Users className="h-8 w-8 text-primary" />
+                Gestione Utenti
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                {user.role === 'superadmin' 
+                  ? 'Gestisci tutti gli utenti del sistema'
+                  : 'Gestisci gli utenti della tua azienda e sotto-aziende'
+                }
+              </p>
+            </div>
         
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
@@ -571,6 +564,8 @@ export default function UsersPage() {
           </DialogContent>
         </Dialog>
       )}
+        </div>
+      </div>
     </div>
   );
 }
