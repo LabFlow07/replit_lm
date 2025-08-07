@@ -122,3 +122,55 @@
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
+
+.recharts-tooltip-content {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Excel-style table improvements */
+  .excel-table {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .excel-table th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    z-index: 10;
+  }
+
+  .excel-table td,
+  .excel-table th {
+    white-space: nowrap;
+  }
+
+  .excel-table tbody tr:hover {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Responsive adjustments for mobile */
+  @media (max-width: 768px) {
+    .excel-table {
+      font-size: 0.875rem;
+    }
+
+    .excel-table th,
+    .excel-table td {
+      padding: 0.5rem 0.25rem;
+    }
+
+    .excel-table .min-w-[180px] {
+      min-width: 120px;
+    }
+
+    .excel-table .min-w-[160px] {
+      min-width: 100px;
+    }
+
+    .excel-table .min-w-[140px] {
+      min-width: 90px;
+    }
+  }

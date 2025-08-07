@@ -15,6 +15,11 @@ import { Search, Monitor, User, MapPin, Calendar, Activity, Settings } from "luc
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
+// Mock user for role checking, replace with actual auth context in a real app
+const user = {
+  role: 'superadmin' // or 'admin', 'user', etc.
+};
+
 interface SoftwareRegistration {
   id: string;
   nomeSoftware: string;
@@ -30,11 +35,20 @@ interface SoftwareRegistration {
   status: 'non_assegnato' | 'classificato' | 'licenziato';
   clienteAssegnato?: string;
   licenzaAssegnata?: string;
+  prodottoAssegnato?: string; // Added to match the dialog
   note?: string;
   primaRegistrazione: string;
   ultimaAttivita: string;
   createdAt: string;
   updatedAt: string;
+  // These fields are likely mapped or renamed from API response
+  softwareName?: string; // Assuming API returns this
+  version?: string; // Assuming API returns this
+  clientName?: string; // Assuming API returns this
+  clientId?: string; // Assuming API returns this
+  registrationDate?: string; // Assuming API returns this
+  lastSeen?: string; // Assuming API returns this
+  computerKey?: string; // Assuming API returns this
 }
 
 interface Client {
@@ -86,7 +100,25 @@ export default function SoftwareRegistrations() {
       if (!response.ok) {
         throw new Error('Failed to fetch registrations');
       }
-      return response.json();
+      // Assuming the API returns fields that match the SoftwareRegistration interface,
+      // potentially needing mapping if API field names differ.
+      // For example, if API returns 'softwareName' instead of 'nomeSoftware'.
+      const data = await response.json();
+      // Simple mapping example, adjust based on actual API response
+      return data.map((reg: any) => ({
+        ...reg,
+        nomeSoftware: reg.nomeSoftware || reg.softwareName, // Use nomeSoftware or fallback to softwareName
+        versione: reg.versione || reg.version,
+        ragioneSociale: reg.ragioneSociale || reg.clientName,
+        computerKey: reg.computerKey,
+        primaRegistrazione: reg.primaRegistrazione || reg.registrationDate,
+        ultimaAttivita: reg.ultimaAttivita || reg.lastSeen,
+        clienteAssegnato: reg.clienteAssegnato,
+        prodottoAssegnato: reg.prodottoAssegnato,
+        licenzaAssegnata: reg.licenzaAssegnata,
+        note: reg.note,
+        clientId: reg.clienteAssegnato // Assuming clientId is the same as clienteAssegnato for display
+      }));
     }
   });
 
@@ -209,13 +241,59 @@ export default function SoftwareRegistrations() {
 
   const filteredRegistrations = Array.isArray(registrations) ? registrations.filter((registration: SoftwareRegistration) => {
     const matchesSearch = !searchTerm || 
-      registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase());
+      (registration.nomeSoftware && registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (registration.ragioneSociale && registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   }) : [];
+
+  const handleClassify = (id: string) => {
+    const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
+    setSelectedRegistration(registrationToClassify || null);
+    if (registrationToClassify) {
+      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
+      setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || 'none');
+      setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || 'none');
+      setValue('note', registrationToClassify.note || '');
+    }
+    setIsClassifyDialogOpen(true);
+  };
+
+  const handleEdit = (registration: SoftwareRegistration) => {
+    setSelectedRegistration(registration);
+    setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
+    setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
+    setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
+    setValue('note', registration.note || '');
+    setIsClassifyDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Sei sicuro di voler eliminare questa registrazione?')) {
+      try {
+        const token = localStorage.getItem('qlm_token');
+        const response = await fetch(`/api/software/registrazioni/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+          alert('Registrazione eliminata con successo!');
+        } else {
+          alert('Errore nell\'eliminazione della registrazione');
+        }
+      } catch (error) {
+        console.error('Error deleting registration:', error);
+        alert('Errore nell\'eliminazione della registrazione');
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -341,179 +419,163 @@ export default function SoftwareRegistrations() {
         </Card>
       </div>
 
-      {/* Registrations List */}
-      <div className="space-y-4">
-        {filteredRegistrations.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nessuna registrazione trovata</h3>
-              <p className="text-muted-foreground">
-                Non ci sono registrazioni software che corrispondono ai criteri di ricerca.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredRegistrations.map((registration: SoftwareRegistration) => (
-            <Card key={registration.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold" data-testid={`text-software-name-${registration.id}`}>
-                        {registration.nomeSoftware} v{registration.versione}
-                      </h3>
-                      {getStatusBadge(registration.status)}
-                    </div>
+      {/* Excel-style Table */}
+      {filteredRegistrations.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nessuna registrazione trovata</h3>
+            <p className="text-muted-foreground">
+              Non ci sono registrazioni software che corrispondono ai criteri di ricerca.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse excel-table">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[140px]">Cliente</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[160px]">Software</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Versione</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[80px]">Stato</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Chiave Computer</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Data Registrazione</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Ultimo Accesso</th>
+                    <th className="text-left p-3 font-medium text-sm min-w-[150px]">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRegistrations.map((registration: SoftwareRegistration, index: number) => (
+                    <tr key={registration.id} className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? 'bg-white' : 'bg-muted/10'}`}>
+                      {/* Cliente */}
+                      <td className="p-3 border-r">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <div className="font-medium text-sm text-gray-900">
+                              {registration.ragioneSociale || registration.clienteAssegnato /* Display client name */}
+                            </div>
+                            {registration.clienteAssegnato && (
+                              <div className="text-xs text-muted-foreground">
+                                ID: {registration.clienteAssegnato.substring(0, 8)}...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{registration.ragioneSociale}</span>
-                        {registration.partitaIva && (
-                          <span className="text-muted-foreground">
-                            (P.IVA: {registration.partitaIva})
+                      {/* Software */}
+                      <td className="p-3 border-r">
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-4 w-4 text-green-500" />
+                          <div>
+                            <div className="font-medium text-sm text-gray-900">
+                              {registration.nomeSoftware || registration.softwareName /* Display software name */}
+                            </div>
+                            {registration.note && (
+                              <div className="text-xs text-muted-foreground truncate max-w-[120px]" title={registration.note}>
+                                {registration.note}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Versione */}
+                      <td className="p-3 border-r">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {registration.versione || registration.version} {/* Display version */}
+                        </Badge>
+                      </td>
+
+                      {/* Stato */}
+                      <td className="p-3 border-r">
+                        {getStatusBadge(registration.status)}
+                      </td>
+
+                      {/* Chiave Computer */}
+                      <td className="p-3 border-r">
+                        <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono break-all">
+                          {registration.computerKey}
+                        </code>
+                      </td>
+
+                      {/* Data Registrazione */}
+                      <td className="p-3 border-r text-sm">
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'dd/MM/yyyy', { locale: it })} {/* Display registration date */}
                           </span>
-                        )}
-                      </div>
-
-                      {registration.sistemaOperativo && (
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4 text-muted-foreground" />
-                          <span>{registration.sistemaOperativo}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'HH:mm', { locale: it })}
+                          </span>
                         </div>
-                      )}
+                      </td>
 
-                      {registration.indirizzoIp && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{registration.indirizzoIp}</span>
+                      {/* Ultimo Accesso */}
+                      <td className="p-3 border-r text-sm">
+                        {registration.ultimaAttivita || registration.lastSeen ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'dd/MM/yyyy', { locale: it })} {/* Display last activity date */}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'HH:mm', { locale: it })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">Mai</span>
+                        )}
+                      </td>
+
+                      {/* Azioni */}
+                      <td className="p-3">
+                        <div className="flex gap-1">
+                          {registration.status === 'non_assegnato' && user.role === 'superadmin' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleClassify(registration.id)}
+                              className="bg-green-600 hover:bg-green-700 h-8 px-3 text-xs"
+                              title="Classifica registrazione"
+                            >
+                              <i className="fas fa-check text-xs"></i>
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(registration)}
+                            className="h-8 w-8 p-0"
+                            title="Modifica registrazione"
+                          >
+                            <i className="fas fa-edit text-xs"></i>
+                          </Button>
+
+                          {user.role === 'superadmin' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(registration.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                              title="Elimina registrazione"
+                            >
+                              <i className="fas fa-trash text-xs"></i>
+                            </Button>
+                          )}
                         </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {format(new Date(registration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it })}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {format(new Date(registration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it })}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {registration.totaleOrdini} ordini - {formatCurrency(registration.totaleVenduto)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Classification Info */}
-                    {registration.status === 'classificato' && (
-                      <div className="mt-2 p-2 bg-green-50 rounded text-sm">
-                        <strong>Classificazione:</strong>
-                        {registration.clienteAssegnato && (
-                          <div>Cliente: {clients.find(c => c.id === registration.clienteAssegnato)?.name || registration.clienteAssegnato}</div>
-                        )}
-                        {registration.prodottoAssegnato && (
-                          <div>Prodotto: {products.find(p => p.id === registration.prodottoAssegnato)?.name || registration.prodottoAssegnato}</div>
-                        )}
-                        {registration.licenzaAssegnata && (
-                          <div>Licenza: {registration.licenzaAssegnata}</div>
-                        )}
-                      </div>
-                    )}
-
-                    {registration.note && (
-                      <div className="text-sm text-muted-foreground">
-                        <strong>Note:</strong> {registration.note}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {registration.status === 'non_assegnato' && (
-                      <Button
-                        onClick={() => {
-                          setSelectedRegistration(registration);
-                          setIsClassifyDialogOpen(true);
-                        }}
-                        size="sm"
-                        data-testid={`button-classify-${registration.id}`}
-                      >
-                        Classifica
-                      </Button>
-                    )}
-                    {registration.status === 'classificato' && (
-                      <>
-                        <Button
-                          onClick={() => {
-                            setSelectedRegistration(registration);
-                            // Pre-populate form with existing data
-                            setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
-                            setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
-                            setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
-                            setValue('note', registration.note || '');
-                            setIsClassifyDialogOpen(true);
-                          }}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Modifica
-                        </Button>
-                        <Button
-                          onClick={async () => {
-                            if (confirm('Creare una licenza da questa registrazione?')) {
-                              // Logic to create license from registration
-                              try {
-                                const token = localStorage.getItem('qlm_token');
-                                const response = await fetch('/api/licenses/from-registration', {
-                                  method: 'POST',
-                                  headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                  },
-                                  body: JSON.stringify({
-                                    registrationId: registration.id,
-                                    clientId: registration.clienteAssegnato,
-                                    productId: registration.prodottoAssegnato,
-                                    licenseType: 'abbonamento',
-                                    maxUsers: 1,
-                                    maxDevices: 1,
-                                    price: 0
-                                  })
-                                });
-                                
-                                if (response.ok) {
-                                  alert('Licenza creata con successo!');
-                                  queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
-                                } else {
-                                  alert('Errore nella creazione della licenza');
-                                }
-                              } catch (error) {
-                                console.error('Error creating license:', error);
-                                alert('Errore nella creazione della licenza');
-                              }
-                            }
-                          }}
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Crea Licenza
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Classify Registration Dialog */}
       <Dialog open={isClassifyDialogOpen} onOpenChange={setIsClassifyDialogOpen}>
@@ -525,12 +587,12 @@ export default function SoftwareRegistrations() {
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
             <div>
               <Label htmlFor="clienteAssegnato">Cliente</Label>
-              <Select onValueChange={(value) => setValue('clienteAssegnato', value)}>
+              <Select onValueChange={(value) => setValue('clienteAssegnato', value)} defaultValue={selectedRegistration?.clienteAssegnato || 'none'}>
                 <SelectTrigger data-testid="select-assign-client">
                   <SelectValue placeholder="Seleziona cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Seleziona Cliente</SelectItem>
+                  <SelectItem value="none">Nessun Cliente</SelectItem>
                   {clients.filter((client: Client) => client.id).map((client: Client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} - {client.email}
@@ -542,12 +604,12 @@ export default function SoftwareRegistrations() {
 
             <div>
               <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
-              <Select onValueChange={(value) => setValue('prodottoAssegnato', value)}>
+              <Select onValueChange={(value) => setValue('prodottoAssegnato', value)} defaultValue={selectedRegistration?.prodottoAssegnato || 'none'}>
                 <SelectTrigger data-testid="select-assign-product">
                   <SelectValue placeholder="Seleziona software" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Seleziona Software</SelectItem>
+                  <SelectItem value="none">Nessun Software</SelectItem>
                   {products.filter((product: Product) => product.id).map((product: Product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.name} v{product.version}
@@ -559,7 +621,7 @@ export default function SoftwareRegistrations() {
 
             <div>
               <Label htmlFor="licenzaAssegnata">Licenza (opzionale)</Label>
-              <Select onValueChange={(value) => setValue('licenzaAssegnata', value)}>
+              <Select onValueChange={(value) => setValue('licenzaAssegnata', value)} defaultValue={selectedRegistration?.licenzaAssegnata || 'none'}>
                 <SelectTrigger data-testid="select-assign-license">
                   <SelectValue placeholder="Seleziona licenza" />
                 </SelectTrigger>
@@ -582,20 +644,21 @@ export default function SoftwareRegistrations() {
                 {...register('note')}
                 placeholder="Aggiungi note sulla classificazione..."
                 data-testid="textarea-classification-notes"
+                defaultValue={selectedRegistration?.note || ''}
               />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setIsClassifyDialogOpen(false)}
                 data-testid="button-cancel-classify"
               >
                 Annulla
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={classifyMutation.isPending}
                 data-testid="button-confirm-classify"
               >
