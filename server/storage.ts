@@ -1229,16 +1229,20 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN products p ON sr.prodotto_assegnato = p.id
     `;
     const params = [];
+    const whereClauses = [];
 
     if (filters?.status) {
-      sql += ' WHERE sr.status = ?';
+      whereClauses.push('sr.status = ?');
       params.push(filters.status);
     }
 
     if (filters?.nomeSoftware) {
-      sql += filters?.status ? ' AND' : ' WHERE';
-      sql += ' sr.nome_software LIKE ?';
+      whereClauses.push('sr.nome_software LIKE ?');
       params.push(`%${filters.nomeSoftware}%`);
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
     }
 
     sql += ' ORDER BY sr.prima_registrazione DESC';
@@ -1253,7 +1257,22 @@ export class DatabaseStorage implements IStorage {
       updatedAt: row.updated_at,
       clientName: row.client_name,
       productName: row.product_name,
-      productVersion: row.product_version
+      productVersion: row.product_version,
+      // Ensure these fields are properly mapped
+      nomeSoftware: row.nome_software,
+      versione: row.versione,
+      ragioneSociale: row.ragione_sociale,
+      partitaIva: row.partita_iva,
+      totaleOrdini: row.totale_ordini,
+      sistemaOperativo: row.sistema_operativo,
+      indirizzoIp: row.indirizzo_ip,
+      computerKey: row.computer_key,
+      installationPath: row.installation_path,
+      status: row.status,
+      clienteAssegnato: row.cliente_assegnato,
+      licenzaAssegnata: row.licenza_assegnata,
+      prodottoAssegnato: row.prodotto_assegnato,
+      note: row.note
     }));
   }
 
@@ -1337,7 +1356,7 @@ export class DatabaseStorage implements IStorage {
     const fieldMapping: { [key: string]: string } = {
       'clienteAssegnato': 'cliente_assegnato',
       'licenzaAssegnata': 'licenza_assegnata',
-      'prodottoAssegnato': 'cliente_assegnato', // For now, map to cliente_assegnato since prodotto_assegnato doesn't exist
+      'prodottoAssegnato': 'prodotto_assegnato',
       'note': 'note',
       'status': 'status',
       'nomeSoftware': 'nome_software',

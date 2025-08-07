@@ -206,6 +206,7 @@ class Database {
           status VARCHAR(50) DEFAULT 'non_assegnato',
           cliente_assegnato VARCHAR(36),
           licenza_assegnata VARCHAR(36),
+          prodotto_assegnato VARCHAR(36),
           note TEXT,
           prima_registrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           ultima_attivita TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -213,6 +214,14 @@ class Database {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
       `);
+
+      // Add the missing column if it doesn't exist
+      await this.query(`
+        ALTER TABLE software_registrations 
+        ADD COLUMN IF NOT EXISTS prodotto_assegnato VARCHAR(36)
+      `).catch(() => {
+        // Column might already exist, ignore error
+      });
 
       console.log('Database tables initialized successfully');
     } catch (error) {
