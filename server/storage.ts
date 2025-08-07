@@ -18,6 +18,7 @@ import bcrypt from "bcrypt";
 export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<UserWithCompany | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUsers(companyId?: string): Promise<UserWithCompany[]>;
@@ -92,6 +93,28 @@ export class DatabaseStorage implements IStorage {
       [id]
     );
     return rows[0];
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    const rows = await database.query(
+      'SELECT * FROM users WHERE id = ? AND is_active = TRUE',
+      [id]
+    );
+    if (!rows[0]) {
+      return undefined;
+    }
+    const user = rows[0];
+    return {
+      id: user.id,
+      username: user.username,
+      password: user.password,
+      role: user.role,
+      companyId: user.company_id,
+      name: user.name,
+      email: user.email,
+      isActive: user.is_active,
+      createdAt: user.created_at
+    };
   }
 
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
