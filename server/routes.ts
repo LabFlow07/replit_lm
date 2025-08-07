@@ -797,8 +797,8 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       activeModules: activeModules || ['core'],
       assignedCompany: client ? (client.company_id || client.companyId) : user.companyId,
       assignedAgent: user.id,
-      activationKey,
-      computerKey
+      activationKey: req.body.activationKey || undefined,
+      computerKey: req.body.computerKey || undefined
     };
 
     console.log('Creating license with data:', licenseData);
