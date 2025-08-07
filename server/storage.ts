@@ -709,7 +709,8 @@ export class DatabaseStorage implements IStorage {
         l.*,
         c.name as client_name,
         c.email as client_email,
-        c.company_id as client_company_id,
+        c.status as client_status,
+        c.company_id,
         p.name as product_name,
         p.version as product_version,
         comp.name as company_name
@@ -795,7 +796,7 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
 
     // Genera automaticamente la chiave di attivazione se non fornita
-    const activationKey = insertLicense.activationKey || `${insertLicense.licenseType.toUpperCase()}-${randomUUID().substring(0, 8).toUpperCase()}`;
+    const activationKey = insertLicense.activationKey || `${(insertLicense.licenseType || 'LIC').toUpperCase()}-${randomUUID().substring(0, 8).toUpperCase()}`;
 
     // Calcola automaticamente la data di scadenza per gli abbonamenti
     let expiryDate = insertLicense.expiryDate || null;
@@ -815,8 +816,8 @@ export class DatabaseStorage implements IStorage {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, 
-      insertLicense.clientId, 
-      insertLicense.productId, 
+      insertLicense.clientId || null, 
+      insertLicense.productId || null, 
       activationKey,
       insertLicense.computerKey || null, 
       insertLicense.activationDate || null, 

@@ -486,7 +486,7 @@ export default function LicensesPage() {
 
         {/* New License Modal with Activation */}
         <Dialog open={isNewLicenseModalOpen} onOpenChange={setIsNewLicenseModalOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-[800px] max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <i className="fas fa-plus text-blue-500"></i>
@@ -506,8 +506,8 @@ export default function LicensesPage() {
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    clientId: formData.get('clientId'),
-                    productId: formData.get('productId'),
+                    clientId: formData.get('clientId') || null,
+                    productId: formData.get('productId') || null,
                     licenseType: formData.get('licenseType'),
                     maxUsers: parseInt(formData.get('maxUsers') as string) || 1,
                     maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
@@ -525,6 +525,9 @@ export default function LicensesPage() {
                   setIsNewLicenseModalOpen(false);
                   queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
                   alert('Licenza creata con successo!');
+                  // Reset form
+                  const form = e.target as HTMLFormElement;
+                  form.reset();
                 } else {
                   console.error('Failed to create license');
                   alert('Errore nella creazione della licenza');
@@ -542,12 +545,12 @@ export default function LicensesPage() {
                     Informazioni Base
                   </h3>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-client">Cliente *</Label>
-                      <Select name="clientId" required>
+                      <Label htmlFor="new-license-client">Cliente (Opzionale)</Label>
+                      <Select name="clientId">
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleziona cliente" />
+                          <SelectValue placeholder="Seleziona cliente (opzionale)" />
                         </SelectTrigger>
                         <SelectContent>
                           {clients.map((client: any) => (
@@ -560,10 +563,10 @@ export default function LicensesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-product">Prodotto *</Label>
-                      <Select name="productId" required>
+                      <Label htmlFor="new-license-product">Prodotto (Opzionale)</Label>
+                      <Select name="productId">
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleziona prodotto" />
+                          <SelectValue placeholder="Seleziona prodotto (opzionale)" />
                         </SelectTrigger>
                         <SelectContent>
                           {products.map((product: any) => (
@@ -576,7 +579,7 @@ export default function LicensesPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="new-license-type">Tipo Licenza *</Label>
                       <Select name="licenseType" required>
@@ -604,7 +607,7 @@ export default function LicensesPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="new-license-users">Max Utenti</Label>
                       <Input
@@ -652,18 +655,34 @@ export default function LicensesPage() {
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-sm text-blue-800 mb-3">
                       <i className="fas fa-info-circle mr-1"></i>
-                      Se hai già una chiave di attivazione, puoi inserirla qui per attivare immediatamente la licenza.
+                      Puoi generare automaticamente le chiavi o inserirle manualmente per attivare immediatamente la licenza.
                     </p>
                     
                     <div className="space-y-3">
                       <div className="space-y-2">
                         <Label htmlFor="activation-key">Chiave di Attivazione</Label>
-                        <Input
-                          id="activation-key"
-                          name="activationKey"
-                          placeholder="Inserisci la chiave di attivazione (opzionale)"
-                          className="font-mono text-sm"
-                        />
+                        <div className="flex space-x-2">
+                          <Input
+                            id="activation-key"
+                            name="activationKey"
+                            placeholder="Genera o inserisci la chiave di attivazione"
+                            className="font-mono text-sm flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const key = `LIC-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+                              const activationKeyInput = document.getElementById('activation-key') as HTMLInputElement;
+                              if (activationKeyInput) activationKeyInput.value = key;
+                            }}
+                            size="sm"
+                            className="px-3 shrink-0"
+                            title="Genera chiave di attivazione"
+                          >
+                            <i className="fas fa-key text-xs"></i>
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
@@ -684,9 +703,10 @@ export default function LicensesPage() {
                               if (computerKeyInput) computerKeyInput.value = key;
                             }}
                             size="sm"
-                            className="px-3"
+                            className="px-3 shrink-0"
+                            title="Genera chiave computer"
                           >
-                            <i className="fas fa-refresh text-xs"></i>
+                            <i className="fas fa-desktop text-xs"></i>
                           </Button>
                         </div>
                       </div>
@@ -704,7 +724,7 @@ export default function LicensesPage() {
                   </div>
                   
                   {/* Attivazione Offline */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-3 rounded-lg">
                     <h4 className="text-sm font-medium text-gray-900 mb-2">
                       <i className="fas fa-download mr-1"></i>
                       Attivazione Offline
@@ -726,7 +746,7 @@ export default function LicensesPage() {
                 </div>
 
                 {/* Pulsanti Azione */}
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 border-t">
+                <div className="flex flex-col md:flex-row justify-end space-y-3 md:space-y-0 md:space-x-3 pt-4 border-t">
                   <Button 
                     type="button"
                     variant="outline" 
@@ -736,12 +756,12 @@ export default function LicensesPage() {
                       const form = document.querySelector('form') as HTMLFormElement;
                       if (form) form.reset();
                     }}
-                    className="w-full sm:w-auto"
+                    className="w-full md:w-auto order-2 md:order-1"
                   >
                     <i className="fas fa-times mr-2"></i>
                     Annulla
                   </Button>
-                  <Button type="submit" className="bg-primary hover:bg-blue-700 w-full sm:w-auto">
+                  <Button type="submit" className="bg-primary hover:bg-blue-700 w-full md:w-auto order-1 md:order-2">
                     <i className="fas fa-save mr-2"></i>
                     Crea Licenza
                   </Button>
