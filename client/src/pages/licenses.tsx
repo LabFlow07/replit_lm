@@ -8,13 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
 import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { Textarea } from "@/components/ui/textarea";
 
 interface License {
   id: string;
@@ -28,8 +29,37 @@ interface License {
   expiryDate: string;
   computerKey: string;
   client: { name: string; company_id?: string; companyId?: string };
-  product: { name: string };
+  product: { name: string; version?: string };
+  notes?: string;
 }
+
+// Define types for client and product for clarity
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  companyId?: string;
+  isMultiSite: boolean;
+  isMultiUser: boolean;
+  contactInfo: {
+    phone: string;
+    company: string;
+  };
+}
+
+interface Product {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  supportedLicenseTypes: string[];
+}
+
+interface LicenseWithDetails extends License {
+  client: Client;
+  product: Product;
+}
+
 
 export default function LicensesPage() {
   const { user, loading } = useAuth();
@@ -41,10 +71,44 @@ export default function LicensesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
 
+  // New client form state
+  const [newClient, setNewClient] = useState({
+    name: '',
+    email: '',
+    companyId: '',
+    isMultiSite: false,
+    isMultiUser: true,
+    contactInfo: {
+      phone: '',
+      company: ''
+    }
+  });
+
+  // New product form state
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    version: '',
+    description: '',
+    supportedLicenseTypes: ['permanente'] as string[]
+  });
+
+  // Helper function for product license type toggle
+  const handleLicenseTypeToggle = (type: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      supportedLicenseTypes: prev.supportedLicenseTypes.includes(type)
+        ? prev.supportedLicenseTypes.filter(t => t !== type)
+        : [...prev.supportedLicenseTypes, type]
+    }));
+  };
+
+
   // Always call useQuery hooks - they will be disabled when user is not available
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
     enabled: !!user,
     queryFn: async () => {
@@ -57,7 +121,7 @@ export default function LicensesPage() {
     }
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
     enabled: !!user,
     queryFn: async () => {
@@ -83,7 +147,7 @@ export default function LicensesPage() {
     }
   });
 
-  const { data: licenses = [] } = useQuery({
+  const { data: licenses = [] } = useQuery<License[]>({
     queryKey: ['/api/licenses'],
     enabled: !!user,
     queryFn: async () => {
@@ -200,9 +264,9 @@ export default function LicensesPage() {
 
           {/* Main Content Grid */}
           <div className="space-y-6">
-            
 
-            
+
+
 
             {/* Licenses Grid */}
             <div className="space-y-4">
@@ -437,7 +501,7 @@ export default function LicensesPage() {
                                       const confirmMessage = isClassified 
                                         ? 'Questa è una licenza classificata da registrazione software. Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.'
                                         : 'Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.';
-                                      
+
                                       if (confirm(confirmMessage)) {
                                         try {
                                           const token = localStorage.getItem('qlm_token');
@@ -542,18 +606,30 @@ export default function LicensesPage() {
                     <i className="fas fa-info-circle mr-2"></i>
                     Informazioni Base
                   </h3>
-                  
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-client">Cliente *</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="new-license-client">Cliente *</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsNewClientModalOpen(true)}
+                          className="text-xs h-7 px-2"
+                        >
+                          <i className="fas fa-plus mr-1"></i>
+                          Nuovo
+                        </Button>
+                      </div>
                       <Select name="clientId" required>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona cliente" />
                         </SelectTrigger>
                         <SelectContent>
-                          {clients.map((client: any) => (
+                          {clients.map((client: Client) => (
                             <SelectItem key={client.id} value={client.id}>
-                              {client.name} - {client.email}
+                              {client.name} ({client.email})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -561,15 +637,27 @@ export default function LicensesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="new-license-product">Prodotto *</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="new-license-product">Prodotto *</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsNewProductModalOpen(true)}
+                          className="text-xs h-7 px-2"
+                        >
+                          <i className="fas fa-plus mr-1"></i>
+                          Nuovo
+                        </Button>
+                      </div>
                       <Select name="productId" required>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona prodotto" />
                         </SelectTrigger>
                         <SelectContent>
-                          {products.map((product: any) => (
+                          {products.map((product: Product) => (
                             <SelectItem key={product.id} value={product.id}>
-                              {product.name} - {product.version}
+                              {product.name} {product.version && `v${product.version}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -649,13 +737,13 @@ export default function LicensesPage() {
                     <i className="fas fa-key mr-2"></i>
                     Attivazione Licenza (Opzionale)
                   </h3>
-                  
+
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-sm text-blue-800 mb-3">
                       <i className="fas fa-info-circle mr-1"></i>
                       Puoi generare automaticamente le chiavi o inserirle manualmente per attivare immediatamente la licenza.
                     </p>
-                    
+
                     <div className="space-y-3">
                       <div className="space-y-2">
                         <Label htmlFor="activation-key">Chiave di Attivazione</Label>
@@ -720,7 +808,7 @@ export default function LicensesPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Attivazione Offline */}
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <h4 className="text-sm font-medium text-gray-900 mb-2">
@@ -768,6 +856,275 @@ export default function LicensesPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* New Client Modal */}
+        <Dialog open={isNewClientModalOpen} onOpenChange={setIsNewClientModalOpen}>
+          <DialogContent className="w-[95vw] max-w-[600px] max-h-[95vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <i className="fas fa-user-plus text-green-500"></i>
+                Nuovo Cliente
+              </DialogTitle>
+              <DialogDescription>Inserisci i dati del nuovo cliente.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const token = localStorage.getItem('qlm_token');
+                const response = await fetch('/api/clients', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(newClient)
+                });
+
+                if (response.ok) {
+                  const createdClient = await response.json();
+                  setIsNewClientModalOpen(false);
+                  queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+                  alert(`Cliente "${createdClient.name}" creato con successo!`);
+                  // Reset form state
+                  setNewClient({
+                    name: '',
+                    email: '',
+                    companyId: '',
+                    isMultiSite: false,
+                    isMultiUser: true,
+                    contactInfo: { phone: '', company: '' }
+                  });
+                } else {
+                  const errorData = await response.json().catch(() => ({}));
+                  alert(`Errore nella creazione del cliente: ${errorData.message || 'Errore sconosciuto'}`);
+                }
+              } catch (error) {
+                console.error('Error creating client:', error);
+                alert('Errore nella creazione del cliente');
+              }
+            }}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client-name">Nome Cliente *</Label>
+                    <Input
+                      id="client-name"
+                      value={newClient.name}
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="client-email">Email Cliente *</Label>
+                    <Input
+                      id="client-email"
+                      type="email"
+                      value={newClient.email}
+                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client-company">Azienda Cliente</Label>
+                    <Select
+                      name="companyId"
+                      value={newClient.companyId}
+                      onValueChange={(value) => setNewClient({ ...newClient, companyId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona azienda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nessuna Azienda</SelectItem>
+                        {companies.map((company: any) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="client-phone">Telefono</Label>
+                    <Input
+                      id="client-phone"
+                      value={newClient.contactInfo.phone}
+                      onChange={(e) => setNewClient({ ...newClient, contactInfo: { ...newClient.contactInfo, phone: e.target.value } })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client-company-contact">Nome Azienda Contatto</Label>
+                    <Input
+                      id="client-company-contact"
+                      value={newClient.contactInfo.company}
+                      onChange={(e) => setNewClient({ ...newClient, contactInfo: { ...newClient.contactInfo, company: e.target.value } })}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 pt-6">
+                    <input
+                      id="client-multi-site"
+                      type="checkbox"
+                      checked={newClient.isMultiSite}
+                      onChange={(e) => setNewClient({ ...newClient, isMultiSite: e.target.checked })}
+                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                    <label htmlFor="client-multi-site" className="text-sm font-medium text-gray-700">
+                      Multi-Site
+                    </label>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="client-multi-user"
+                    type="checkbox"
+                    checked={newClient.isMultiUser}
+                    onChange={(e) => setNewClient({ ...newClient, isMultiUser: e.target.checked })}
+                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  />
+                  <label htmlFor="client-multi-user" className="text-sm font-medium text-gray-700">
+                    Multi-User
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsNewClientModalOpen(false)}>
+                  Annulla
+                </Button>
+                <Button type="submit" className="bg-primary hover:bg-green-700">
+                  Crea Cliente
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* New Product Modal */}
+        <Dialog open={isNewProductModalOpen} onOpenChange={setIsNewProductModalOpen}>
+          <DialogContent className="w-[95vw] max-w-[600px] max-h-[95vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <i className="fas fa-box-open text-purple-500"></i>
+                Nuovo Prodotto
+              </DialogTitle>
+              <DialogDescription>Inserisci i dati del nuovo prodotto.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const token = localStorage.getItem('qlm_token');
+                const response = await fetch('/api/products', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(newProduct)
+                });
+
+                if (response.ok) {
+                  const createdProduct = await response.json();
+                  setIsNewProductModalOpen(false);
+                  queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+                  alert(`Prodotto "${createdProduct.name}" creato con successo!`);
+                  // Reset form state
+                  setNewProduct({
+                    name: '',
+                    version: '',
+                    description: '',
+                    supportedLicenseTypes: ['permanente']
+                  });
+                } else {
+                  const errorData = await response.json().catch(() => ({}));
+                  alert(`Errore nella creazione del prodotto: ${errorData.message || 'Errore sconosciuto'}`);
+                }
+              } catch (error) {
+                console.error('Error creating product:', error);
+                alert('Errore nella creazione del prodotto');
+              }
+            }}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="product-name">Nome Prodotto *</Label>
+                    <Input
+                      id="product-name"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product-version">Versione</Label>
+                    <Input
+                      id="product-version"
+                      value={newProduct.version}
+                      onChange={(e) => setNewProduct({ ...newProduct, version: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-description">Descrizione</Label>
+                  <Textarea
+                    id="product-description"
+                    value={newProduct.description}
+                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipi di Licenza Supportati *</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={newProduct.supportedLicenseTypes.includes('permanente') ? 'default' : 'outline'}
+                      onClick={() => handleLicenseTypeToggle('permanente')}
+                      className="h-8 px-3 text-sm"
+                    >
+                      Permanente
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newProduct.supportedLicenseTypes.includes('trial') ? 'default' : 'outline'}
+                      onClick={() => handleLicenseTypeToggle('trial')}
+                      className="h-8 px-3 text-sm"
+                    >
+                      Trial
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newProduct.supportedLicenseTypes.includes('abbonamento_mensile') ? 'default' : 'outline'}
+                      onClick={() => handleLicenseTypeToggle('abbonamento_mensile')}
+                      className="h-8 px-3 text-sm"
+                    >
+                      Mensile
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newProduct.supportedLicenseTypes.includes('abbonamento_annuale') ? 'default' : 'outline'}
+                      onClick={() => handleLicenseTypeToggle('abbonamento_annuale')}
+                      className="h-8 px-3 text-sm"
+                    >
+                      Annuale
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsNewProductModalOpen(false)}>
+                  Annulla
+                </Button>
+                <Button type="submit" className="bg-primary hover:bg-purple-700">
+                  Crea Prodotto
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
       </main>
     </div>
   );
