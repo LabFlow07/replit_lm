@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Search, Monitor, User, MapPin, Calendar, Activity, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import Sidebar from '@/components/layout/sidebar';
 
 // Mock user for role checking, replace with actual auth context in a real app
 const user = {
@@ -308,22 +309,20 @@ export default function SoftwareRegistrations() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-registrations">
-            Registrazioni Software
-          </h1>
-          <p className="text-muted-foreground">
-            Gestisci le registrazioni automatiche dei software installati presso i clienti
-          </p>
-        </div>
-        <Link href="/">
-          <Button variant="outline">
-            Torna alla Home
-          </Button>
-        </Link>
-      </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 ml-64 overflow-auto">
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-registrations">
+                QLMRegister
+              </h1>
+              <p className="text-muted-foreground">
+                Gestisci le registrazioni automatiche dei software installati presso i clienti
+              </p>
+            </div>
+          </div>
 
       {/* Filters */}
       <Card>
@@ -690,6 +689,8 @@ export default function SoftwareRegistrations() {
           </form>
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
