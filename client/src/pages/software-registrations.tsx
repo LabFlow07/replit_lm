@@ -412,6 +412,22 @@ export default function SoftwareRegistrations() {
                       </div>
                     </div>
 
+                    {/* Classification Info */}
+                    {registration.status === 'classificato' && (
+                      <div className="mt-2 p-2 bg-green-50 rounded text-sm">
+                        <strong>Classificazione:</strong>
+                        {registration.clienteAssegnato && (
+                          <div>Cliente: {clients.find(c => c.id === registration.clienteAssegnato)?.name || registration.clienteAssegnato}</div>
+                        )}
+                        {registration.prodottoAssegnato && (
+                          <div>Prodotto: {products.find(p => p.id === registration.prodottoAssegnato)?.name || registration.prodottoAssegnato}</div>
+                        )}
+                        {registration.licenzaAssegnata && (
+                          <div>Licenza: {registration.licenzaAssegnata}</div>
+                        )}
+                      </div>
+                    )}
+
                     {registration.note && (
                       <div className="text-sm text-muted-foreground">
                         <strong>Note:</strong> {registration.note}
@@ -431,6 +447,65 @@ export default function SoftwareRegistrations() {
                       >
                         Classifica
                       </Button>
+                    )}
+                    {registration.status === 'classificato' && (
+                      <>
+                        <Button
+                          onClick={() => {
+                            setSelectedRegistration(registration);
+                            // Pre-populate form with existing data
+                            setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
+                            setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
+                            setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
+                            setValue('note', registration.note || '');
+                            setIsClassifyDialogOpen(true);
+                          }}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Modifica
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            if (confirm('Creare una licenza da questa registrazione?')) {
+                              // Logic to create license from registration
+                              try {
+                                const token = localStorage.getItem('qlm_token');
+                                const response = await fetch('/api/licenses/from-registration', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                  },
+                                  body: JSON.stringify({
+                                    registrationId: registration.id,
+                                    clientId: registration.clienteAssegnato,
+                                    productId: registration.prodottoAssegnato,
+                                    licenseType: 'abbonamento',
+                                    maxUsers: 1,
+                                    maxDevices: 1,
+                                    price: 0
+                                  })
+                                });
+                                
+                                if (response.ok) {
+                                  alert('Licenza creata con successo!');
+                                  queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+                                } else {
+                                  alert('Errore nella creazione della licenza');
+                                }
+                              } catch (error) {
+                                console.error('Error creating license:', error);
+                                alert('Errore nella creazione della licenza');
+                              }
+                            }
+                          }}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Crea Licenza
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

@@ -525,6 +525,80 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
   }
 });
 
+router.post("/api/licenses/from-registration", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const {
+      registrationId,
+      clientId,
+      productId,
+      licenseType,
+      maxUsers,
+      maxDevices,
+      price
+    } = req.body;
+
+    // Get the registration to validate
+    const registration = await storage.getSoftwareRegistration(registrationId);
+    if (!registration) {
+      return res.status(404).json({ message: "Registration not found" });
+    }
+
+    // Validate that the user can create licenses for the specified client
+    const client = await storage.getClientById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin') {
+      let hasPermission = false;
+
+      if (user.role === 'admin') {
+        const companyIds = await storage.getCompanyHierarchy(user.companyId);
+        hasPermission = companyIds.includes(client.company_id || client.companyId);
+      } else {
+        hasPermission = (client.company_id || client.companyId) === user.companyId;
+      }
+
+      if (!hasPermission) {
+        return res.status(403).json({ message: "Not authorized to create license for this client" });
+      }
+    }
+
+    const licenseData = {
+      clientId,
+      productId,
+      licenseType: licenseType || 'abbonamento',
+      maxUsers: maxUsers || 1,
+      maxDevices: maxDevices || 1,
+      price: price || 0,
+      discount: 0,
+      status: 'attiva',
+      activeModules: ['core'],
+      assignedCompany: client.company_id || client.companyId,
+      assignedAgent: user.id,
+      computerKey: registration.computerKey || null,
+      notes: `Creata da registrazione software: ${registration.nomeSoftware} v${registration.versione}`
+    };
+
+    console.log('Creating license from registration with data:', licenseData);
+    const license = await storage.createLicense(licenseData);
+
+    // Update registration status to "licenziato"
+    await storage.updateSoftwareRegistration(registrationId, {
+      status: 'licenziato',
+      licenzaAssegnata: license.id
+    });
+
+    console.log('License created successfully from registration:', license.id);
+    res.json(license);
+  } catch (error) {
+    console.error('Create license from registration error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.post("/api/clients", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

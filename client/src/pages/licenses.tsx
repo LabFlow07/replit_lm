@@ -326,6 +326,12 @@ export default function LicensesPage() {
                                   {license.computerKey}
                                 </div>
                               )}
+                              {license.notes && license.notes.includes('registrazione software') && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  <i className="fas fa-desktop mr-1"></i>
+                                  Da registrazione SW
+                                </div>
+                              )}
                             </td>
 
                             <td className="p-3 border-r">
