@@ -1382,6 +1382,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Additional methods for licenses count and company hierarchy
+  async getProduct(id: string): Promise<any> {
+    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
   async getActiveLicensesCount(): Promise<number> {
     const rows = await database.query('SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"');
     return rows[0]?.count || 0;

@@ -509,15 +509,36 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     const registrationId = req.params.id;
     const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note } = req.body;
 
+    // Get product name for prodotto_assegnato field
+    let productName = null;
+    if (prodottoAssegnato) {
+      const product = await storage.getProduct(prodottoAssegnato);
+      if (product) {
+        productName = product.name;
+      }
+    }
+
+    // If a license is assigned, activate it
+    if (licenzaAssegnata) {
+      console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
+      await storage.updateLicense(licenzaAssegnata, {
+        status: 'attiva',
+        activationDate: new Date().toISOString()
+      });
+      console.log(`License ${licenzaAssegnata} activated successfully`);
+    }
+
     const updates = {
       clienteAssegnato,
       licenzaAssegnata,
-      prodottoAssegnato,
+      prodottoAssegnato: productName, // Store product name instead of ID
       note,
       status: 'classificato'
     };
 
+    console.log('Updating registration with:', updates);
     const updatedRegistration = await storage.updateSoftwareRegistration(registrationId, updates);
+    
     res.json(updatedRegistration);
   } catch (error) {
     console.error('Classify software registration error:', error);
