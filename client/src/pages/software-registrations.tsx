@@ -437,9 +437,11 @@ export default function SoftwareRegistrations() {
               <table className="w-full border-collapse excel-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Cliente</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Azienda/Cliente</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[200px]">Software/Prodotto</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Versione</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Ordini</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Venduto</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[80px]">Stato</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Data Registrazione</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Ultimo Accesso</th>
@@ -449,19 +451,17 @@ export default function SoftwareRegistrations() {
                 <tbody>
                   {filteredRegistrations.map((registration: SoftwareRegistration, index: number) => (
                     <tr key={registration.id} className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? 'bg-white' : 'bg-muted/10'}`}>
-                      {/* Cliente */}
+                      {/* Azienda/Cliente */}
                       <td className="p-3 border-r">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-500" />
                           <div>
                             <div className="font-medium text-sm text-gray-900">
-                              {registration.clientName || registration.ragioneSociale || 'Non assegnato'}
+                              {registration.ragioneSociale || 'Non specificato'}
                             </div>
-                            {registration.clientName && registration.ragioneSociale && registration.clientName !== registration.ragioneSociale && (
-                              <div className="text-xs text-muted-foreground">
-                                Azienda: {registration.ragioneSociale}
-                              </div>
-                            )}
+                            <div className="text-xs text-muted-foreground">
+                              Cliente: {registration.clientName || 'Non assegnato'}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -472,13 +472,11 @@ export default function SoftwareRegistrations() {
                           <Monitor className="h-4 w-4 text-green-500" />
                           <div>
                             <div className="font-medium text-sm text-gray-900">
-                              {registration.productName || registration.nomeSoftware || registration.softwareName}
+                              {registration.nomeSoftware || registration.softwareName || 'Non specificato'}
                             </div>
-                            {registration.productName && registration.nomeSoftware && registration.productName !== registration.nomeSoftware && (
-                              <div className="text-xs text-muted-foreground">
-                                Software rilevato: {registration.nomeSoftware}
-                              </div>
-                            )}
+                            <div className="text-xs text-muted-foreground">
+                              Prodotto: {registration.productName || 'Non assegnato'}
+                            </div>
                             {registration.note && (
                               <div className="text-xs text-muted-foreground truncate max-w-[150px]" title={registration.note}>
                                 Note: {registration.note}
@@ -492,13 +490,33 @@ export default function SoftwareRegistrations() {
                       <td className="p-3 border-r">
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="text-xs font-mono">
-                            {registration.productVersion || registration.versione || registration.version}
+                            {registration.productVersion || registration.versione || registration.version || 'N/A'}
                           </Badge>
                           {registration.productVersion && registration.versione && registration.productVersion !== registration.versione && (
                             <Badge variant="secondary" className="text-xs font-mono">
                               Rilevata: {registration.versione}
                             </Badge>
                           )}
+                        </div>
+                      </td>
+
+                      {/* Totale Ordini */}
+                      <td className="p-3 border-r text-center">
+                        <div className="font-medium text-sm">
+                          {registration.totaleOrdini || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ordini
+                        </div>
+                      </td>
+
+                      {/* Totale Venduto */}
+                      <td className="p-3 border-r text-right">
+                        <div className="font-medium text-sm text-green-600">
+                          {formatCurrency(registration.totaleVenduto || 0)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          venduto
                         </div>
                       </td>
 
