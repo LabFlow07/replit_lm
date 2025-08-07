@@ -425,6 +425,7 @@ export default function LicensesPage() {
                                   onClick={() => handleEditLicense(license)}
                                   className="h-8 w-8 p-0"
                                   title="Visualizza/Modifica licenza"
+                                  disabled={license.notes && license.notes.includes('registrazione software') && user.role !== 'superadmin'}
                                 >
                                   <Settings className="h-4 w-4" />
                                 </Button>
@@ -444,7 +445,12 @@ export default function LicensesPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={async () => {
-                                      if (confirm('Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.')) {
+                                      const isClassified = license.notes && license.notes.includes('registrazione software');
+                                      const confirmMessage = isClassified 
+                                        ? 'Questa è una licenza classificata da registrazione software. Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.'
+                                        : 'Sei sicuro di voler cancellare questa licenza? Questa azione non può essere annullata.';
+                                      
+                                      if (confirm(confirmMessage)) {
                                         try {
                                           const token = localStorage.getItem('qlm_token');
                                           const response = await fetch(`/api/licenses/${license.id}`, {
@@ -471,7 +477,7 @@ export default function LicensesPage() {
                                       }
                                     }}
                                     className="h-8 w-8 p-0 text-red-600"
-                                    title="Cancella licenza"
+                                    title={license.notes && license.notes.includes('registrazione software') ? "Cancella licenza classificata (solo superadmin)" : "Cancella licenza"}
                                   >
                                     <i className="fas fa-trash text-xs"></i>
                                   </Button>

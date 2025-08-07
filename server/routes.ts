@@ -811,7 +811,17 @@ router.put("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
       return res.status(404).json({ message: "License not found" });
     }
 
-    // Check permissions based on user role
+    // Check if this license was created from a software registration (classified license)
+    const isClassifiedLicense = existingLicense.notes && existingLicense.notes.includes('registrazione software');
+
+    // Only superadmin can modify classified licenses
+    if (isClassifiedLicense && user.role !== 'superadmin') {
+      return res.status(403).json({ 
+        message: "Solo il superadmin può modificare le licenze classificate dalle registrazioni software" 
+      });
+    }
+
+    // Check permissions based on user role for regular licenses
     if (user.role !== 'superadmin') {
       let hasPermission = false;
 
@@ -848,9 +858,18 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
       return res.status(404).json({ message: "License not found" });
     }
 
-    // Only superadmin can delete licenses
+    // Check if this license was created from a software registration (classified license)
+    const isClassifiedLicense = existingLicense.notes && existingLicense.notes.includes('registrazione software');
+
+    // Only superadmin can delete licenses, especially classified ones
     if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Only superadmin can delete licenses" });
+      if (isClassifiedLicense) {
+        return res.status(403).json({ 
+          message: "Solo il superadmin può eliminare le licenze classificate dalle registrazioni software" 
+        });
+      } else {
+        return res.status(403).json({ message: "Only superadmin can delete licenses" });
+      }
     }
 
     await storage.deleteLicense(licenseId);

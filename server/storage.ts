@@ -1321,23 +1321,42 @@ export class DatabaseStorage implements IStorage {
     const setClauses = [];
     const params = [];
 
+    // Map specific fields manually to handle naming differences
+    const fieldMapping: { [key: string]: string } = {
+      'clienteAssegnato': 'cliente_assegnato',
+      'licenzaAssegnata': 'licenza_assegnata',
+      'prodottoAssegnato': 'cliente_assegnato', // For now, map to cliente_assegnato since prodotto_assegnato doesn't exist
+      'note': 'note',
+      'status': 'status',
+      'nomeSoftware': 'nome_software',
+      'versione': 'versione',
+      'ragioneSociale': 'ragione_sociale',
+      'partitaIva': 'partita_iva',
+      'totaleOrdini': 'totale_ordini',
+      'totaleVenduto': 'totale_venduto',
+      'sistemaOperativo': 'sistema_operativo',
+      'indirizzoIp': 'indirizzo_ip',
+      'computerKey': 'computer_key',
+      'installationPath': 'installation_path'
+    };
+
     Object.entries(updates).forEach(([key, value]) => {
-      if (value !== undefined) {
-        // Convert camelCase to snake_case for database
-        const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-        setClauses.push(`${dbKey} = ?`);
+      if (value !== undefined && fieldMapping[key]) {
+        setClauses.push(`${fieldMapping[key]} = ?`);
         params.push(value);
       }
     });
 
-    setClauses.push('updated_at = ?');
-    params.push(new Date());
-    params.push(id);
+    if (setClauses.length > 0) {
+      setClauses.push('updated_at = ?');
+      params.push(new Date());
+      params.push(id);
 
-    await database.query(
-      `UPDATE software_registrations SET ${setClauses.join(', ')} WHERE id = ?`,
-      params
-    );
+      await database.query(
+        `UPDATE software_registrations SET ${setClauses.join(', ')} WHERE id = ?`,
+        params
+      );
+    }
 
     return this.getSoftwareRegistration(id) as Promise<SoftwareRegistration>;
   }
