@@ -666,21 +666,35 @@ export default function SoftwareRegistrations() {
                 }
 
                 // Trova i prodotti per cui il cliente ha licenze attive
-                const clientProducts = [...new Set(licenses
-                  .filter((license: License) =>
-                    license.client?.id === selectedClientId &&
-                    license.status === 'attiva'
-                  )
+                console.log('Selected Client ID:', selectedClientId);
+                console.log('All licenses:', licenses);
+                
+                const clientLicenses = licenses.filter((license: License) => {
+                  console.log('Checking license:', license);
+                  console.log('License client ID:', license.client?.id);
+                  console.log('License status:', license.status);
+                  return license.client?.id === selectedClientId;
+                });
+                
+                console.log('Client licenses found:', clientLicenses);
+                
+                const clientProducts = [...new Set(clientLicenses
+                  .filter((license: License) => license.status === 'attiva')
                   .map((license: License) => license.product)
                   .filter(product => product)
                 )];
+
+                console.log('Client products:', clientProducts);
 
                 if (clientProducts.length === 0) {
                   return (
                     <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                       <p className="text-sm text-yellow-700">
                         <i className="fas fa-exclamation-triangle mr-2"></i>
-                        Questo cliente non ha prodotti licenziati
+                        Questo cliente non ha prodotti licenziati attivi
+                      </p>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Licenze trovate: {clientLicenses.length}, Attive: {clientLicenses.filter(l => l.status === 'attiva').length}
                       </p>
                     </div>
                   );
@@ -763,11 +777,28 @@ export default function SoftwareRegistrations() {
                 }
 
                 // Trova le licenze del cliente selezionato per il prodotto selezionato
-                const clientLicenses = licenses.filter((license: License) =>
-                  license.client?.id === selectedClientId &&
-                  (license.product?.id === selectedProductId || license.product?.name === selectedProductId) && // Check by ID or Name
-                  license.status === 'attiva'
-                );
+                console.log('Looking for licenses with client:', selectedClientId, 'and product:', selectedProductId);
+                
+                const clientLicenses = licenses.filter((license: License) => {
+                  const clientMatch = license.client?.id === selectedClientId;
+                  const productMatch = license.product?.id === selectedProductId || license.product?.name === selectedProductId;
+                  const statusMatch = license.status === 'attiva';
+                  
+                  console.log('License check:', {
+                    license: license.id,
+                    clientMatch,
+                    productMatch,
+                    statusMatch,
+                    clientId: license.client?.id,
+                    productId: license.product?.id,
+                    productName: license.product?.name,
+                    status: license.status
+                  });
+                  
+                  return clientMatch && productMatch && statusMatch;
+                });
+
+                console.log('Matching licenses for client/product:', clientLicenses);
 
                 if (clientLicenses.length === 0) {
                   return (
@@ -775,6 +806,9 @@ export default function SoftwareRegistrations() {
                       <p className="text-sm text-yellow-700">
                         <i className="fas fa-exclamation-triangle mr-2"></i>
                         Nessuna licenza attiva trovata per questo cliente e prodotto
+                      </p>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Debug: Cliente {selectedClientId}, Prodotto {selectedProductId}
                       </p>
                     </div>
                   );
