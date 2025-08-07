@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import ActivationForm from "@/components/license/activation-form";
 import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
 import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -203,18 +202,7 @@ export default function LicensesPage() {
           <div className="space-y-6">
             
 
-            {/* Activation Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-key text-blue-500"></i>
-                  Attivazione Licenza
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ActivationForm />
-              </CardContent>
-            </Card>
+            
 
             {/* Licenses Grid */}
             <div className="space-y-4">
@@ -496,11 +484,14 @@ export default function LicensesPage() {
           </div>
         </div>
 
-        {/* New License Modal */}
+        {/* New License Modal with Activation */}
         <Dialog open={isNewLicenseModalOpen} onOpenChange={setIsNewLicenseModalOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nuova Licenza</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <i className="fas fa-plus text-blue-500"></i>
+                Nuova Licenza
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -522,129 +513,232 @@ export default function LicensesPage() {
                     maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
                     price: parseFloat(formData.get('price') as string) || 0,
                     discount: parseFloat(formData.get('discount') as string) || 0,
-                    status: 'in_attesa_convalida',
-                    activeModules: ['core']
+                    status: formData.get('activationKey') ? 'attiva' : 'in_attesa_convalida',
+                    activeModules: ['core'],
+                    activationKey: formData.get('activationKey') || undefined,
+                    computerKey: formData.get('computerKey') || undefined,
+                    deviceInfo: formData.get('deviceInfo') || undefined
                   })
                 });
 
                 if (response.ok) {
                   setIsNewLicenseModalOpen(false);
-                  // Invalida la cache invece di ricaricare la pagina
                   queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                  alert('Licenza creata con successo!');
                 } else {
                   console.error('Failed to create license');
+                  alert('Errore nella creazione della licenza');
                 }
               } catch (error) {
                 console.error('Error creating license:', error);
+                alert('Errore nella creazione della licenza');
               }
             }}>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-client">Cliente *</Label>
-                    <Select name="clientId" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client: any) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name} - {client.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <div className="space-y-6">
+                {/* Informazioni Base Licenza */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    Informazioni Base
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-client">Cliente *</Label>
+                      <Select name="clientId" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona cliente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((client: any) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.name} - {client.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-product">Prodotto *</Label>
+                      <Select name="productId" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona prodotto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product: any) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name} - {product.version}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-product">Prodotto *</Label>
-                    <Select name="productId" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona prodotto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product: any) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} - {product.version}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-type">Tipo Licenza *</Label>
+                      <Select name="licenseType" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="permanente">Permanente</SelectItem>
+                          <SelectItem value="trial">Trial</SelectItem>
+                          <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                          <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-price">Prezzo €</Label>
+                      <Input
+                        id="new-license-price"
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-users">Max Utenti</Label>
+                      <Input
+                        id="new-license-users"
+                        name="maxUsers"
+                        type="number"
+                        defaultValue="1"
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-devices">Max Dispositivi</Label>
+                      <Input
+                        id="new-license-devices"
+                        name="maxDevices"
+                        type="number"
+                        defaultValue="1"
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-license-discount">Sconto %</Label>
+                      <Input
+                        id="new-license-discount"
+                        name="discount"
+                        type="number"
+                        step="0.01"
+                        defaultValue="0"
+                        min="0"
+                        max="100"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-type">Tipo Licenza *</Label>
-                    <Select name="licenseType" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="permanente">Permanente</SelectItem>
-                        <SelectItem value="trial">Trial</SelectItem>
-                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* Sezione Attivazione */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                    <i className="fas fa-key mr-2"></i>
+                    Attivazione Licenza (Opzionale)
+                  </h3>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-800 mb-3">
+                      <i className="fas fa-info-circle mr-1"></i>
+                      Se hai già una chiave di attivazione, puoi inserirla qui per attivare immediatamente la licenza.
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="activation-key">Chiave di Attivazione</Label>
+                        <Input
+                          id="activation-key"
+                          name="activationKey"
+                          placeholder="Inserisci la chiave di attivazione (opzionale)"
+                          className="font-mono text-sm"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-price">Prezzo €</Label>
-                    <Input
-                      id="new-license-price"
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                    />
+                      <div className="space-y-2">
+                        <Label htmlFor="computer-key">Chiave Computer</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="computer-key"
+                            name="computerKey"
+                            placeholder="Genera o inserisci la chiave computer"
+                            className="font-mono text-sm flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const key = `CK-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+                              const computerKeyInput = document.getElementById('computer-key') as HTMLInputElement;
+                              if (computerKeyInput) computerKeyInput.value = key;
+                            }}
+                            size="sm"
+                            className="px-3"
+                          >
+                            <i className="fas fa-refresh text-xs"></i>
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="device-info">Info Dispositivo</Label>
+                        <Input
+                          id="device-info"
+                          name="deviceInfo"
+                          placeholder="Informazioni aggiuntive sul dispositivo (opzionale)"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Attivazione Offline */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">
+                      <i className="fas fa-download mr-1"></i>
+                      Attivazione Offline
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Se il cliente non ha connessione internet, può utilizzare l'attivazione offline.
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-xs"
+                      onClick={() => alert('Funzionalità di attivazione offline sarà implementata')}
+                    >
+                      <i className="fas fa-download mr-2"></i>
+                      Scarica File Offline
+                    </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-users">Max Utenti</Label>
-                    <Input
-                      id="new-license-users"
-                      name="maxUsers"
-                      type="number"
-                      defaultValue="1"
-                      min="1"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-devices">Max Dispositivi</Label>
-                    <Input
-                      id="new-license-devices"
-                      name="maxDevices"
-                      type="number"
-                      defaultValue="1"
-                      min="1"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="new-license-discount">Sconto %</Label>
-                    <Input
-                      id="new-license-discount"
-                      name="discount"
-                      type="number"
-                      step="0.01"
-                      defaultValue="0"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+                {/* Pulsanti Azione */}
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 border-t">
                   <Button 
                     type="button"
                     variant="outline" 
-                    onClick={() => setIsNewLicenseModalOpen(false)}
+                    onClick={() => {
+                      setIsNewLicenseModalOpen(false);
+                      // Reset form
+                      const form = document.querySelector('form') as HTMLFormElement;
+                      if (form) form.reset();
+                    }}
                     className="w-full sm:w-auto"
                   >
+                    <i className="fas fa-times mr-2"></i>
                     Annulla
                   </Button>
                   <Button type="submit" className="bg-primary hover:bg-blue-700 w-full sm:w-auto">
