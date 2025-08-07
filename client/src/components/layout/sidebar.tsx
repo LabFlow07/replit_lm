@@ -76,11 +76,28 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded flex items-center justify-center">
-            <img src="/cmh-logo.png" alt="CMH Logo" className="w-8 h-8 object-contain" />
-          </div>
+      <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+              <img 
+                src="/cmh-logo.png" 
+                alt="CMH Logo" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  console.log('Logo load error, falling back to text');
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = target.parentElement?.querySelector('.logo-fallback') as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div 
+                className="logo-fallback text-white font-bold text-sm w-full h-full items-center justify-center"
+                style={{ display: 'none' }}
+              >
+                CMH
+              </div>
+            </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">QLM Platform</h1>
             <p className="text-sm text-gray-500">License Manager</p>

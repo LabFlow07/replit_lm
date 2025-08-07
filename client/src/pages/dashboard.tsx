@@ -101,12 +101,17 @@ export default function Dashboard() {
   }).length;
 
   const expiringLicenses = (licenses as any[]).filter(l => {
-    if (!l.expiryDate && !l.expiry_date) return false;
-    const expiryDate = new Date(l.expiryDate || l.expiry_date);
+    if (!l.expiryDate && !l.expiry_date && !l.expires_at) return false;
+    const expiryDate = new Date(l.expiryDate || l.expiry_date || l.expires_at);
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
   }).length;
+
+  // Get actual counts from data
+  const totalLicenses = (licenses as any[]).length;
+  const activeLicenses = (licenses as any[]).filter(l => l.status === 'attiva').length;
+  const demoLicenses = (licenses as any[]).filter(l => l.status === 'demo' || l.license_type === 'trial').length;
 
   return (
     <div className="min-h-screen flex bg-surface">
@@ -149,7 +154,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Licenze Totali</p>
                     <p className="text-3xl font-bold text-gray-900">
-                      {statsLoading ? '...' : stats.totalLicenses || (licenses as any[]).length}
+                      {statsLoading ? '...' : totalLicenses}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -170,7 +175,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Licenze Attive</p>
                     <p className="text-3xl font-bold text-green-700">
-                      {statsLoading ? '...' : stats.activeLicenses || (licenses as any[]).filter(l => l.status === 'attiva').length}
+                      {statsLoading ? '...' : activeLicenses}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
