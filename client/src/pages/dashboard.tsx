@@ -50,32 +50,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Demo data mutation for superadmin - must be defined before any conditional returns
-  const populateDemo = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('/api/demo/populate', 'POST', {});
-      return response;
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Dati demo creati con successo!",
-        description: `Creati: ${data.stats.companies} aziende, ${data.stats.products} prodotti, ${data.stats.clients} clienti, ${data.stats.licenses} licenze`,
-      });
-      // Refresh all data
-      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore nella creazione dei dati demo",
-        description: error.message || "Si è verificato un errore",
-        variant: "destructive",
-      });
-    },
-  });
+  
 
   if (loading) {
     return (
@@ -132,17 +107,6 @@ export default function Dashboard() {
                   Panoramica generale del sistema di gestione licenze
                 </p>
               </div>
-              {user.role === 'superadmin' && (
-                <Button
-                  onClick={() => populateDemo.mutate()}
-                  disabled={populateDemo.isPending}
-                  variant="secondary"
-                  size="sm"
-                  data-testid="button-populate-demo"
-                >
-                  {populateDemo.isPending ? 'Caricamento...' : 'Popola Dati Demo'}
-                </Button>
-              )}
             </div>
           </div>
 

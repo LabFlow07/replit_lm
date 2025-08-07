@@ -105,26 +105,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Role Selector - Only for superadmin */}
-      {user?.role === 'superadmin' && (
-        <div className="p-4 border-b border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Ruolo Attivo
-          </label>
-          <Select value={activeRole} onValueChange={handleRoleChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="superadmin">Superadmin</SelectItem>
-              <SelectItem value="rivenditore">Rivenditore</SelectItem>
-              <SelectItem value="agente">Agente</SelectItem>
-              <SelectItem value="cliente">Cliente</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {/* Company Info for non-superadmin users */}
       {user?.role !== 'superadmin' && user?.company && (
         <div className="p-4 border-b border-gray-200">
