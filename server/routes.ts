@@ -594,6 +594,50 @@ router.post("/api/clienti/registrazione", authenticateToken, async (req: Request
   }
 });
 
+// Update client
+router.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const clientId = req.params.id;
+    const updateData = req.body;
+
+    console.log('Client update request for:', clientId, 'by user:', user.username);
+    console.log('Update data:', updateData);
+
+    // Get the existing client to check permissions
+    const existingClient = await storage.getClientById(clientId);
+    if (!existingClient) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    // Check permissions based on user role
+    if (user.role !== 'superadmin') {
+      let hasPermission = false;
+
+      if (user.role === 'admin') {
+        // Admin can update clients in their company hierarchy
+        const companyIds = await storage.getCompanyHierarchy(user.companyId);
+        hasPermission = companyIds.includes(existingClient.company_id || existingClient.companyId);
+      } else {
+        // Other roles can only update clients in their own company
+        hasPermission = (existingClient.company_id || existingClient.companyId) === user.companyId;
+      }
+
+      if (!hasPermission) {
+        return res.status(403).json({ message: "Not authorized to update this client" });
+      }
+    }
+
+    // Update the client
+    const updatedClient = await storage.updateClient(clientId, updateData);
+    console.log('Client updated successfully:', updatedClient.name);
+    res.json(updatedClient);
+  } catch (error) {
+    console.error('Update client error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.delete("/api/clients/:id", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

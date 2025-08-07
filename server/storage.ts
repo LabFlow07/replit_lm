@@ -45,6 +45,7 @@ export interface IStorage {
   getClient(id: string): Promise<Client | undefined>;
   getClientById(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, updates: Partial<Client>): Promise<Client>;
   updateClientStatus(id: string, status: string): Promise<void>;
 
   // License methods
@@ -498,6 +499,55 @@ export class DatabaseStorage implements IStorage {
         JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
 
     return { ...insertClient, id, createdAt: new Date() };
+  }
+
+  async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    if (updates.name !== undefined) {
+      updateFields.push('name = ?');
+      updateValues.push(updates.name);
+    }
+    if (updates.email !== undefined) {
+      updateFields.push('email = ?');
+      updateValues.push(updates.email);
+    }
+    if (updates.status !== undefined) {
+      updateFields.push('status = ?');
+      updateValues.push(updates.status);
+    }
+    if (updates.isMultiSite !== undefined) {
+      updateFields.push('is_multi_site = ?');
+      updateValues.push(updates.isMultiSite ? 1 : 0);
+    }
+    if (updates.isMultiUser !== undefined) {
+      updateFields.push('is_multi_user = ?');
+      updateValues.push(updates.isMultiUser ? 1 : 0);
+    }
+    if (updates.contactInfo !== undefined) {
+      updateFields.push('contact_info = ?');
+      updateValues.push(JSON.stringify(updates.contactInfo));
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+
+    updateValues.push(id);
+
+    await database.query(`
+      UPDATE clients 
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `, updateValues);
+
+    const updatedClient = await this.getClientById(id);
+    if (!updatedClient) {
+      throw new Error('Client not found after update');
+    }
+
+    return updatedClient;
   }
 
   async updateClientStatus(id: string, status: string): Promise<void> {
