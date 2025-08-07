@@ -506,8 +506,8 @@ export default function LicensesPage() {
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    clientId: formData.get('clientId') === '' ? null : formData.get('clientId'),
-                    productId: formData.get('productId') === '' ? null : formData.get('productId'),
+                    clientId: formData.get('clientId') === 'none' ? null : formData.get('clientId'),
+                    productId: formData.get('productId') === 'none' ? null : formData.get('productId'),
                     licenseType: formData.get('licenseType'),
                     maxUsers: parseInt(formData.get('maxUsers') as string) || 1,
                     maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
@@ -551,7 +551,7 @@ export default function LicensesPage() {
                           <SelectValue placeholder="Nessun cliente assegnato" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nessun cliente</SelectItem>
+                          <SelectItem value="none">Nessun cliente</SelectItem>
                           {clients.map((client: any) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name} - {client.email}
@@ -568,7 +568,7 @@ export default function LicensesPage() {
                           <SelectValue placeholder="Nessun prodotto assegnato" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nessun prodotto</SelectItem>
+                          <SelectItem value="none">Nessun prodotto</SelectItem>
                           {products.map((product: any) => (
                             <SelectItem key={product.id} value={product.id}>
                               {product.name} - {product.version}
