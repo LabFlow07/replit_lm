@@ -437,11 +437,10 @@ export default function SoftwareRegistrations() {
               <table className="w-full border-collapse excel-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium text-sm border-r min-w-[140px]">Cliente</th>
-                    <th className="text-left p-3 font-medium text-sm border-r min-w-[160px]">Software</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Cliente</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[200px]">Software/Prodotto</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Versione</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[80px]">Stato</th>
-                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Chiave Computer</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Data Registrazione</th>
                     <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Ultimo Accesso</th>
                     <th className="text-left p-3 font-medium text-sm min-w-[150px]">Azioni</th>
@@ -456,28 +455,33 @@ export default function SoftwareRegistrations() {
                           <User className="h-4 w-4 text-blue-500" />
                           <div>
                             <div className="font-medium text-sm text-gray-900">
-                              {registration.ragioneSociale || registration.clienteAssegnato /* Display client name */}
+                              {registration.clientName || registration.ragioneSociale || 'Non assegnato'}
                             </div>
-                            {registration.clienteAssegnato && (
+                            {registration.clientName && registration.ragioneSociale && registration.clientName !== registration.ragioneSociale && (
                               <div className="text-xs text-muted-foreground">
-                                ID: {registration.clienteAssegnato.substring(0, 8)}...
+                                Azienda: {registration.ragioneSociale}
                               </div>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Software */}
+                      {/* Software/Prodotto */}
                       <td className="p-3 border-r">
                         <div className="flex items-center gap-2">
                           <Monitor className="h-4 w-4 text-green-500" />
                           <div>
                             <div className="font-medium text-sm text-gray-900">
-                              {registration.nomeSoftware || registration.softwareName /* Display software name */}
+                              {registration.productName || registration.nomeSoftware || registration.softwareName}
                             </div>
+                            {registration.productName && registration.nomeSoftware && registration.productName !== registration.nomeSoftware && (
+                              <div className="text-xs text-muted-foreground">
+                                Software rilevato: {registration.nomeSoftware}
+                              </div>
+                            )}
                             {registration.note && (
-                              <div className="text-xs text-muted-foreground truncate max-w-[120px]" title={registration.note}>
-                                {registration.note}
+                              <div className="text-xs text-muted-foreground truncate max-w-[150px]" title={registration.note}>
+                                Note: {registration.note}
                               </div>
                             )}
                           </div>
@@ -486,21 +490,21 @@ export default function SoftwareRegistrations() {
 
                       {/* Versione */}
                       <td className="p-3 border-r">
-                        <Badge variant="outline" className="text-xs font-mono">
-                          {registration.versione || registration.version} {/* Display version */}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {registration.productVersion || registration.versione || registration.version}
+                          </Badge>
+                          {registration.productVersion && registration.versione && registration.productVersion !== registration.versione && (
+                            <Badge variant="secondary" className="text-xs font-mono">
+                              Rilevata: {registration.versione}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
 
                       {/* Stato */}
                       <td className="p-3 border-r">
                         {getStatusBadge(registration.status)}
-                      </td>
-
-                      {/* Chiave Computer */}
-                      <td className="p-3 border-r">
-                        <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono break-all">
-                          {registration.computerKey}
-                        </code>
                       </td>
 
                       {/* Data Registrazione */}

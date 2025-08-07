@@ -1218,21 +1218,30 @@ export class DatabaseStorage implements IStorage {
 
   // Software Registration methods
   async getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]> {
-    let sql = 'SELECT * FROM software_registrations';
+    let sql = `
+      SELECT 
+        sr.*,
+        c.name as client_name,
+        p.name as product_name,
+        p.version as product_version
+      FROM software_registrations sr
+      LEFT JOIN clients c ON sr.cliente_assegnato = c.id
+      LEFT JOIN products p ON sr.prodotto_assegnato = p.id
+    `;
     const params = [];
 
     if (filters?.status) {
-      sql += ' WHERE status = ?';
+      sql += ' WHERE sr.status = ?';
       params.push(filters.status);
     }
 
     if (filters?.nomeSoftware) {
       sql += filters?.status ? ' AND' : ' WHERE';
-      sql += ' nome_software LIKE ?';
+      sql += ' sr.nome_software LIKE ?';
       params.push(`%${filters.nomeSoftware}%`);
     }
 
-    sql += ' ORDER BY prima_registrazione DESC';
+    sql += ' ORDER BY sr.prima_registrazione DESC';
 
     const rows = await database.query(sql, params);
     return rows.map((row: any) => ({
@@ -1241,7 +1250,10 @@ export class DatabaseStorage implements IStorage {
       primaRegistrazione: row.prima_registrazione,
       ultimaAttivita: row.ultima_attivita,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
+      clientName: row.client_name,
+      productName: row.product_name,
+      productVersion: row.product_version
     }));
   }
 
