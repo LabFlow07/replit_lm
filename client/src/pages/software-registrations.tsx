@@ -317,7 +317,16 @@ export default function SoftwareRegistrations() {
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
-    setValue('aziendaAssegnata', 'none');
+    
+    // Find the client to get the company
+    const client = clients.find(c => c.id === registration.clienteAssegnato);
+    const companyId = client?.company_id || client?.companyId || 'none';
+    
+    console.log('Edit registration:', registration);
+    console.log('Found client:', client);
+    console.log('Company ID:', companyId);
+    
+    setValue('aziendaAssegnata', companyId);
     setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
     setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
     setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
@@ -662,13 +671,15 @@ export default function SoftwareRegistrations() {
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
             <div>
               <Label htmlFor="aziendaAssegnata">Azienda</Label>
-              <Select onValueChange={(value) => {
+              <Select value={watch('aziendaAssegnata') || 'none'} onValueChange={(value) => {
                 setValue('aziendaAssegnata', value);
-                // Reset dependent fields when company changes
-                setValue('clienteAssegnato', 'none');
-                setValue('licenzaAssegnata', 'none');
-                setValue('prodottoAssegnato', 'none');
-              }} defaultValue='none'>
+                // Reset dependent fields when company changes only if it's a new selection
+                if (value !== watch('aziendaAssegnata')) {
+                  setValue('clienteAssegnato', 'none');
+                  setValue('licenzaAssegnata', 'none');
+                  setValue('prodottoAssegnato', 'none');
+                }
+              }}>
                 <SelectTrigger data-testid="select-assign-company">
                   <SelectValue placeholder="Seleziona azienda" />
                 </SelectTrigger>
@@ -713,12 +724,14 @@ export default function SoftwareRegistrations() {
                 }
 
                 return (
-                  <Select onValueChange={(value) => {
+                  <Select value={watch('clienteAssegnato') || 'none'} onValueChange={(value) => {
                     setValue('clienteAssegnato', value);
-                    // Reset dependent fields when client changes
-                    setValue('licenzaAssegnata', 'none');
-                    setValue('prodottoAssegnato', 'none');
-                  }} defaultValue='none'>
+                    // Reset dependent fields when client changes only if it's a new selection
+                    if (value !== watch('clienteAssegnato')) {
+                      setValue('licenzaAssegnata', 'none');
+                      setValue('prodottoAssegnato', 'none');
+                    }
+                  }}>
                     <SelectTrigger data-testid="select-assign-client">
                       <SelectValue placeholder="Seleziona cliente" />
                     </SelectTrigger>
@@ -765,11 +778,13 @@ export default function SoftwareRegistrations() {
                 }
 
                 return (
-                  <Select onValueChange={(value) => {
+                  <Select value={watch('licenzaAssegnata') || 'none'} onValueChange={(value) => {
                     setValue('licenzaAssegnata', value);
-                    // Reset product field when license changes
-                    setValue('prodottoAssegnato', 'none');
-                  }} defaultValue='none'>
+                    // Reset product field when license changes only if it's a new selection
+                    if (value !== watch('licenzaAssegnata')) {
+                      setValue('prodottoAssegnato', 'none');
+                    }
+                  }}>
                     <SelectTrigger data-testid="select-assign-license">
                       <SelectValue placeholder="Seleziona licenza" />
                     </SelectTrigger>
