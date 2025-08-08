@@ -38,22 +38,23 @@ The system uses a relational database structure with the following key entities:
 - **Transactions**: Financial transaction tracking for renewals and purchases
 - **Logs**: Activity and access logging for audit trails
 - **Agents**: Company representatives/salespeople with roles, territories, and permissions (sub-entity of companies)
-- **Software Registrations**: Anonymous registration system capturing software installations with company details and system information
+- **Testa_Reg_Azienda**: Company registration header with license assignment capability (replaces old software_registrations)
+- **Dett_Reg_Azienda**: Device registration details with individual Computer Key authorization per device
 
 ### Key Features
 - **Multi-tier Role System**: Supports superadmin, resellers, agents, and end clients with appropriate data visibility
 - **License Types**: Permanent, trial/demo, and subscription licenses with expiration handling
-- **Device Binding**: Computer-specific license activation with offline/online support
+- **Device Management**: One-to-many relationship between licenses and devices with individual Computer Key authorization
 - **Bulk Operations**: Mass license generation and management capabilities
 - **Dashboard Analytics**: Real-time statistics and alerts for license expiry, conversions, and revenue
-- **Activation System**: Online and offline license activation with computer key generation
+- **Activation System**: Online and offline license activation with device-specific computer key generation
 - **Hierarchical Company Tree**: Visual tree structure showing parent-child company relationships with expandable nodes
 - **Agent Management**: Company-specific agents as sub-entities with roles and territories
 - **Cross-Entity Navigation**: Clickable elements throughout UI enabling seamless navigation between related sections
 - **Advanced Filtering**: Real-time search and filtering across all entity types (clients, companies, products, licenses)
-- **Software Registration System**: Anonymous endpoint for automatic software registration from client installations
+- **Software Registration System**: Anonymous endpoint for automatic software registration from client installations using Testa_Reg_Azienda and Dett_Reg_Azienda tables
 - **Registration Management**: Admin interface for viewing, filtering, and classifying software registrations
-- **Classification Workflow**: Ability to assign software registrations to specific clients and licenses
+- **Device Authorization**: Classification workflow with individual device authorization through Computer Key assignment
 
 ### Security Considerations
 - JWT-based authentication with configurable secret

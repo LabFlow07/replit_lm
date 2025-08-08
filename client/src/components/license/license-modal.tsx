@@ -135,7 +135,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Dettagli Tecnici</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700">Max Utenti</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.maxUsers || 1}</p>
@@ -145,13 +145,14 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                 <Label className="text-sm font-medium text-gray-700">Max Dispositivi</Label>
                 <p className="mt-1 text-sm text-gray-900">{license.maxDevices || 1}</p>
               </div>
+            </div>
 
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Computer Key</Label>
-                <p className="mt-1 text-sm text-gray-900 font-mono">
-                  {license.computerKey || 'Non assegnata'}
-                </p>
-              </div>
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <i className="fas fa-info-circle mr-2"></i>
+                <strong>Dispositivi Autorizzati:</strong> Le chiavi computer sono ora gestite individualmente 
+                per ogni dispositivo nella sezione "Registrazioni Software".
+              </p>
             </div>
           </div>
 

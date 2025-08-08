@@ -717,7 +717,8 @@ export default function LicensesPage() {
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-sm text-blue-800 mb-3">
                       <i className="fas fa-info-circle mr-1"></i>
-                      Puoi generare automaticamente le chiavi o inserirle manualmente per attivare immediatamente la licenza.
+                      Genera automaticamente la chiave di attivazione o inseriscila manualmente. 
+                      I dispositivi verranno autorizzati separatamente tramite le registrazioni software.
                     </p>
 
                     <div className="space-y-3">
@@ -747,40 +748,12 @@ export default function LicensesPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="computer-key">Chiave Computer</Label>
-                        <div className="flex space-x-2">
-                          <Input
-                            id="computer-key"
-                            name="computerKey"
-                            placeholder="Genera o inserisci la chiave computer"
-                            className="font-mono text-sm flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              const key = `CK-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-                              const computerKeyInput = document.getElementById('computer-key') as HTMLInputElement;
-                              if (computerKeyInput) computerKeyInput.value = key;
-                            }}
-                            size="sm"
-                            className="px-3 shrink-0"
-                            title="Genera chiave computer"
-                          >
-                            <i className="fas fa-desktop text-xs"></i>
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="device-info">Info Dispositivo</Label>
-                        <Input
-                          id="device-info"
-                          name="deviceInfo"
-                          placeholder="Informazioni aggiuntive sul dispositivo (opzionale)"
-                          className="text-sm"
-                        />
+                      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <i className="fas fa-info-circle mr-2"></i>
+                          <strong>Nota:</strong> Le chiavi computer sono ora gestite a livello di dispositivo. 
+                          Usa la sezione "Registrazioni Software" per autorizzare dispositivi specifici.
+                        </p>
                       </div>
                     </div>
                   </div>
