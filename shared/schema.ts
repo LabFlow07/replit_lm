@@ -130,34 +130,36 @@ export const accessLogs = pgTable("access_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Software Registrations (registrazioni automatiche senza autenticazione)
-export const softwareRegistrations = pgTable("software_registrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  nomeSoftware: text("nome_software").notNull(),
-  versione: text("versione").notNull(),
-  ragioneSociale: text("ragione_sociale").notNull(),
-  partitaIva: text("partita_iva"),
-  totaleOrdini: integer("totale_ordini").default(0),
-  totaleVenduto: decimal("totale_venduto", { precision: 10, scale: 2 }).default('0.00'),
-  
-  // Dati tecnici aggiuntivi
-  sistemaOperativo: text("sistema_operativo"),
-  indirizzoIp: text("indirizzo_ip"),
-  computerKey: text("computer_key"), // Identificativo univoco del computer
-  installationPath: text("installation_path"),
-  
-  // Gestione classificazione
-  status: text("status").default('non_assegnato'), // non_assegnato, classificato, licenziato
-  clienteAssegnato: varchar("cliente_assegnato"),
-  licenzaAssegnata: varchar("licenza_assegnata"),
-  prodottoAssegnato: varchar("prodotto_assegnato"),
-  note: text("note"),
-  
-  // Timestamp
-  primaRegistrazione: timestamp("prima_registrazione").defaultNow(),
-  ultimaAttivita: timestamp("ultima_attivita").defaultNow(),
+// Sistema di registrazione dispositivi - Tabella Testa (Header)
+export const testaRegAzienda = pgTable("Testa_Reg_Azienda", {
+  partitaIva: varchar("PartitaIva", { length: 20 }).primaryKey(),
+  nomeAzienda: text("NomeAzienda").notNull(),
+  prodotto: text("Prodotto").notNull(),
+  versione: varchar("Versione", { length: 50 }),
+  modulo: text("Modulo"),
+  utenti: integer("Utenti").default(0),
+  totDispositivi: integer("TotDispositivi").default(0),
+  idLicenza: varchar("ID_Licenza", { length: 36 }), // FK verso tabella licenze (nullable)
+  totOrdini: integer("TotOrdini").default(0),
+  totVendite: decimal("TotVendite", { precision: 15, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sistema di registrazione dispositivi - Tabella Dettaglio (Details)  
+export const dettRegAzienda = pgTable("Dett_Reg_Azienda", {
+  id: integer("ID").primaryKey().generatedAlwaysAsIdentity(),
+  partitaIva: varchar("PartitaIva", { length: 20 }).notNull(),
+  uidDispositivo: text("UID_Dispositivo").notNull(),
+  sistemaOperativo: varchar("SistemaOperativo", { length: 100 }),
+  note: text("Note"),
+  dataAttivazione: timestamp("DataAttivazione"),
+  dataUltimoAccesso: timestamp("DataUltimoAccesso"),
+  ordini: integer("Ordini").default(0),
+  vendite: decimal("Vendite", { precision: 15, scale: 2 }).default("0.00"),
+  computerKey: text("Computer_Key"), // Chiave di binding dispositivo
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Insert schemas
@@ -210,12 +212,15 @@ export const insertAccessLogSchema = createInsertSchema(accessLogs).omit({
   createdAt: true 
 });
 
-export const insertSoftwareRegistrationSchema = createInsertSchema(softwareRegistrations).omit({ 
-  id: true, 
+export const insertTestaRegAziendaSchema = createInsertSchema(testaRegAzienda).omit({ 
   createdAt: true,
-  updatedAt: true,
-  primaRegistrazione: true,
-  ultimaAttivita: true
+  updatedAt: true
+});
+
+export const insertDettRegAziendaSchema = createInsertSchema(dettRegAzienda).omit({ 
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 // Types
@@ -246,8 +251,11 @@ export type InsertActivationLog = z.infer<typeof insertActivationLogSchema>;
 export type AccessLog = typeof accessLogs.$inferSelect;
 export type InsertAccessLog = z.infer<typeof insertAccessLogSchema>;
 
-export type SoftwareRegistration = typeof softwareRegistrations.$inferSelect;
-export type InsertSoftwareRegistration = z.infer<typeof insertSoftwareRegistrationSchema>;
+export type TestaRegAzienda = typeof testaRegAzienda.$inferSelect;
+export type InsertTestaRegAzienda = z.infer<typeof insertTestaRegAziendaSchema>;
+
+export type DettRegAzienda = typeof dettRegAzienda.$inferSelect;
+export type InsertDettRegAzienda = z.infer<typeof insertDettRegAziendaSchema>;
 
 // API Response types
 export type LicenseWithDetails = License & {

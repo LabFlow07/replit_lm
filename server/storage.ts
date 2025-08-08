@@ -78,12 +78,16 @@ export interface IStorage {
   getClientsByCompanyHierarchy(companyId: string): Promise<Client[]>;
   getAllProducts(): Promise<Product[]>;
 
-  // Software Registration methods
-  getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]>;
-  getSoftwareRegistration(id: string): Promise<SoftwareRegistration | undefined>;
-  getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined>;
-  createSoftwareRegistration(registration: InsertSoftwareRegistration): Promise<SoftwareRegistration>;
-  updateSoftwareRegistration(id: string, updates: Partial<SoftwareRegistration>): Promise<SoftwareRegistration>;
+  // Device Registration methods - New tables
+  getTestaRegAzienda(): Promise<TestaRegAzienda[]>;
+  getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined>;
+  createTestaRegAzienda(registration: InsertTestaRegAzienda): Promise<TestaRegAzienda>;
+  updateTestaRegAzienda(partitaIva: string, updates: Partial<TestaRegAzienda>): Promise<TestaRegAzienda>;
+  
+  getDettRegAzienda(partitaIva?: string): Promise<DettRegAzienda[]>;
+  getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined>;
+  createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda>;
+  updateDettRegAzienda(id: number, updates: Partial<DettRegAzienda>): Promise<DettRegAzienda>;
 }
 
 export class DatabaseStorage implements IStorage {
