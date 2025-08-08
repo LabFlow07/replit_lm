@@ -49,7 +49,7 @@ interface SoftwareRegistration {
   clientId?: string; // Assuming API returns this
   registrationDate?: string; // Assuming API returns this
   lastSeen?: string; // Assuming API returns this
-  computerKey?: string; // Assuming API returns this
+  computerKey?: string;
 }
 
 interface Client {
@@ -57,6 +57,8 @@ interface Client {
   name: string;
   email: string;
   status: string;
+  company_id?: string;
+  company_id?: string;
 }
 
 interface License {
@@ -186,6 +188,25 @@ export default function SoftwareRegistrations() {
     enabled: true
   });
 
+  // Fetch companies for classification
+  const { data: companies = [] } = useQuery({
+    queryKey: ['/api/companies'],
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch companies');
+      }
+      return response.json();
+    },
+    enabled: true
+  });
+
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -213,6 +234,7 @@ export default function SoftwareRegistrations() {
       }
 
       const requestBody = {
+        aziendaAssegnata: data.aziendaAssegnata === 'none' ? null : data.aziendaAssegnata,
         clienteAssegnato: data.clienteAssegnato === 'none' ? null : data.clienteAssegnato,
         licenzaAssegnata: (finalLicenseId === 'none' || !finalLicenseId) ? null : finalLicenseId,
         prodottoAssegnato: data.prodottoAssegnato === 'none' ? null : data.prodottoAssegnato,
@@ -284,6 +306,7 @@ export default function SoftwareRegistrations() {
     const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
     if (registrationToClassify) {
+      setValue('aziendaAssegnata', 'none');
       setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
       setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || 'none');
       setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || 'none');
@@ -294,6 +317,7 @@ export default function SoftwareRegistrations() {
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
+    setValue('aziendaAssegnata', 'none');
     setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
     setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
     setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
@@ -637,16 +661,22 @@ export default function SoftwareRegistrations() {
 
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
             <div>
-              <Label htmlFor="clienteAssegnato">Cliente</Label>
-              <Select onValueChange={(value) => setValue('clienteAssegnato', value)} defaultValue={selectedRegistration?.clienteAssegnato || 'none'}>
-                <SelectTrigger data-testid="select-assign-client">
-                  <SelectValue placeholder="Seleziona cliente" />
+              <Label htmlFor="aziendaAssegnata">Azienda</Label>
+              <Select onValueChange={(value) => {
+                setValue('aziendaAssegnata', value);
+                // Reset dependent fields when company changes
+                setValue('clienteAssegnato', 'none');
+                setValue('licenzaAssegnata', 'none');
+                setValue('prodottoAssegnato', 'none');
+              }} defaultValue='none'>
+                <SelectTrigger data-testid="select-assign-company">
+                  <SelectValue placeholder="Seleziona azienda" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nessun Cliente</SelectItem>
-                  {clients.filter((client: Client) => client.id).map((client: Client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name} - {client.email}
+                  <SelectItem value="none">Nessuna Azienda</SelectItem>
+                  {companies.map((company: any) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -654,112 +684,61 @@ export default function SoftwareRegistrations() {
             </div>
 
             <div>
-              <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
+              <Label htmlFor="clienteAssegnato">Cliente</Label>
               {(() => {
-                const selectedClientId = watch('clienteAssegnato');
+                const selectedCompanyId = watch('aziendaAssegnata');
 
-                if (!selectedClientId || selectedClientId === 'none') {
+                if (!selectedCompanyId || selectedCompanyId === 'none') {
                   return (
                     <div className="p-3 bg-gray-50 rounded-md border">
-                      <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
+                      <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
                     </div>
                   );
                 }
 
-                // Trova i prodotti per cui il cliente ha licenze attive
-                console.log('Selected Client ID:', selectedClientId);
-                console.log('All licenses:', licenses);
-                
-                const clientLicenses = licenses.filter((license: License) => {
-                  console.log('Checking license:', license);
-                  console.log('License client ID:', license.client?.id);
-                  console.log('License status:', license.status);
-                  return license.client?.id === selectedClientId;
-                });
-                
-                console.log('Client licenses found:', clientLicenses);
-                
-                const clientProducts = [...new Set(clientLicenses
-                  .filter((license: License) => license.status === 'attiva')
-                  .map((license: License) => license.product)
-                  .filter(product => product)
-                )];
+                // Filtra i clienti per l'azienda selezionata
+                const companyClients = clients.filter((client: Client) => 
+                  client.company_id === selectedCompanyId
+                );
 
-                console.log('Client products:', clientProducts);
-
-                if (clientProducts.length === 0) {
+                if (companyClients.length === 0) {
                   return (
                     <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                       <p className="text-sm text-yellow-700">
                         <i className="fas fa-exclamation-triangle mr-2"></i>
-                        Questo cliente non ha prodotti licenziati attivi
-                      </p>
-                      <p className="text-xs text-yellow-600 mt-1">
-                        Licenze trovate: {clientLicenses.length}, Attive: {clientLicenses.filter(l => l.status === 'attiva').length}
+                        Nessun cliente trovato per questa azienda
                       </p>
                     </div>
                   );
                 }
 
-                // Se c'è un solo prodotto, lo seleziona automaticamente
-                if (clientProducts.length === 1) {
-                  const product = clientProducts[0];
-                  // Auto-seleziona il prodotto
-                  if (watch('prodottoAssegnato') !== product.id) {
-                    setValue('prodottoAssegnato', product.id);
-                  }
-
-                  return (
-                    <div className="p-3 bg-green-50 rounded-md border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-green-800">
-                            <i className="fas fa-link mr-2"></i>
-                            Prodotto collegato automaticamente
-                          </p>
-                          <p className="text-xs text-green-600 mt-1">
-                            {product.name} {product.version && `v${product.version}`}
-                          </p>
-                        </div>
-                        <i className="fas fa-check-circle text-green-500"></i>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Se ci sono multiple prodotti, mostra la lista ma rendi non modificabile
                 return (
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">Prodotti licenziati per questo cliente:</p>
-                    <Select onValueChange={(value) => setValue('prodottoAssegnato', value)} defaultValue={selectedRegistration?.prodottoAssegnato || clientProducts[0].id}>
-                      <SelectTrigger data-testid="select-assign-product">
-                        <SelectValue placeholder="Seleziona prodotto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clientProducts.map((product: any) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{product.name}</span>
-                              <span className="text-xs text-gray-500">{product.version && `v${product.version}`}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-blue-600">
-                      <i className="fas fa-info-circle mr-1"></i>
-                      Solo i prodotti per cui questo cliente ha licenze attive
-                    </p>
-                  </div>
+                  <Select onValueChange={(value) => {
+                    setValue('clienteAssegnato', value);
+                    // Reset dependent fields when client changes
+                    setValue('licenzaAssegnata', 'none');
+                    setValue('prodottoAssegnato', 'none');
+                  }} defaultValue='none'>
+                    <SelectTrigger data-testid="select-assign-client">
+                      <SelectValue placeholder="Seleziona cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nessun Cliente</SelectItem>
+                      {companyClients.map((client: Client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name} - {client.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 );
               })()}
             </div>
 
             <div>
-              <Label htmlFor="licenzaAssegnata">Licenza Collegata</Label>
+              <Label htmlFor="licenzaAssegnata">Licenza</Label>
               {(() => {
                 const selectedClientId = watch('clienteAssegnato');
-                const selectedProductId = watch('prodottoAssegnato');
 
                 if (!selectedClientId || selectedClientId === 'none') {
                   return (
@@ -769,97 +748,93 @@ export default function SoftwareRegistrations() {
                   );
                 }
 
-                if (!selectedProductId || selectedProductId === 'none') {
-                  return (
-                    <div className="p-3 bg-gray-50 rounded-md border">
-                      <p className="text-sm text-gray-500">Seleziona prima un prodotto</p>
-                    </div>
-                  );
-                }
-
-                // Trova le licenze del cliente selezionato per il prodotto selezionato
-                console.log('Looking for licenses with client:', selectedClientId, 'and product:', selectedProductId);
-                
+                // Trova le licenze del cliente selezionato
                 const clientLicenses = licenses.filter((license: License) => {
-                  const clientMatch = license.client?.id === selectedClientId;
-                  const productMatch = license.product?.id === selectedProductId || license.product?.name === selectedProductId;
-                  const statusMatch = license.status === 'attiva';
-                  
-                  console.log('License check:', {
-                    license: license.id,
-                    clientMatch,
-                    productMatch,
-                    statusMatch,
-                    clientId: license.client?.id,
-                    productId: license.product?.id,
-                    productName: license.product?.name,
-                    status: license.status
-                  });
-                  
-                  return clientMatch && productMatch && statusMatch;
+                  return license.client?.id === selectedClientId && license.status === 'attiva';
                 });
-
-                console.log('Matching licenses for client/product:', clientLicenses);
 
                 if (clientLicenses.length === 0) {
                   return (
                     <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                       <p className="text-sm text-yellow-700">
                         <i className="fas fa-exclamation-triangle mr-2"></i>
-                        Nessuna licenza attiva trovata per questo cliente e prodotto
-                      </p>
-                      <p className="text-xs text-yellow-600 mt-1">
-                        Debug: Cliente {selectedClientId}, Prodotto {selectedProductId}
+                        Questo cliente non ha licenze attive
                       </p>
                     </div>
                   );
                 }
 
-                // Se c'è una sola licenza, la seleziona automaticamente
-                if (clientLicenses.length === 1) {
-                  const license = clientLicenses[0];
-                  // Auto-seleziona la licenza
-                  if (watch('licenzaAssegnata') !== license.id) {
-                    setValue('licenzaAssegnata', license.id);
-                  }
-
-                  return (
-                    <div className="p-3 bg-green-50 rounded-md border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-green-800">
-                            <i className="fas fa-link mr-2"></i>
-                            Licenza collegata automaticamente
-                          </p>
-                          <p className="text-xs text-green-600 mt-1">
-                            {license.activationKey} - {license.product.name}
-                          </p>
-                        </div>
-                        <i className="fas fa-check-circle text-green-500"></i>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Se ci sono multiple licenze, mostra la lista e permetti selezione
                 return (
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">Licenze disponibili per questo cliente/prodotto:</p>
-                    <Select onValueChange={(value) => setValue('licenzaAssegnata', value)} defaultValue={selectedRegistration?.licenzaAssegnata || clientLicenses[0].id}>
-                      <SelectTrigger data-testid="select-assign-license">
-                        <SelectValue placeholder="Seleziona licenza" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clientLicenses.map((license: License) => (
-                          <SelectItem key={license.id} value={license.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{license.activationKey}</span>
-                              <span className="text-xs text-gray-500">{license.product.name} - {license.licenseType}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <Select onValueChange={(value) => {
+                    setValue('licenzaAssegnata', value);
+                    // Reset product field when license changes
+                    setValue('prodottoAssegnato', 'none');
+                  }} defaultValue='none'>
+                    <SelectTrigger data-testid="select-assign-license">
+                      <SelectValue placeholder="Seleziona licenza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nessuna Licenza</SelectItem>
+                      {clientLicenses.map((license: License) => (
+                        <SelectItem key={license.id} value={license.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{license.activationKey}</span>
+                            <span className="text-xs text-gray-500">{license.licenseType} - {license.product?.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
+            </div>
+
+            <div>
+              <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
+              {(() => {
+                const selectedLicenseId = watch('licenzaAssegnata');
+
+                if (!selectedLicenseId || selectedLicenseId === 'none') {
+                  return (
+                    <div className="p-3 bg-gray-50 rounded-md border">
+                      <p className="text-sm text-gray-500">Seleziona prima una licenza</p>
+                    </div>
+                  );
+                }
+
+                // Trova il prodotto della licenza selezionata
+                const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
+                
+                if (!selectedLicense || !selectedLicense.product) {
+                  return (
+                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                      <p className="text-sm text-yellow-700">
+                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                        Prodotto non trovato per questa licenza
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Auto-seleziona il prodotto della licenza
+                if (watch('prodottoAssegnato') !== selectedLicense.product.id) {
+                  setValue('prodottoAssegnato', selectedLicense.product.id);
+                }
+
+                return (
+                  <div className="p-3 bg-green-50 rounded-md border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          <i className="fas fa-link mr-2"></i>
+                          Prodotto collegato automaticamente
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          {selectedLicense.product.name} v{selectedLicense.product.version}
+                        </p>
+                      </div>
+                      <i className="fas fa-check-circle text-green-500"></i>
+                    </div>
                   </div>
                 );
               })()}
@@ -892,20 +867,11 @@ export default function SoftwareRegistrations() {
               La licenza sarà utilizzabile solo su questo dispositivo.
             </p>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsClassifyDialogOpen(false)}
-                data-testid="button-cancel-classify"
-              >
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsClassifyDialogOpen(false)}>
                 Annulla
               </Button>
-              <Button
-                type="submit"
-                disabled={classifyMutation.isPending}
-                data-testid="button-confirm-classify"
-              >
+              <Button type="submit" disabled={classifyMutation.isPending}>
                 {classifyMutation.isPending ? 'Classificando...' : 'Classifica'}
               </Button>
             </div>
@@ -916,4 +882,4 @@ export default function SoftwareRegistrations() {
       </div>
     </div>
   );
-}
+};
