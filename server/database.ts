@@ -4,7 +4,7 @@ const dbConfig = {
   host: process.env.DATABASE_HOST || '87.106.247.35',
   user: process.env.DATABASE_USER || 'ext_replit',
   password: process.env.DATABASE_PASSWORD || 'Replit@2025',
-  database: process.env.DATABASE_NAME || 'replit_license',
+  database: process.env.DATABASE_NAME || 'replit_licenze',
   charset: 'utf8mb4',
   timezone: '+00:00',
   acquireTimeout: 60000,
