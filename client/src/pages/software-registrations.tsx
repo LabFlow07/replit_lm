@@ -259,6 +259,8 @@ export default function SoftwareRegistrations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
       setIsClassifyDialogOpen(false);
       setSelectedRegistration(null);
       reset();
@@ -305,12 +307,22 @@ export default function SoftwareRegistrations() {
   const handleClassify = (id: string) => {
     const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
+    
+    // Reset form first
+    reset();
+    
     if (registrationToClassify) {
-      setValue('aziendaAssegnata', 'none');
-      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
-      setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || 'none');
-      setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || 'none');
-      setValue('note', registrationToClassify.note || '');
+      // Find the client to get the company if already assigned
+      const client = clients.find(c => c.id === registrationToClassify.clienteAssegnato);
+      const companyId = client?.company_id || client?.companyId || 'none';
+      
+      setTimeout(() => {
+        setValue('aziendaAssegnata', companyId);
+        setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
+        setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || 'none');
+        setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || 'none');
+        setValue('note', registrationToClassify.note || '');
+      }, 100);
     }
     setIsClassifyDialogOpen(true);
   };
@@ -326,11 +338,15 @@ export default function SoftwareRegistrations() {
     console.log('Found client:', client);
     console.log('Company ID:', companyId);
     
-    setValue('aziendaAssegnata', companyId);
-    setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
-    setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
-    setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
-    setValue('note', registration.note || '');
+    // Use setTimeout to ensure the form is reset before setting new values
+    setTimeout(() => {
+      setValue('aziendaAssegnata', companyId);
+      setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
+      setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
+      setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
+      setValue('note', registration.note || '');
+    }, 100);
+    
     setIsClassifyDialogOpen(true);
   };
 
