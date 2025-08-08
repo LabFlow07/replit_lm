@@ -190,37 +190,45 @@ class Database {
         )
       `);
 
+      // New device registration tables
       await this.query(`
-        CREATE TABLE IF NOT EXISTS software_registrations (
-          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-          nome_software VARCHAR(255) NOT NULL,
-          versione VARCHAR(50) NOT NULL,
-          ragione_sociale VARCHAR(255) NOT NULL,
-          partita_iva VARCHAR(50),
-          totale_ordini INT DEFAULT 0,
-          totale_venduto DECIMAL(10,2) DEFAULT 0.00,
-          sistema_operativo VARCHAR(100),
-          indirizzo_ip VARCHAR(45),
-          computer_key VARCHAR(255),
-          installation_path TEXT,
-          status VARCHAR(50) DEFAULT 'non_assegnato',
-          cliente_assegnato VARCHAR(36),
-          licenza_assegnata VARCHAR(36),
-          prodotto_assegnato VARCHAR(36),
-          note TEXT,
-          prima_registrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          ultima_attivita TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CREATE TABLE IF NOT EXISTS Testa_Reg_Azienda (
+          PartitaIva VARCHAR(20) NOT NULL PRIMARY KEY,
+          NomeAzienda VARCHAR(255) NOT NULL,
+          Prodotto VARCHAR(255) NOT NULL,
+          Versione VARCHAR(50),
+          Modulo VARCHAR(255),
+          Utenti INT DEFAULT 0,
+          TotDispositivi INT DEFAULT 0,
+          ID_Licenza VARCHAR(36),
+          TotOrdini INT DEFAULT 0,
+          TotVendite DECIMAL(15,2) DEFAULT 0.00,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
       `);
 
-      // Add the missing column if it doesn't exist
       await this.query(`
-        ALTER TABLE software_registrations 
-        ADD COLUMN IF NOT EXISTS prodotto_assegnato VARCHAR(36)
-      `).catch(() => {
-        // Column might already exist, ignore error
+        CREATE TABLE IF NOT EXISTS Dett_Reg_Azienda (
+          ID INT AUTO_INCREMENT PRIMARY KEY,
+          PartitaIva VARCHAR(20) NOT NULL,
+          UID_Dispositivo VARCHAR(255) NOT NULL,
+          SistemaOperativo VARCHAR(100),
+          Note TEXT,
+          DataAttivazione DATE,
+          DataUltimoAccesso DATETIME,
+          Ordini INT DEFAULT 0,
+          Vendite DECIMAL(15,2) DEFAULT 0.00,
+          Computer_Key VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (PartitaIva) REFERENCES Testa_Reg_Azienda(PartitaIva) ON DELETE CASCADE ON UPDATE CASCADE
+        )
+      `);
+
+      // Remove old software_registrations table if it exists
+      await this.query(`DROP TABLE IF EXISTS software_registrations`).catch(() => {
+        // Table might not exist, ignore error
       });
 
       console.log('Database tables initialized successfully');

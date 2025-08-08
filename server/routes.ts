@@ -471,19 +471,61 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
     const user = (req as any).user;
     const { status, nomeSoftware } = req.query;
 
-    console.log('Fetching software registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
+    console.log('Fetching device registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
 
-    const filters = {
-      ...(status && { status: status as string }),
-      ...(nomeSoftware && { nomeSoftware: nomeSoftware as string })
-    };
+    // Get all company registrations
+    const companies = await storage.getAllTestaRegAzienda();
+    
+    // Filter based on query parameters
+    let filteredCompanies = companies;
+    if (nomeSoftware) {
+      filteredCompanies = companies.filter(company => 
+        company.prodotto?.toLowerCase().includes((nomeSoftware as string).toLowerCase())
+      );
+    }
 
-    const registrations = await storage.getSoftwareRegistrations(filters);
-    console.log('Software registrations API returned', registrations.length, 'registrations for user', user.username);
+    // Build response with device details
+    const registrations = [];
+    for (const company of filteredCompanies) {
+      const devices = await storage.getDettRegAziendaByPartitaIva(company.partitaIva);
+      
+      // Create a registration entry for each device
+      for (const device of devices) {
+        const hasLicense = company.idLicenza !== null;
+        const registration = {
+          id: `${company.partitaIva}-${device.id}`,
+          partitaIva: company.partitaIva,
+          nomeSoftware: company.prodotto,
+          versione: company.versione,
+          modulo: company.modulo,
+          ragioneSociale: company.nomeAzienda,
+          uidDispositivo: device.uidDispositivo,
+          sistemaOperativo: device.sistemaOperativo,
+          computerKey: device.computerKey,
+          totaleOrdini: device.ordini,
+          totaleVenduto: parseFloat(device.vendite || '0'),
+          status: hasLicense ? 'classificato' : 'non_assegnato',
+          clienteAssegnato: null, // Will be populated when license is assigned
+          licenzaAssegnata: company.idLicenza,
+          prodottoAssegnato: company.prodotto,
+          note: device.note,
+          primaRegistrazione: device.dataAttivazione,
+          ultimaAttivita: device.dataUltimoAccesso,
+          createdAt: device.createdAt,
+          updatedAt: device.updatedAt
+        };
+        
+        // Filter by status if specified
+        if (!status || status === 'all' || registration.status === status) {
+          registrations.push(registration);
+        }
+      }
+    }
 
+    console.log('Device registrations API returned', registrations.length, 'registrations for user', user.username);
     res.json(registrations);
   } catch (error) {
-    console.error('Get software registrations error:', error);
+    console.error('Get device registrations error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -491,15 +533,47 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Request, res: Response) => {
   try {
     const registrationId = req.params.id;
-    const registration = await storage.getSoftwareRegistration(registrationId);
+    // ID format: "partitaIva-deviceId"
+    const [partitaIva, deviceId] = registrationId.split('-');
+    
+    if (!partitaIva || !deviceId) {
+      return res.status(400).json({ message: "Invalid registration ID format" });
+    }
 
-    if (!registration) {
+    const company = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+    const device = await storage.getDettRegAziendaById(parseInt(deviceId));
+
+    if (!company || !device) {
       return res.status(404).json({ message: "Registration not found" });
     }
 
+    const hasLicense = company.idLicenza !== null;
+    const registration = {
+      id: registrationId,
+      partitaIva: company.partitaIva,
+      nomeSoftware: company.prodotto,
+      versione: company.versione,
+      modulo: company.modulo,
+      ragioneSociale: company.nomeAzienda,
+      uidDispositivo: device.uidDispositivo,
+      sistemaOperativo: device.sistemaOperativo,
+      computerKey: device.computerKey,
+      totaleOrdini: device.ordini,
+      totaleVenduto: parseFloat(device.vendite || '0'),
+      status: hasLicense ? 'classificato' : 'non_assegnato',
+      clienteAssegnato: null,
+      licenzaAssegnata: company.idLicenza,
+      prodottoAssegnato: company.prodotto,
+      note: device.note,
+      primaRegistrazione: device.dataAttivazione,
+      ultimaAttivita: device.dataUltimoAccesso,
+      createdAt: device.createdAt,
+      updatedAt: device.updatedAt
+    };
+
     res.json(registration);
   } catch (error) {
-    console.error('Get software registration error:', error);
+    console.error('Get device registration error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -508,40 +582,73 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
   try {
     const registrationId = req.params.id;
     const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note } = req.body;
-
-    // Get product name for prodotto_assegnato field
-    let productName = null;
-    if (prodottoAssegnato) {
-      const product = await storage.getProduct(prodottoAssegnato);
-      if (product) {
-        productName = product.name;
-      }
+    
+    // ID format: "partitaIva-deviceId"
+    const [partitaIva, deviceId] = registrationId.split('-');
+    
+    if (!partitaIva || !deviceId) {
+      return res.status(400).json({ message: "Invalid registration ID format" });
     }
 
-    // If a license is assigned, activate it
+    // If a license is assigned, activate it and update company record
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
       await storage.updateLicense(licenzaAssegnata, {
         status: 'attiva',
         activationDate: new Date().toISOString()
       });
-      console.log(`License ${licenzaAssegnata} activated successfully`);
+      
+      // Update company record with license assignment
+      await storage.updateTestaRegAzienda(partitaIva, {
+        idLicenza: licenzaAssegnata
+      });
+      
+      console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     }
 
-    const updates = {
-      clienteAssegnato,
-      licenzaAssegnata,
-      prodottoAssegnato: productName, // Store product name instead of ID
-      note,
-      status: 'classificato'
-    };
+    // Update device notes if provided
+    if (note && deviceId) {
+      await storage.updateDettRegAzienda(parseInt(deviceId), {
+        note: note
+      });
+    }
 
-    console.log('Updating registration with:', updates);
-    const updatedRegistration = await storage.updateSoftwareRegistration(registrationId, updates);
+    // Get updated registration data to return
+    const company = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+    const device = await storage.getDettRegAziendaById(parseInt(deviceId));
+
+    if (!company || !device) {
+      return res.status(404).json({ message: "Registration not found after update" });
+    }
+
+    const hasLicense = company.idLicenza !== null;
+    const updatedRegistration = {
+      id: registrationId,
+      partitaIva: company.partitaIva,
+      nomeSoftware: company.prodotto,
+      versione: company.versione,
+      modulo: company.modulo,
+      ragioneSociale: company.nomeAzienda,
+      uidDispositivo: device.uidDispositivo,
+      sistemaOperativo: device.sistemaOperativo,
+      computerKey: device.computerKey,
+      totaleOrdini: device.ordini,
+      totaleVenduto: parseFloat(device.vendite || '0'),
+      status: hasLicense ? 'classificato' : 'non_assegnato',
+      clienteAssegnato: null,
+      licenzaAssegnata: company.idLicenza,
+      prodottoAssegnato: company.prodotto,
+      note: device.note,
+      primaRegistrazione: device.dataAttivazione,
+      ultimaAttivita: device.dataUltimoAccesso,
+      createdAt: device.createdAt,
+      updatedAt: device.updatedAt
+    };
     
+    console.log('Device registration classified successfully');
     res.json(updatedRegistration);
   } catch (error) {
-    console.error('Classify software registration error:', error);
+    console.error('Classify device registration error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -1265,13 +1372,14 @@ router.post("/api/device-registration", async (req: Request, res: Response) => {
     }
 
     // Step 2: Register the specific device
+    const now = new Date();
     const deviceData = {
       partitaIva,
       uidDispositivo,
       sistemaOperativo: sistemaOperativo || null,
       note: note || null,
-      dataAttivazione: new Date().toISOString().split('T')[0], // Today's date
-      dataUltimoAccesso: new Date().toISOString(),
+      dataAttivazione: now.toISOString().split('T')[0], // Today's date as YYYY-MM-DD
+      dataUltimoAccesso: now.toISOString().replace('T', ' ').split('.')[0], // MySQL DATETIME format
       ordini: 0,
       vendite: "0.00",
       computerKey: computerKey || null

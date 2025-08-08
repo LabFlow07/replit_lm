@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import registerRoutes from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { database } from "./database";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +38,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize database tables
+  try {
+    await database.initTables();
+    console.log('Database initialization completed');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+  }
+
   // Register API routes
   registerRoutes(app);
 

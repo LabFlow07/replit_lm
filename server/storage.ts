@@ -1754,6 +1754,25 @@ export class DatabaseStorage implements IStorage {
     return this.getTestaRegAziendaByPartitaIva(registration.partitaIva) as Promise<TestaRegAzienda>;
   }
 
+  async getAllTestaRegAzienda(): Promise<TestaRegAzienda[]> {
+    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
+    
+    return rows.map((row: any) => ({
+      partitaIva: row.PartitaIva,
+      nomeAzienda: row.NomeAzienda,
+      prodotto: row.Prodotto,
+      versione: row.Versione,
+      modulo: row.Modulo,
+      utenti: row.Utenti,
+      totDispositivi: row.TotDispositivi,
+      idLicenza: row.ID_Licenza,
+      totOrdini: row.TotOrdini,
+      totVendite: row.TotVendite?.toString() || '0.00',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
   async updateTestaRegAzienda(partitaIva: string, updates: Partial<TestaRegAzienda>): Promise<TestaRegAzienda> {
     const setClauses = [];
     const params = [];
@@ -1791,6 +1810,25 @@ export class DatabaseStorage implements IStorage {
     return this.getTestaRegAziendaByPartitaIva(partitaIva) as Promise<TestaRegAzienda>;
   }
   
+  async getDettRegAziendaByPartitaIva(partitaIva: string): Promise<DettRegAzienda[]> {
+    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE PartitaIva = ? ORDER BY created_at DESC', [partitaIva]);
+    
+    return rows.map((row: any) => ({
+      id: row.ID,
+      partitaIva: row.PartitaIva,
+      uidDispositivo: row.UID_Dispositivo,
+      sistemaOperativo: row.SistemaOperativo,
+      note: row.Note,
+      dataAttivazione: row.DataAttivazione,
+      dataUltimoAccesso: row.DataUltimoAccesso,
+      ordini: row.Ordini,
+      vendite: row.Vendite?.toString() || '0.00',
+      computerKey: row.Computer_Key,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
   async getDettRegAzienda(partitaIva?: string): Promise<DettRegAzienda[]> {
     let query = 'SELECT * FROM Dett_Reg_Azienda';
     const params: any[] = [];
@@ -1845,6 +1883,13 @@ export class DatabaseStorage implements IStorage {
   async createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda> {
     const now = new Date();
     
+    // Convert dataUltimoAccesso to MySQL DATETIME format if it's an ISO string
+    let dataUltimoAccesso = registration.dataUltimoAccesso;
+    if (typeof dataUltimoAccesso === 'string' && dataUltimoAccesso.includes('T')) {
+      // Convert ISO string to MySQL DATETIME format
+      dataUltimoAccesso = dataUltimoAccesso.replace('T', ' ').replace('Z', '').split('.')[0];
+    }
+    
     const result = await database.query(`
       INSERT INTO Dett_Reg_Azienda (
         PartitaIva, UID_Dispositivo, SistemaOperativo, Note,
@@ -1857,7 +1902,7 @@ export class DatabaseStorage implements IStorage {
       registration.sistemaOperativo,
       registration.note,
       registration.dataAttivazione,
-      registration.dataUltimoAccesso,
+      dataUltimoAccesso,
       registration.ordini || 0,
       registration.vendite || '0.00',
       registration.computerKey,
