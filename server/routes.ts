@@ -581,7 +581,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
 router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, async (req: Request, res: Response) => {
   try {
     const registrationId = req.params.id;
-    const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note } = req.body;
+    const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
     
     // ID format: "partitaIva-deviceId"
     const [partitaIva, deviceId] = registrationId.split('-');
@@ -594,8 +594,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
       await storage.updateLicense(licenzaAssegnata, {
-        status: 'attiva',
-        activationDate: new Date().toISOString()
+        status: 'attiva'
       });
       
       // Update company record with license assignment
@@ -606,11 +605,24 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     }
 
-    // Update device notes if provided
-    if (note && deviceId) {
-      await storage.updateDettRegAzienda(parseInt(deviceId), {
-        note: note
-      });
+    // Update device notes and computer key if provided
+    if (deviceId) {
+      const deviceUpdates: any = {};
+      
+      if (note !== undefined) {
+        deviceUpdates.note = note;
+      }
+      
+      // If device should be authorized, generate computer key
+      if (authorizeDevice) {
+        const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        deviceUpdates.computerKey = computerKey;
+        console.log(`Generated computer key ${computerKey} for device ${deviceId}`);
+      }
+      
+      if (Object.keys(deviceUpdates).length > 0) {
+        await storage.updateDettRegAzienda(parseInt(deviceId), deviceUpdates);
+      }
     }
 
     // Get updated registration data to return
@@ -1415,10 +1427,9 @@ router.post("/api/device-registration", async (req: Request, res: Response) => {
           validityDays = -1; // Permanent license
         }
 
-        // Check if specific device is authorized (computer_key matches)
-        const deviceAuthorized = computerKey && license.computerKey && 
-          (license.computerKey === computerKey || 
-           license.computerKey.includes(computerKey));
+        // Check if specific device is authorized (device has computer key assigned)
+        const currentDevice = await storage.getDettRegAziendaByComputerKey(computerKey);
+        const deviceAuthorized = currentDevice && currentDevice.computerKey === computerKey;
 
         response = {
           ...response,
@@ -1478,15 +1489,14 @@ router.post("/api/assign-license-to-company", authenticateToken, async (req: Req
     // Update Testa_Reg_Azienda with license assignment
     await storage.updateTestaRegAzienda(partitaIva, { idLicenza: licenseId });
 
-    // If specific devices are authorized, update their computer_key
+    // If specific devices are authorized, assign computer keys to them
     if (authorizedDevices && Array.isArray(authorizedDevices)) {
       for (const deviceId of authorizedDevices) {
-        const license = await storage.getLicense(licenseId);
-        if (license) {
-          await storage.updateDettRegAzienda(deviceId, { 
-            computerKey: license.computerKey 
-          });
-        }
+        // Generate a unique computer key for this device
+        const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        await storage.updateDettRegAzienda(deviceId, { 
+          computerKey: computerKey 
+        });
       }
     }
 

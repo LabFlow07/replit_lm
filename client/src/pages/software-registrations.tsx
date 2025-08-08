@@ -216,7 +216,8 @@ export default function SoftwareRegistrations() {
         clienteAssegnato: data.clienteAssegnato === 'none' ? null : data.clienteAssegnato,
         licenzaAssegnata: (finalLicenseId === 'none' || !finalLicenseId) ? null : finalLicenseId,
         prodottoAssegnato: data.prodottoAssegnato === 'none' ? null : data.prodottoAssegnato,
-        note: data.note
+        note: data.note,
+        authorizeDevice: data.authorizeDevice || false
       };
 
       const response = await fetch(`/api/software/registrazioni/${selectedRegistration?.id}/classifica`, {
@@ -873,6 +874,23 @@ export default function SoftwareRegistrations() {
                 defaultValue={selectedRegistration?.note || ''}
               />
             </div>
+
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="authorizeDevice"
+                {...register('authorizeDevice')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                data-testid="checkbox-authorize-device"
+              />
+              <Label htmlFor="authorizeDevice" className="flex items-center">
+                <span className="ml-1">Autorizza Dispositivo (Computer Key)</span>
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 ml-7">
+              Genera una chiave computer per autorizzare questo dispositivo specifico.
+              La licenza sarà utilizzabile solo su questo dispositivo.
+            </p>
 
             <div className="flex justify-end gap-2">
               <Button

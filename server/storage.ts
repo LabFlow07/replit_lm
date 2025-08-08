@@ -1950,6 +1950,28 @@ export class DatabaseStorage implements IStorage {
 
     return this.getDettRegAziendaById(id) as Promise<DettRegAzienda>;
   }
+
+  async getDettRegAziendaByComputerKey(computerKey: string): Promise<DettRegAzienda | undefined> {
+    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE Computer_Key = ?', [computerKey]);
+    
+    if (rows.length === 0) return undefined;
+    
+    const row = rows[0];
+    return {
+      id: row.ID,
+      partitaIva: row.PartitaIva,
+      uidDispositivo: row.UID_Dispositivo,
+      sistemaOperativo: row.SistemaOperativo,
+      note: row.Note,
+      dataAttivazione: row.DataAttivazione,
+      dataUltimoAccesso: row.DataUltimoAccesso,
+      ordini: row.Ordini,
+      vendite: row.Vendite?.toString() || '0.00',
+      computerKey: row.Computer_Key,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

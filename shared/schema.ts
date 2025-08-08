@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, serial, decimal, boolean, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -79,8 +79,6 @@ export const licenses = pgTable("licenses", {
   clientId: varchar("client_id").notNull(),
   productId: varchar("product_id").notNull(),
   activationKey: text("activation_key").notNull().unique(),
-  computerKey: text("computer_key"),
-  activationDate: timestamp("activation_date"),
   expiryDate: timestamp("expiry_date"),
   licenseType: text("license_type").notNull(), // permanente, trial, abbonamento_mensile, abbonamento_annuale
   status: text("status").default('pending'), // attiva, scaduta, sospesa, demo, in_attesa_convalida
@@ -148,7 +146,7 @@ export const testaRegAzienda = pgTable("Testa_Reg_Azienda", {
 
 // Sistema di registrazione dispositivi - Tabella Dettaglio (Details)  
 export const dettRegAzienda = pgTable("Dett_Reg_Azienda", {
-  id: integer("ID").primaryKey().generatedAlwaysAsIdentity(),
+  id: serial("ID").primaryKey(),
   partitaIva: varchar("PartitaIva", { length: 20 }).notNull(),
   uidDispositivo: text("UID_Dispositivo").notNull(),
   sistemaOperativo: varchar("SistemaOperativo", { length: 100 }),
