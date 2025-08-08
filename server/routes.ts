@@ -1218,6 +1218,177 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
   }
 });
 
+// Device Registration API - New endpoint for device registration
+router.post("/api/device-registration", async (req: Request, res: Response) => {
+  try {
+    const {
+      partitaIva,
+      nomeAzienda,
+      prodotto,
+      versione,
+      modulo,
+      uidDispositivo,
+      sistemaOperativo,
+      computerKey,
+      note
+    } = req.body;
+
+    // Input validation
+    if (!partitaIva || !nomeAzienda || !prodotto || !uidDispositivo) {
+      return res.status(400).json({ 
+        message: "Campi obbligatori: partitaIva, nomeAzienda, prodotto, uidDispositivo" 
+      });
+    }
+
+    // Step 1: Check/Create Testa_Reg_Azienda entry
+    let testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+    
+    if (!testaReg) {
+      // Create new company registration
+      testaReg = await storage.createTestaRegAzienda({
+        partitaIva,
+        nomeAzienda,
+        prodotto,
+        versione: versione || null,
+        modulo: modulo || null,
+        utenti: 1,
+        totDispositivi: 1,
+        idLicenza: null, // Initially no license assigned
+        totOrdini: 0,
+        totVendite: "0.00"
+      });
+    } else {
+      // Update device count
+      await storage.updateTestaRegAzienda(partitaIva, {
+        totDispositivi: (testaReg.totDispositivi || 0) + 1
+      });
+    }
+
+    // Step 2: Register the specific device
+    const deviceData = {
+      partitaIva,
+      uidDispositivo,
+      sistemaOperativo: sistemaOperativo || null,
+      note: note || null,
+      dataAttivazione: new Date().toISOString().split('T')[0], // Today's date
+      dataUltimoAccesso: new Date().toISOString(),
+      ordini: 0,
+      vendite: "0.00",
+      computerKey: computerKey || null
+    };
+
+    const dettReg = await storage.createDettRegAzienda(deviceData);
+
+    // Step 3: Determine response based on license assignment
+    let response = {
+      registrationId: dettReg.id,
+      partitaIva: partitaIva,
+      nomeAzienda: nomeAzienda,
+      uidDispositivo: uidDispositivo,
+      registrationStatus: "accepted", // Always accept initial registrations
+      deviceAuthorized: false,
+      licenseValidityDays: 0,
+      message: "Registrazione accettata. In attesa di assegnazione licenza."
+    };
+
+    // If license is already assigned, check validity and authorization
+    if (testaReg.idLicenza) {
+      const license = await storage.getLicense(testaReg.idLicenza);
+      
+      if (license) {
+        // Calculate remaining days
+        let validityDays = 0;
+        if (license.expiryDate) {
+          const expiryDate = new Date(license.expiryDate);
+          const today = new Date();
+          const timeDiff = expiryDate.getTime() - today.getTime();
+          validityDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        } else {
+          validityDays = -1; // Permanent license
+        }
+
+        // Check if specific device is authorized (computer_key matches)
+        const deviceAuthorized = computerKey && license.computerKey && 
+          (license.computerKey === computerKey || 
+           license.computerKey.includes(computerKey));
+
+        response = {
+          ...response,
+          deviceAuthorized: deviceAuthorized || false,
+          licenseValidityDays: validityDays,
+          message: deviceAuthorized 
+            ? `Dispositivo autorizzato. Licenza valida per ${validityDays > 0 ? validityDays + ' giorni' : 'sempre'}.`
+            : `Licenza assegnata ma dispositivo non autorizzato. Validità: ${validityDays > 0 ? validityDays + ' giorni' : 'sempre'}.`
+        };
+      }
+    }
+
+    res.status(201).json(response);
+
+  } catch (error) {
+    console.error('Device registration error:', error);
+    res.status(500).json({ 
+      message: "Errore interno del server durante la registrazione", 
+      error: error.message 
+    });
+  }
+});
+
+// Get device registrations by company
+router.get("/api/device-registrations/:partitaIva", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { partitaIva } = req.params;
+    
+    const testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+    if (!testaReg) {
+      return res.status(404).json({ message: "Azienda non trovata" });
+    }
+
+    const devices = await storage.getDettRegAzienda(partitaIva);
+    
+    res.json({
+      company: testaReg,
+      devices: devices
+    });
+  } catch (error) {
+    console.error('Get device registrations error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Assign license to company (manual process)
+router.post("/api/assign-license-to-company", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { partitaIva, licenseId, authorizedDevices } = req.body;
+
+    // Only admin/superadmin can assign licenses
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Accesso negato" });
+    }
+
+    // Update Testa_Reg_Azienda with license assignment
+    await storage.updateTestaRegAzienda(partitaIva, { idLicenza: licenseId });
+
+    // If specific devices are authorized, update their computer_key
+    if (authorizedDevices && Array.isArray(authorizedDevices)) {
+      for (const deviceId of authorizedDevices) {
+        const license = await storage.getLicense(licenseId);
+        if (license) {
+          await storage.updateDettRegAzienda(deviceId, { 
+            computerKey: license.computerKey 
+          });
+        }
+      }
+    }
+
+    res.json({ message: "Licenza assegnata con successo" });
+  } catch (error) {
+    console.error('Assign license error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }

@@ -1684,6 +1684,227 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: string): Promise<void> {
     await database.query('DELETE FROM users WHERE id = ?', [id]);
   }
+
+  // Device Registration methods - New tables implementation
+  async getTestaRegAzienda(): Promise<TestaRegAzienda[]> {
+    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
+    
+    return rows.map((row: any) => ({
+      partitaIva: row.PartitaIva,
+      nomeAzienda: row.NomeAzienda,
+      prodotto: row.Prodotto,
+      versione: row.Versione,
+      modulo: row.Modulo,
+      utenti: row.Utenti,
+      totDispositivi: row.TotDispositivi,
+      idLicenza: row.ID_Licenza,
+      totOrdini: row.TotOrdini,
+      totVendite: row.TotVendite?.toString() || '0.00',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  async getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined> {
+    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
+    
+    if (rows.length === 0) return undefined;
+    
+    const row = rows[0];
+    return {
+      partitaIva: row.PartitaIva,
+      nomeAzienda: row.NomeAzienda,
+      prodotto: row.Prodotto,
+      versione: row.Versione,
+      modulo: row.Modulo,
+      utenti: row.Utenti,
+      totDispositivi: row.TotDispositivi,
+      idLicenza: row.ID_Licenza,
+      totOrdini: row.TotOrdini,
+      totVendite: row.TotVendite?.toString() || '0.00',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async createTestaRegAzienda(registration: InsertTestaRegAzienda): Promise<TestaRegAzienda> {
+    const now = new Date();
+    
+    await database.query(`
+      INSERT INTO Testa_Reg_Azienda (
+        PartitaIva, NomeAzienda, Prodotto, Versione, Modulo,
+        Utenti, TotDispositivi, ID_Licenza, TotOrdini, TotVendite,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      registration.partitaIva,
+      registration.nomeAzienda,
+      registration.prodotto,
+      registration.versione,
+      registration.modulo,
+      registration.utenti || 0,
+      registration.totDispositivi || 0,
+      registration.idLicenza,
+      registration.totOrdini || 0,
+      registration.totVendite || '0.00',
+      now,
+      now
+    ]);
+
+    return this.getTestaRegAziendaByPartitaIva(registration.partitaIva) as Promise<TestaRegAzienda>;
+  }
+
+  async updateTestaRegAzienda(partitaIva: string, updates: Partial<TestaRegAzienda>): Promise<TestaRegAzienda> {
+    const setClauses = [];
+    const params = [];
+
+    const fieldMapping: { [key: string]: string } = {
+      'nomeAzienda': 'NomeAzienda',
+      'prodotto': 'Prodotto',
+      'versione': 'Versione',
+      'modulo': 'Modulo',
+      'utenti': 'Utenti',
+      'totDispositivi': 'TotDispositivi',
+      'idLicenza': 'ID_Licenza',
+      'totOrdini': 'TotOrdini',
+      'totVendite': 'TotVendite'
+    };
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined && fieldMapping[key]) {
+        setClauses.push(`${fieldMapping[key]} = ?`);
+        params.push(value);
+      }
+    });
+
+    if (setClauses.length > 0) {
+      setClauses.push('updated_at = ?');
+      params.push(new Date());
+      params.push(partitaIva);
+
+      await database.query(
+        `UPDATE Testa_Reg_Azienda SET ${setClauses.join(', ')} WHERE PartitaIva = ?`,
+        params
+      );
+    }
+
+    return this.getTestaRegAziendaByPartitaIva(partitaIva) as Promise<TestaRegAzienda>;
+  }
+  
+  async getDettRegAzienda(partitaIva?: string): Promise<DettRegAzienda[]> {
+    let query = 'SELECT * FROM Dett_Reg_Azienda';
+    const params: any[] = [];
+    
+    if (partitaIva) {
+      query += ' WHERE PartitaIva = ?';
+      params.push(partitaIva);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const rows = await database.query(query, params);
+    
+    return rows.map((row: any) => ({
+      id: row.ID,
+      partitaIva: row.PartitaIva,
+      uidDispositivo: row.UID_Dispositivo,
+      sistemaOperativo: row.SistemaOperativo,
+      note: row.Note,
+      dataAttivazione: row.DataAttivazione,
+      dataUltimoAccesso: row.DataUltimoAccesso,
+      ordini: row.Ordini,
+      vendite: row.Vendite?.toString() || '0.00',
+      computerKey: row.Computer_Key,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  async getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined> {
+    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
+    
+    if (rows.length === 0) return undefined;
+    
+    const row = rows[0];
+    return {
+      id: row.ID,
+      partitaIva: row.PartitaIva,
+      uidDispositivo: row.UID_Dispositivo,
+      sistemaOperativo: row.SistemaOperativo,
+      note: row.Note,
+      dataAttivazione: row.DataAttivazione,
+      dataUltimoAccesso: row.DataUltimoAccesso,
+      ordini: row.Ordini,
+      vendite: row.Vendite?.toString() || '0.00',
+      computerKey: row.Computer_Key,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda> {
+    const now = new Date();
+    
+    const result = await database.query(`
+      INSERT INTO Dett_Reg_Azienda (
+        PartitaIva, UID_Dispositivo, SistemaOperativo, Note,
+        DataAttivazione, DataUltimoAccesso, Ordini, Vendite, Computer_Key,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      registration.partitaIva,
+      registration.uidDispositivo,
+      registration.sistemaOperativo,
+      registration.note,
+      registration.dataAttivazione,
+      registration.dataUltimoAccesso,
+      registration.ordini || 0,
+      registration.vendite || '0.00',
+      registration.computerKey,
+      now,
+      now
+    ]);
+
+    // Get the auto-incremented ID
+    const insertId = result.insertId;
+    return this.getDettRegAziendaById(insertId) as Promise<DettRegAzienda>;
+  }
+
+  async updateDettRegAzienda(id: number, updates: Partial<DettRegAzienda>): Promise<DettRegAzienda> {
+    const setClauses = [];
+    const params = [];
+
+    const fieldMapping: { [key: string]: string } = {
+      'uidDispositivo': 'UID_Dispositivo',
+      'sistemaOperativo': 'SistemaOperativo',
+      'note': 'Note',
+      'dataAttivazione': 'DataAttivazione',
+      'dataUltimoAccesso': 'DataUltimoAccesso',
+      'ordini': 'Ordini',
+      'vendite': 'Vendite',
+      'computerKey': 'Computer_Key'
+    };
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined && fieldMapping[key]) {
+        setClauses.push(`${fieldMapping[key]} = ?`);
+        params.push(value);
+      }
+    });
+
+    if (setClauses.length > 0) {
+      setClauses.push('updated_at = ?');
+      params.push(new Date());
+      params.push(id);
+
+      await database.query(
+        `UPDATE Dett_Reg_Azienda SET ${setClauses.join(', ')} WHERE ID = ?`,
+        params
+      );
+    }
+
+    return this.getDettRegAziendaById(id) as Promise<DettRegAzienda>;
+  }
 }
 
 export const storage = new DatabaseStorage();
