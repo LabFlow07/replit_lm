@@ -674,25 +674,14 @@ export default function SoftwareRegistrations() {
                       {/* Azioni */}
                       <td className="p-3">
                         <div className="flex gap-1">
-                          {registration.status === 'non_assegnato' && user.role === 'superadmin' && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleClassify(registration.id)}
-                              className="bg-green-600 hover:bg-green-700 h-8 px-3 text-xs"
-                              title="Classifica registrazione"
-                            >
-                              <i className="fas fa-check text-xs"></i>
-                            </Button>
-                          )}
-
                           <Button
-                            variant="outline"
+                            variant={registration.status === 'non_assegnato' ? "default" : "outline"}
                             size="sm"
                             onClick={() => handleEdit(registration)}
-                            className="h-8 w-8 p-0"
-                            title="Modifica registrazione"
+                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                            title={registration.status === 'non_assegnato' ? "Classifica registrazione" : "Visualizza registrazione"}
                           >
-                            <i className="fas fa-edit text-xs"></i>
+                            <i className={`fas ${registration.status === 'non_assegnato' ? 'fa-check' : 'fa-eye'} text-xs`}></i>
                           </Button>
 
                           {user.role === 'superadmin' && (
