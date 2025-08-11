@@ -101,9 +101,10 @@ export default function SoftwareRegistrations() {
       clearTimeout(debounceTimeout.current);
     }
     debounceTimeout.current = setTimeout(() => {
+      console.log('Setting search term to:', searchInput);
       debouncedSearchTerm.current = searchInput;
       setSearchTerm(searchInput); // Update searchTerm only after debounce delay
-    }, 500); // 500ms delay
+    }, 300); // Ridotto a 300ms per una risposta più veloce
 
     return () => {
       if (debounceTimeout.current) {
@@ -323,7 +324,24 @@ export default function SoftwareRegistrations() {
   };
 
   const filteredRegistrations = Array.isArray(registrations) ? registrations.filter((registration: SoftwareRegistration) => {
-    const matchesSearch = !searchTerm || [
+    if (!searchTerm) {
+      // Se non c'è termine di ricerca, filtra solo per stato
+      const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
+      return matchesStatus;
+    }
+
+    // Debug della ricerca
+    console.log('Searching for:', searchTerm);
+    console.log('Registration data:', {
+      nomeSoftware: registration.nomeSoftware,
+      ragioneSociale: registration.ragioneSociale,
+      versione: registration.versione,
+      partitaIva: registration.partitaIva,
+      licenzaAssegnata: registration.licenzaAssegnata
+    });
+
+    // Crea un array con tutti i possibili campi di ricerca
+    const searchableFields = [
       registration.nomeSoftware,
       registration.ragioneSociale,
       registration.versione,
@@ -335,37 +353,64 @@ export default function SoftwareRegistrations() {
       registration.clientName,
       registration.productName,
       registration.productVersion,
-      (() => {
-        if (registration.licenzaAssegnata) {
-          const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
-          if (assignedLicense) {
-            return [
-              assignedLicense.client?.name,
-              assignedLicense.client?.email,
-              assignedLicense.product?.name,
-              assignedLicense.activationKey,
-              assignedLicense.licenseType
-            ].join(' ');
-          }
-        }
-        return '';
-      })(),
-      (() => {
-        if (registration.licenzaAssegnata) {
-          const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
-          if (assignedLicense && assignedLicense.client) {
-            const clientCompany = companies.find(c => 
-              c.id === assignedLicense.client?.company_id || 
-              c.id === assignedLicense.client?.companyId
-            );
-            return clientCompany?.name || '';
-          }
-        }
-        return '';
-      })()
-    ].filter(Boolean).join(' ').toLowerCase().includes(searchTerm.toLowerCase());
+    ];
 
+    // Aggiungi dati dalla licenza assegnata se presente
+    if (registration.licenzaAssegnata && licenses.length > 0) {
+      const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+      if (assignedLicense) {
+        console.log('Found assigned license:', assignedLicense);
+        
+        // Aggiungi dati del cliente
+        if (assignedLicense.client) {
+          searchableFields.push(
+            assignedLicense.client.name,
+            assignedLicense.client.email,
+            assignedLicense.clientName // fallback
+          );
+        }
+
+        // Aggiungi dati del prodotto
+        if (assignedLicense.product) {
+          searchableFields.push(
+            assignedLicense.product.name,
+            assignedLicense.product.version
+          );
+        }
+
+        // Aggiungi altri dati della licenza
+        searchableFields.push(
+          assignedLicense.activationKey,
+          assignedLicense.licenseType,
+          assignedLicense.clientName, // fallback
+          assignedLicense.companyName // fallback
+        );
+
+        // Aggiungi nome dell'azienda se disponibile
+        if (assignedLicense.client && companies.length > 0) {
+          const clientCompany = companies.find(c => 
+            c.id === assignedLicense.client?.company_id || 
+            c.id === assignedLicense.client?.companyId
+          );
+          if (clientCompany) {
+            searchableFields.push(clientCompany.name);
+          }
+        }
+      }
+    }
+
+    // Filtra i valori null/undefined e crea una stringa di ricerca
+    const searchText = searchableFields
+      .filter(field => field != null && field !== '')
+      .join(' ')
+      .toLowerCase();
+
+    console.log('Searchable text for registration:', searchText);
+
+    const matchesSearch = searchText.includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
+
+    console.log('Search result:', { matchesSearch, matchesStatus, searchTerm: searchTerm.toLowerCase() });
 
     return matchesSearch && matchesStatus;
   }) : [];
@@ -487,6 +532,11 @@ export default function SoftwareRegistrations() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 data-testid="input-search"
               />
+              {searchTerm && (
+                <div className="mt-1 text-xs text-gray-500">
+                  Ricercando: "{searchTerm}" - Trovati: {filteredRegistrations.length} risultati
+                </div>
+              )}
             </div>
             <div className="md:w-48">
               <Label htmlFor="status-filter">Stato</Label>
