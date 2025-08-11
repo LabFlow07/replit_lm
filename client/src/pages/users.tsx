@@ -257,14 +257,15 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-4 space-y-4">
+      <main className="flex-1 bg-surface">
+        <TopBar />
+        <div className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
+              <h1 className="text-xl font-bold flex items-center gap-2">
                 <Users className="h-6 w-6 text-primary" />
                 Gestione Utenti
               </h1>
@@ -275,9 +276,9 @@ export default function UsersPage() {
                 }
               </p>
             </div>
-        
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
+            
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogTrigger asChild>
             <Button data-testid="button-create-user">
               <Plus className="h-4 w-4 mr-2" />
               Nuovo Utente
@@ -565,7 +566,7 @@ export default function UsersPage() {
         </Dialog>
       )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

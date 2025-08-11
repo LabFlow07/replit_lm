@@ -38,9 +38,9 @@ export default function SettingsPage() {
       <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Impostazioni Sistema</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Impostazioni Sistema</h1>
             <p className="text-sm text-gray-600">Configura le impostazioni generali della piattaforma QLM</p>
           </div>
 

@@ -15,6 +15,7 @@ import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X } from "
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
+import TopBar from '@/components/layout/topbar';
 
 // Mock user for role checking, replace with actual auth context in a real app
 const user = {
@@ -406,13 +407,14 @@ export default function SoftwareRegistrations() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen flex bg-surface">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-4 space-y-4">
+      <main className="flex-1 bg-surface">
+        <TopBar />
+        <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight" data-testid="heading-registrations">
+              <h1 className="text-xl font-bold tracking-tight" data-testid="heading-registrations">
                 QlmRegister
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -1164,7 +1166,7 @@ export default function SoftwareRegistrations() {
         </DialogContent>
       </Dialog>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

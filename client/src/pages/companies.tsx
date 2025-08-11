@@ -741,10 +741,10 @@ export default function CompaniesPage() {
       <main className="flex-1 bg-surface">
         <TopBar />
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestione Aziende</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Gestione Aziende</h1>
               <p className="text-sm text-gray-600">
                 {user?.role === 'superadmin' ? 'Visualizza la struttura gerarchica completa delle aziende' :
                  user?.role === 'admin' ? 'Gestisci la tua azienda e le sotto-aziende associate' :
