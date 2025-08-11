@@ -114,15 +114,15 @@ export default function Sidebar() {
         ${isMobile 
           ? `fixed left-0 top-0 z-50 transform transition-transform duration-300 ${
               isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            } w-64 bg-white border-r border-gray-200 h-screen flex flex-col`
-          : `${isCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300`
+            } w-56 bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg`
+          : `${isCollapsed ? 'w-14' : 'w-56'} bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300`
         }
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-3">
           {(!isCollapsed || isMobile) && (
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+            <div className="flex items-center space-x-2">
+              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
                 <img 
                   src="/cmh-logo.png" 
                   alt="CMH Logo" 
@@ -142,7 +142,7 @@ export default function Sidebar() {
                 </div>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">QLM Platform</h1>
+                <h1 className="text-base font-bold text-gray-900">QLM Platform</h1>
                 <p className="text-xs text-gray-500">License Manager</p>
               </div>
             </div>
@@ -155,29 +155,29 @@ export default function Sidebar() {
             data-testid="button-toggle-sidebar"
           >
             {isMobile && isMobileMenuOpen ? (
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3" />
             ) : (
-              <Menu className="h-4 w-4" />
+              <Menu className="h-3 w-3" />
             )}
           </Button>
         </div>
 
         {/* Company Info for non-superadmin users */}
         {(!isCollapsed || isMobile) && user?.role !== 'superadmin' && user?.company && (
-          <div className="px-4 py-2 border-b border-gray-100">
+          <div className="px-3 py-2 border-b border-gray-100">
             <div className="text-xs text-gray-600 mb-1">Azienda</div>
-            <div className="font-medium text-gray-900 text-sm">{user.company.name}</div>
+            <div className="font-medium text-gray-900 text-xs">{user.company.name}</div>
             <div className="text-xs text-gray-500 capitalize">{user.role}</div>
           </div>
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-3 space-y-1">
           {navigationItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setLocation(item.route)}
-              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`w-full flex items-center px-2 py-2 text-xs font-medium rounded-md transition-colors ${
                 activeItem === item.id
                   ? 'bg-primary text-white'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -185,12 +185,12 @@ export default function Sidebar() {
               title={isCollapsed && !isMobile ? item.label : undefined}
               data-testid={`nav-${item.id}`}
             >
-              <i className={`${item.icon} ${isCollapsed && !isMobile ? 'text-base' : 'text-sm mr-3'}`}></i>
+              <i className={`${item.icon} ${isCollapsed && !isMobile ? 'text-sm' : 'text-xs mr-2'}`}></i>
               {(!isCollapsed || isMobile) && (
                 <>
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1 text-left">{item.label}</span>
                   {item.badge && (
-                    <span className="ml-2 bg-secondary text-white text-xs px-2 py-0.5 rounded-full">
+                    <span className="ml-1 bg-secondary text-white text-xs px-1.5 py-0.5 rounded-full">
                       {item.badge}
                     </span>
                   )}
@@ -201,14 +201,14 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-              <i className="fas fa-user text-gray-600 text-sm"></i>
+        <div className="border-t border-gray-200 p-3">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
+              <i className="fas fa-user text-gray-600 text-xs"></i>
             </div>
             {(!isCollapsed || isMobile) && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-xs font-medium text-gray-900 truncate">
                   {user?.name}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
@@ -224,7 +224,7 @@ export default function Sidebar() {
               title="Logout"
               data-testid="button-logout"
             >
-              <i className="fas fa-sign-out-alt text-sm"></i>
+              <i className="fas fa-sign-out-alt text-xs"></i>
             </Button>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function Sidebar() {
           variant="outline"
           size="sm"
           onClick={() => setIsMobileMenuOpen(true)}
-          className="fixed top-4 left-4 z-30 bg-white shadow-md"
+          className="fixed top-3 left-3 z-30 bg-white shadow-md p-2"
           data-testid="button-open-mobile-menu"
         >
           <Menu className="h-4 w-4" />

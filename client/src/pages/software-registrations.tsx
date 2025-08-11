@@ -408,14 +408,14 @@ export default function SoftwareRegistrations() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-auto">
-        <div className="container mx-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-registrations">
+              <h1 className="text-2xl font-bold tracking-tight" data-testid="heading-registrations">
                 QlmRegister
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Gestisci le registrazioni automatiche dei software installati presso i clienti
               </p>
             </div>
@@ -428,24 +428,25 @@ export default function SoftwareRegistrations() {
             Filtri di Ricerca
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
+        <CardContent className="space-y-3">
+          <div className="flex flex-col lg:flex-row gap-3">
             <div className="flex-1">
-              <Label htmlFor="search-input">Ricerca Software/Azienda</Label>
+              <Label htmlFor="search-input" className="text-xs">Ricerca Software/Azienda</Label>
               <div className="flex gap-2">
                 <Input
                   id="search-input"
-                  placeholder="Cerca in tutti i campi (software, azienda, cliente, prodotto, note, computer key, etc.)..."
+                  placeholder="Cerca in tutti i campi..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   data-testid="input-search"
+                  className="text-sm"
                 />
                 <Button 
                   onClick={executeSearch}
                   variant="outline"
                   size="sm"
-                  className="px-4"
+                  className="px-3"
                   data-testid="button-search"
                 >
                   <Search className="h-4 w-4" />
@@ -455,7 +456,7 @@ export default function SoftwareRegistrations() {
                     onClick={clearSearch}
                     variant="ghost"
                     size="sm"
-                    className="px-4"
+                    className="px-3"
                     data-testid="button-clear-search"
                   >
                     <X className="h-4 w-4" />
@@ -468,10 +469,10 @@ export default function SoftwareRegistrations() {
                 </div>
               )}
             </div>
-            <div className="md:w-48">
-              <Label htmlFor="status-filter">Stato</Label>
+            <div className="lg:w-40">
+              <Label htmlFor="status-filter" className="text-xs">Stato</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
+                <SelectTrigger data-testid="select-status-filter" className="text-sm">
                   <SelectValue placeholder="Tutti gli stati" />
                 </SelectTrigger>
                 <SelectContent>
@@ -487,14 +488,14 @@ export default function SoftwareRegistrations() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <Monitor className="h-5 w-5 text-blue-500" />
+              <Monitor className="h-4 w-4 text-blue-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Totale Registrazioni</p>
-                <p className="text-2xl font-bold" data-testid="text-total-registrations">
+                <p className="text-xs text-muted-foreground">Totale Registrazioni</p>
+                <p className="text-xl font-bold" data-testid="text-total-registrations">
                   {filteredRegistrations.length}
                 </p>
               </div>
@@ -502,12 +503,12 @@ export default function SoftwareRegistrations() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-orange-500" />
+              <Activity className="h-4 w-4 text-orange-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Non Assegnate</p>
-                <p className="text-2xl font-bold text-orange-600" data-testid="text-unassigned">
+                <p className="text-xs text-muted-foreground">Non Assegnate</p>
+                <p className="text-xl font-bold text-orange-600" data-testid="text-unassigned">
                   {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'non_assegnato').length}
                 </p>
               </div>
@@ -515,12 +516,12 @@ export default function SoftwareRegistrations() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-green-500" />
+              <User className="h-4 w-4 text-green-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Classificate</p>
-                <p className="text-2xl font-bold text-green-600" data-testid="text-classified">
+                <p className="text-xs text-muted-foreground">Classificate</p>
+                <p className="text-xl font-bold text-green-600" data-testid="text-classified">
                   {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'classificato').length}
                 </p>
               </div>
