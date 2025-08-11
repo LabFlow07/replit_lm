@@ -115,11 +115,11 @@ export default function SoftwareRegistrations() {
 
   // Fetch software registrations
   const { data: registrations = [], isLoading } = useQuery({
-    queryKey: ['/api/software/registrazioni', { status: statusFilter, nomeSoftware: searchTerm }],
+    queryKey: ['/api/software/registrazioni', { status: statusFilter, search: searchTerm }],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
-        ...(searchTerm && { nomeSoftware: searchTerm })
+        ...(searchTerm && { search: searchTerm })
       });
       const token = localStorage.getItem('qlm_token');
       const response = await fetch(`/api/software/registrazioni?${params}`, {
@@ -444,7 +444,7 @@ export default function SoftwareRegistrations() {
               />
               {searchTerm && (
                 <div className="mt-1 text-xs text-gray-500">
-                  Ricercando: "{searchTerm}" - Trovati: {filteredRegistrations.length} risultati
+                  Ricercando: "{searchTerm}" - Trovati: {registrations.length} risultati
                 </div>
               )}
             </div>

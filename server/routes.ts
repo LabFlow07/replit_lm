@@ -603,19 +603,39 @@ router.get("/api/products", authenticateToken, async (req: Request, res: Respons
 router.get("/api/software/registrazioni", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { status, nomeSoftware } = req.query;
+    const { status, nomeSoftware, search } = req.query;
 
     console.log('Fetching device registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
+    console.log('Search parameters:', { status, nomeSoftware, search });
 
     // Get all company registrations
     const companies = await storage.getAllTestaRegAzienda();
 
     // Filter based on query parameters
     let filteredCompanies = companies;
+    
+    // Legacy nomeSoftware filter (manteniamo per compatibilità)
     if (nomeSoftware) {
       filteredCompanies = companies.filter(company => 
         company.prodotto?.toLowerCase().includes((nomeSoftware as string).toLowerCase())
       );
+    }
+    
+    // New unified search filter
+    if (search) {
+      const searchTerm = (search as string).toLowerCase().trim();
+      console.log('Applying search filter for term:', searchTerm);
+      
+      filteredCompanies = companies.filter(company => {
+        // Search in company fields
+        const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
+                           company.partitaIva?.toLowerCase().includes(searchTerm) ||
+                           company.prodotto?.toLowerCase().includes(searchTerm) ||
+                           company.versione?.toLowerCase().includes(searchTerm) ||
+                           company.modulo?.toLowerCase().includes(searchTerm);
+        
+        return matchCompany;
+      });
     }
 
     // Build response with device details
@@ -625,6 +645,26 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
       // Create a registration entry for each device
       for (const device of devices) {
+        // Additional device-level filtering for search
+        let includeDevice = true;
+        if (search) {
+          const searchTerm = (search as string).toLowerCase().trim();
+          const matchDevice = device.uidDispositivo?.toLowerCase().includes(searchTerm) ||
+                             device.sistemaOperativo?.toLowerCase().includes(searchTerm) ||
+                             device.computerKey?.toLowerCase().includes(searchTerm) ||
+                             device.note?.toLowerCase().includes(searchTerm);
+          
+          // Include device if company matched OR device specific fields match
+          const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
+                             company.partitaIva?.toLowerCase().includes(searchTerm) ||
+                             company.prodotto?.toLowerCase().includes(searchTerm) ||
+                             company.versione?.toLowerCase().includes(searchTerm) ||
+                             company.modulo?.toLowerCase().includes(searchTerm);
+          
+          includeDevice = matchCompany || matchDevice;
+        }
+        
+        if (!includeDevice) continue;
         const hasLicense = company.idLicenza !== null;
         const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
         
