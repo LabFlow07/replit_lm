@@ -703,7 +703,7 @@ export default function SoftwareRegistrations() {
                             variant={registration.status === 'non_assegnato' || registration.status === 'in_attesa_computer_key' ? "default" : "outline"}
                             size="sm"
                             onClick={() => handleEdit(registration)}
-                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-green-600 hover:bg-green-700' : registration.status === 'in_attesa_computer_key' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
+                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-blue-600 hover:bg-blue-700' : registration.status === 'in_attesa_computer_key' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
                             title={
                               registration.status === 'non_assegnato' ? "Classifica registrazione" : 
                               registration.status === 'in_attesa_computer_key' ? "Assegna Computer Key" :
@@ -711,7 +711,7 @@ export default function SoftwareRegistrations() {
                             }
                           >
                             <i className={`fas ${
-                              registration.status === 'non_assegnato' ? 'fa-check' : 
+                              registration.status === 'non_assegnato' ? 'fa-cog' : 
                               registration.status === 'in_attesa_computer_key' ? 'fa-key' :
                               'fa-eye'
                             } text-xs`}></i>
