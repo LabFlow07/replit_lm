@@ -681,35 +681,37 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           }
         }
         
-        // Search in system companies and clients
-        if (!hasRelatedMatch) {
+        // Search in specific related entities only if this company has connections
+        if (!hasRelatedMatch && (company.idCliente || company.idAzienda)) {
           try {
-            // Search in all system companies
-            const allCompanies = await storage.getCompanies();
-            const matchSystemCompany = allCompanies.some(comp => 
-              comp.name?.toLowerCase().includes(searchTerm)
-            );
-            
-            if (matchSystemCompany) {
-              console.log('System company match found:', searchTerm);
-              hasRelatedMatch = true;
+            // Check if company is linked to a matching system company
+            if (company.idAzienda) {
+              const systemCompany = await storage.getCompany(company.idAzienda);
+              if (systemCompany && systemCompany.name?.toLowerCase().includes(searchTerm)) {
+                console.log('Linked system company match:', {
+                  registrationCompany: company.nomeAzienda,
+                  linkedSystemCompany: systemCompany.name,
+                  searchTerm: searchTerm
+                });
+                hasRelatedMatch = true;
+              }
             }
             
-            // Search in all clients if no company match
-            if (!hasRelatedMatch) {
-              const allClients = await storage.getClients();
-              const matchClient = allClients.some(client => 
-                client.name?.toLowerCase().includes(searchTerm) ||
-                client.email?.toLowerCase().includes(searchTerm)
-              );
-              
-              if (matchClient) {
-                console.log('Client match found:', searchTerm);
+            // Check if company is linked to a matching client
+            if (!hasRelatedMatch && company.idCliente) {
+              const client = await storage.getClient(company.idCliente);
+              if (client && (client.name?.toLowerCase().includes(searchTerm) || 
+                           client.email?.toLowerCase().includes(searchTerm))) {
+                console.log('Linked client match:', {
+                  registrationCompany: company.nomeAzienda,
+                  linkedClient: client.name,
+                  searchTerm: searchTerm
+                });
                 hasRelatedMatch = true;
               }
             }
           } catch (error) {
-            console.error('Error in global entity search:', error);
+            console.error('Error searching linked entities:', error);
           }
         }
         
