@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function CompaniesPage() {
   const [, setLocation] = useLocation();
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const { contentMargin } = useSidebar();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
@@ -738,7 +740,7 @@ export default function CompaniesPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
 
         <div className="p-6 space-y-6">

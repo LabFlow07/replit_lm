@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function LogsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const { contentMargin } = useSidebar();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -119,7 +121,7 @@ export default function LogsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
       
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
         
         <div className="p-6 space-y-6">

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/layout/sidebar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { Trash2 } from "lucide-react";
 export default function TransactionsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const { contentMargin } = useSidebar();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -78,7 +80,7 @@ export default function TransactionsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
 
         <div className="p-6 space-y-6">

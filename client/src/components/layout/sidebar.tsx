@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Menu, X } from "lucide-react";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
   const baseItems = [
@@ -37,7 +38,7 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const [activeRole, setActiveRole] = useState(user?.role || 'superadmin');
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed, sidebarWidth } = useSidebar();
 
   // Get active licenses count based on user profile
   const { data: activeLicensesCount = 0 } = useQuery({
@@ -76,7 +77,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg border-r border-gray-200 fixed h-full overflow-y-auto transition-all duration-300 ease-in-out`}>
+    <aside className={`${sidebarWidth} bg-white shadow-lg border-r border-gray-200 fixed h-full overflow-y-auto transition-all duration-300 ease-in-out`}>
       {/* Header */}
       <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-gray-200`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>

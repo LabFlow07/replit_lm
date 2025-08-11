@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function ProductsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const { contentMargin } = useSidebar();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -249,7 +251,7 @@ export default function ProductsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
       
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
         
         <div className="p-6 space-y-6">

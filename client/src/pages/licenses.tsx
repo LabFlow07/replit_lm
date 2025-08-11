@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ export default function LicensesPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { contentMargin } = useSidebar();
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -243,7 +245,7 @@ export default function LicensesPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
 
         <div className="p-4 md:p-6 space-y-6">

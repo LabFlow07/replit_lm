@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
+import { useSidebar } from "@/contexts/SidebarContext";
 import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ export default function ClientsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const { contentMargin } = useSidebar();
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -203,7 +205,7 @@ export default function ClientsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 ml-64 bg-surface">
+      <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
 
         <div className="p-6 space-y-6">

@@ -89,6 +89,7 @@ export default function SoftwareRegistrations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
+  const { contentMargin } = useSidebar();
 
   const { register, handleSubmit, reset, setValue, watch } = useForm();
 
@@ -408,7 +409,7 @@ export default function SoftwareRegistrations() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-auto">
+      <div className={`flex-1 ${contentMargin} overflow-auto transition-all duration-300 ease-in-out`}>
         <div className="container mx-auto p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>

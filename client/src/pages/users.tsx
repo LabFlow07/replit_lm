@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Users, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from '@/components/layout/sidebar';
+import { useSidebar } from "@/contexts/SidebarContext";
 
 interface User {
   id: string;
@@ -41,6 +42,7 @@ export default function UsersPage() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { contentMargin } = useSidebar();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -259,7 +261,7 @@ export default function UsersPage() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-auto">
+      <div className={`flex-1 ${contentMargin} overflow-auto transition-all duration-300 ease-in-out`}>
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
