@@ -624,18 +624,15 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
     // New unified search filter
     if (search) {
       const searchTerm = (search as string).toLowerCase().trim();
-      console.log('Applying search filter for term:', searchTerm);
+      console.log('Applying comprehensive search for term:', searchTerm);
       console.log('Total companies before filter:', companies.length);
       
-      // Debug: log first few companies
-      console.log('Sample companies data:', companies.slice(0, 3).map(c => ({
-        nomeAzienda: c.nomeAzienda,
-        prodotto: c.prodotto,
-        partitaIva: c.partitaIva
-      })));
+      // Search in multiple phases: direct fields, then related entities
+      const directMatches = [];
+      const relatedMatches = [];
       
-      filteredCompanies = companies.filter(company => {
-        // Search in company fields
+      for (const company of companies) {
+        // Phase 1: Search in direct company fields
         const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
                            company.partitaIva?.toLowerCase().includes(searchTerm) ||
                            company.prodotto?.toLowerCase().includes(searchTerm) ||
@@ -643,17 +640,86 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
                            company.modulo?.toLowerCase().includes(searchTerm);
         
         if (matchCompany) {
-          console.log('Company matched:', {
+          console.log('Direct match found:', {
             nomeAzienda: company.nomeAzienda,
             prodotto: company.prodotto,
             searchTerm: searchTerm
           });
+          directMatches.push(company);
+          continue; // Skip related search if direct match found
         }
         
-        return matchCompany;
-      });
+        // Phase 2: Search in related entities
+        let hasRelatedMatch = false;
+        
+        // Search in license data if assigned
+        if (company.idLicenza && !hasRelatedMatch) {
+          try {
+            const license = await storage.getLicense(company.idLicenza);
+            if (license) {
+              const matchLicense = license.activationKey?.toLowerCase().includes(searchTerm) ||
+                                license.client?.name?.toLowerCase().includes(searchTerm) ||
+                                license.client?.email?.toLowerCase().includes(searchTerm) ||
+                                license.product?.name?.toLowerCase().includes(searchTerm) ||
+                                license.product?.version?.toLowerCase().includes(searchTerm) ||
+                                license.company?.name?.toLowerCase().includes(searchTerm);
+              
+              if (matchLicense) {
+                console.log('License match found:', {
+                  companyName: company.nomeAzienda,
+                  clientName: license.client?.name,
+                  productName: license.product?.name,
+                  systemCompany: license.company?.name,
+                  activationKey: license.activationKey,
+                  searchTerm: searchTerm
+                });
+                hasRelatedMatch = true;
+              }
+            }
+          } catch (error) {
+            console.error('Error searching license for company:', company.nomeAzienda, error);
+          }
+        }
+        
+        // Search in system companies and clients
+        if (!hasRelatedMatch) {
+          try {
+            // Search in all system companies
+            const allCompanies = await storage.getCompanies();
+            const matchSystemCompany = allCompanies.some(comp => 
+              comp.name?.toLowerCase().includes(searchTerm)
+            );
+            
+            if (matchSystemCompany) {
+              console.log('System company match found:', searchTerm);
+              hasRelatedMatch = true;
+            }
+            
+            // Search in all clients if no company match
+            if (!hasRelatedMatch) {
+              const allClients = await storage.getClients();
+              const matchClient = allClients.some(client => 
+                client.name?.toLowerCase().includes(searchTerm) ||
+                client.email?.toLowerCase().includes(searchTerm)
+              );
+              
+              if (matchClient) {
+                console.log('Client match found:', searchTerm);
+                hasRelatedMatch = true;
+              }
+            }
+          } catch (error) {
+            console.error('Error in global entity search:', error);
+          }
+        }
+        
+        if (hasRelatedMatch) {
+          relatedMatches.push(company);
+        }
+      }
       
-      console.log('Filtered companies count:', filteredCompanies.length);
+      filteredCompanies = [...directMatches, ...relatedMatches];
+      console.log(`Search results: Direct matches: ${directMatches.length}, Related matches: ${relatedMatches.length}, Total: ${filteredCompanies.length}`);
     }
 
     // Build response with device details
@@ -663,53 +729,22 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
       // Create a registration entry for each device
       for (const device of devices) {
-        // Additional device-level filtering for search including related data
+        // Additional device-level filtering for search terms that might appear in device-specific fields
         let includeDevice = true;
         if (search) {
           const searchTerm = (search as string).toLowerCase().trim();
           
-          // Search in device fields
+          // If no match at company level, check device-specific fields
+          const companyAlreadyMatched = true; // Since company is already in filteredCompanies
+          
+          // Only do additional device filtering if we want to exclude specific devices from matched companies
           const matchDevice = device.uidDispositivo?.toLowerCase().includes(searchTerm) ||
                              device.sistemaOperativo?.toLowerCase().includes(searchTerm) ||
                              device.computerKey?.toLowerCase().includes(searchTerm) ||
                              device.note?.toLowerCase().includes(searchTerm);
           
-          // Search in company fields
-          const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
-                             company.partitaIva?.toLowerCase().includes(searchTerm) ||
-                             company.prodotto?.toLowerCase().includes(searchTerm) ||
-                             company.versione?.toLowerCase().includes(searchTerm) ||
-                             company.modulo?.toLowerCase().includes(searchTerm);
-          
-          // Search in related license data if license is assigned
-          let matchLicense = false;
-          if (company.idLicenza) {
-            try {
-              const license = await storage.getLicense(company.idLicenza);
-              if (license) {
-                matchLicense = license.activationKey?.toLowerCase().includes(searchTerm) ||
-                              license.client?.name?.toLowerCase().includes(searchTerm) ||
-                              license.client?.email?.toLowerCase().includes(searchTerm) ||
-                              license.product?.name?.toLowerCase().includes(searchTerm) ||
-                              license.product?.version?.toLowerCase().includes(searchTerm) ||
-                              license.company?.name?.toLowerCase().includes(searchTerm);
-                
-                if (matchLicense) {
-                  console.log('License matched:', {
-                    activationKey: license.activationKey,
-                    clientName: license.client?.name,
-                    productName: license.product?.name,
-                    companyName: license.company?.name,
-                    searchTerm: searchTerm
-                  });
-                }
-              }
-            } catch (error) {
-              console.error('Error fetching license for search:', error);
-            }
-          }
-          
-          includeDevice = matchCompany || matchDevice || matchLicense;
+          // For now, include all devices from matched companies, but could add device-level filtering logic here
+          includeDevice = companyAlreadyMatched || matchDevice;
         }
         
         if (!includeDevice) continue;
