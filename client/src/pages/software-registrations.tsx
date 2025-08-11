@@ -64,10 +64,15 @@ interface Client {
 interface License {
   id: string;
   activationKey: string;
-  client: Client;
+  client?: { id: string; name?: string; email?: string; }; // Updated to match typical API responses
+  company?: { id: string; name?: string; }; // Added company field for display
   product: { name: string, version?: string, id: string }; // Added product id and version for completeness
   status: string;
   licenseType?: string; // Added for potential display
+  maxDevices?: number; // Added for display
+  expiryDate?: string; // Added for display
+  clientName?: string; // Added fallback if client object is not present
+  companyName?: string; // Added fallback if company object is not present
 }
 
 interface Product {
@@ -163,6 +168,9 @@ export default function SoftwareRegistrations() {
       const data = await response.json();
       return data.map((license: any) => ({
         ...license,
+        // Map company and client fields for easier access
+        client: license.client || (license.clientId ? { id: license.clientId, name: license.clientName } : undefined),
+        company: license.company || (license.companyId ? { id: license.companyId, name: license.companyName } : undefined),
         product: license.product || { id: license.productId, name: license.productName, version: license.productVersion }
       }));
     },
@@ -315,15 +323,15 @@ export default function SoftwareRegistrations() {
   const handleClassify = (id: string) => {
     const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
-    
+
     // Reset form first
     reset();
-    
+
     if (registrationToClassify) {
       // Find the client to get the company if already assigned
       const client = clients.find(c => c.id === registrationToClassify.clienteAssegnato);
       const companyId = client?.company_id || client?.companyId || 'none';
-      
+
       setTimeout(() => {
         setValue('aziendaAssegnata', companyId);
         setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
@@ -337,19 +345,19 @@ export default function SoftwareRegistrations() {
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
-    
+
     // Find the client to get the company
     const client = clients.find(c => c.id === registration.clienteAssegnato);
     const companyId = client?.company_id || client?.companyId || 'none';
-    
+
     console.log('Edit registration:', registration);
     console.log('Found client:', client);
     console.log('Company ID:', companyId);
     console.log('Computer Key:', registration.computerKey);
-    
+
     // Reset form first
     reset();
-    
+
     // Use setTimeout to ensure the form is reset before setting new values
     setTimeout(() => {
       setValue('aziendaAssegnata', companyId);
@@ -360,7 +368,7 @@ export default function SoftwareRegistrations() {
       // Set authorization checkbox based on computer key presence
       setValue('authorizeDevice', !!registration.computerKey);
     }, 100);
-    
+
     setIsClassifyDialogOpen(true);
   };
 
@@ -863,6 +871,35 @@ export default function SoftwareRegistrations() {
               })()}
             </div>
 
+            {/* Mostra dettagli licenza se selezionata */}
+            {(() => {
+              const selectedLicenseId = watch('licenzaAssegnata');
+              if (!selectedLicenseId || selectedLicenseId === 'none') return null;
+
+              const selectedLicense = licenses.find((l: License) => l.id === selectedLicenseId);
+              if (!selectedLicense) return null;
+
+              return (
+                <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-info-circle text-blue-600"></i>
+                    <span className="font-medium text-blue-800">Dettagli Licenza Selezionata</span>
+                  </div>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <div>Cliente: {selectedLicense.client?.name || selectedLicense.clientName || 'Non specificato'}</div>
+                    <div>Azienda: {selectedLicense.company?.name || selectedLicense.companyName || 'Non specificata'}</div>
+                    <div>Tipo: {selectedLicense.licenseType}</div>
+                    <div>Stato: {selectedLicense.status}</div>
+                    <div>Max Dispositivi: {selectedLicense.maxDevices}</div>
+                    <div>Prodotto: {selectedLicense.product?.name} {selectedLicense.product?.version}</div>
+                    {selectedLicense.expiryDate && (
+                      <div>Scadenza: {new Date(selectedLicense.expiryDate).toLocaleDateString('it-IT')}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div>
               <Label htmlFor="prodottoAssegnato">Software/Prodotto</Label>
               {(() => {
@@ -878,7 +915,7 @@ export default function SoftwareRegistrations() {
 
                 // Trova il prodotto della licenza selezionata
                 const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
-                
+
                 if (!selectedLicense || !selectedLicense.product) {
                   return (
                     <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
@@ -937,7 +974,7 @@ export default function SoftwareRegistrations() {
                   <span className="ml-1">Autorizza Dispositivo (Computer Key)</span>
                 </Label>
               </div>
-              
+
               {selectedRegistration?.computerKey && (
                 <div className="ml-7 p-3 bg-green-50 border border-green-200 rounded-md">
                   <div className="flex items-center justify-between">
@@ -957,7 +994,7 @@ export default function SoftwareRegistrations() {
                   </p>
                 </div>
               )}
-              
+
               {!selectedRegistration?.computerKey && (
                 <p className="text-xs text-gray-500 ml-7">
                   Genera una chiave computer per autorizzare questo dispositivo specifico.

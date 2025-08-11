@@ -175,9 +175,31 @@ export default function LicenseTable() {
     return labels[type as keyof typeof labels] || type;
   };
 
-  const openEditModal = (license: any) => {
-    setSelectedLicense(license);
-    setModalOpen(true);
+  const openEditModal = async (license: any) => {
+    try {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch(`/api/licenses/${license.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const detailedLicense = await response.json();
+        setSelectedLicense(detailedLicense);
+        setModalOpen(true);
+      } else {
+        console.error('Failed to fetch license details');
+        // Fallback to using the license as-is
+        setSelectedLicense(license);
+        setModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching license details:', error);
+      // Fallback to using the license as-is
+      setSelectedLicense(license);
+      setModalOpen(true);
+    }
   };
 
   const closeModal = () => {

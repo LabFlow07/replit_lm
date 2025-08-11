@@ -417,12 +417,16 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
       maxDevices: row.max_devices,
       maxUsers: row.max_users,
       expirationDate: row.expiration_date,
+      expiryDate: row.expiration_date,
       isActive: row.is_active,
       lastActivation: row.last_activation,
+      activationDate: row.activation_date,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       price: row.price,
+      discount: row.discount,
       notes: row.notes,
+      activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
       // Additional fields for fallback display
       clientName: row.clientName,
       clientEmail: row.clientEmail,
@@ -437,6 +441,93 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
     res.json(licenses);
   } catch (error) {
     console.error('Get licenses error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/api/licenses/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const licenseId = req.params.id;
+
+    console.log('Fetching license details for:', licenseId, 'by user:', user.username);
+
+    // Enhanced query to get complete license details with client and company info
+    const query = `
+      SELECT 
+        l.*,
+        c.id as client_id,
+        c.name as clientName,
+        c.email as clientEmail,
+        c.company_id as clientCompanyId,
+        comp.id as company_id,
+        comp.name as companyName,
+        comp.parent_id as parentCompanyId,
+        parent_comp.name as parentCompanyName,
+        p.id as product_id,
+        p.name as productName,
+        p.version as productVersion
+      FROM licenses l
+      LEFT JOIN clients c ON l.client_id = c.id
+      LEFT JOIN companies comp ON c.company_id = comp.id
+      LEFT JOIN companies parent_comp ON comp.parent_id = parent_comp.id
+      LEFT JOIN products p ON l.product_id = p.id
+      WHERE l.id = ?
+    `;
+
+    const rows = await database.query(query, [licenseId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "License not found" });
+    }
+
+    const row = rows[0];
+    const licenseWithDetails = {
+      id: row.id,
+      activationKey: row.activation_key,
+      client: {
+        id: row.client_id,
+        name: row.clientName,
+        email: row.clientEmail,
+        company_id: row.clientCompanyId
+      },
+      company: {
+        id: row.company_id,
+        name: row.companyName,
+        parent_id: row.parentCompanyId
+      },
+      product: {
+        id: row.product_id,
+        name: row.productName,
+        version: row.productVersion
+      },
+      status: row.status,
+      licenseType: row.license_type,
+      maxDevices: row.max_devices,
+      maxUsers: row.max_users,
+      expirationDate: row.expiration_date,
+      expiryDate: row.expiration_date,
+      activationDate: row.activation_date,
+      isActive: row.is_active,
+      lastActivation: row.last_activation,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      price: row.price,
+      discount: row.discount,
+      notes: row.notes,
+      activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
+      // Additional fields for fallback display
+      clientName: row.clientName,
+      clientEmail: row.clientEmail,
+      companyName: row.companyName,
+      parentCompanyId: row.parentCompanyId,
+      parentCompanyName: row.parentCompanyName
+    };
+
+    console.log('License details retrieved:', licenseWithDetails.activationKey);
+    res.json(licenseWithDetails);
+  } catch (error) {
+    console.error('Get license details error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
