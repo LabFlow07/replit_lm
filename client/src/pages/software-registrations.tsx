@@ -15,6 +15,7 @@ import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X } from "
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
+import { useSidebar } from "@/contexts/SidebarContext";
 
 // Mock user for role checking, replace with actual auth context in a real app
 const user = {
