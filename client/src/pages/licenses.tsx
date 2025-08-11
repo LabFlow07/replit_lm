@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
+import LicenseModal from "@/components/license/license-modal";
 import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
@@ -76,6 +77,7 @@ export default function LicensesPage() {
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
 
   // New client form state
   const [newClient, setNewClient] = useState({
@@ -215,6 +217,7 @@ export default function LicensesPage() {
 
   const handleEditLicense = (license: License) => {
     setEditingLicense(license);
+    setIsLicenseModalOpen(true);
   };
 
   const handleActivateLicense = (license: License) => {
@@ -1079,6 +1082,17 @@ export default function LicensesPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* License Details Modal */}
+        <LicenseModal
+          license={editingLicense}
+          isOpen={isLicenseModalOpen}
+          onClose={() => {
+            setIsLicenseModalOpen(false);
+            setEditingLicense(null);
+          }}
+          isEditMode={false}
+        />
 
       </main>
     </div>
