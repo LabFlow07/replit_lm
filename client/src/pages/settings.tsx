@@ -35,21 +35,21 @@ export default function SettingsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
       
-      <main className="flex-1 ml-64 bg-surface">
+      <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Impostazioni Sistema</h1>
-            <p className="text-gray-600">Configura le impostazioni generali della piattaforma QLM</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Impostazioni Sistema</h1>
+            <p className="text-sm text-gray-600">Configura le impostazioni generali della piattaforma QLM</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Configurazione Database</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Configurazione Database</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 p-4">
                 <div>
                   <Label htmlFor="db-host">Host Database</Label>
                   <Input id="db-host" value="87.106.247.35" readOnly className="bg-gray-50" />
@@ -70,10 +70,10 @@ export default function SettingsPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Impostazioni Email</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Impostazioni Email</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 p-4">
                 <div>
                   <Label htmlFor="smtp-server">Server SMTP</Label>
                   <Input id="smtp-server" placeholder="smtp.gmail.com" />
@@ -94,10 +94,10 @@ export default function SettingsPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Licenze e Attivazione</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Licenze e Attivazione</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 p-4">
                 <div>
                   <Label htmlFor="trial-days">Giorni Trial Default</Label>
                   <Input id="trial-days" placeholder="30" type="number" />
@@ -118,10 +118,10 @@ export default function SettingsPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Sicurezza e Accesso</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Sicurezza e Accesso</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 p-4">
                 <div>
                   <Label htmlFor="session-timeout">Timeout Sessione (minuti)</Label>
                   <Input id="session-timeout" placeholder="1440" type="number" />

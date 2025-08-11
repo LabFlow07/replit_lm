@@ -119,14 +119,14 @@ export default function LogsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
       
-      <main className="flex-1 ml-64 bg-surface">
+      <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Log Attività</h1>
-              <p className="text-gray-600">Monitora tutte le attività e gli accessi del sistema</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Log Attività</h1>
+              <p className="text-sm text-gray-600">Monitora tutte le attività e gli accessi del sistema</p>
             </div>
             <div className="flex items-center space-x-4">
               <Select defaultValue="all">
@@ -148,13 +148,13 @@ export default function LogsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Eventi Oggi</p>
-                    <p className="text-2xl font-bold text-gray-900">127</p>
+                    <p className="text-xl font-bold text-gray-900">127</p>
                   </div>
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <i className="fas fa-chart-line text-blue-600"></i>
@@ -164,11 +164,11 @@ export default function LogsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Accessi</p>
-                    <p className="text-2xl font-bold text-gray-900">43</p>
+                    <p className="text-xl font-bold text-gray-900">43</p>
                   </div>
                   <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                     <i className="fas fa-sign-in-alt text-green-600"></i>

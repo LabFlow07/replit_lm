@@ -259,16 +259,16 @@ export default function UsersPage() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 ml-64 overflow-auto">
-        <div className="p-6 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Users className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Users className="h-6 w-6 text-primary" />
                 Gestione Utenti
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-1">
                 {user.role === 'superadmin' 
                   ? 'Gestisci tutti gli utenti del sistema'
                   : 'Gestisci gli utenti della tua azienda e sotto-aziende'
