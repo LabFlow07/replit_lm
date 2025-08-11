@@ -78,22 +78,22 @@ export default function TransactionsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 bg-surface">
+      <main className="flex-1 ml-64 bg-surface">
         <TopBar />
 
-        <div className="p-4 space-y-4">
+        <div className="p-6 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestione Transazioni</h1>
-            <p className="text-sm text-gray-600">Visualizza e monitora tutte le transazioni del sistema</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Transazioni</h1>
+            <p className="text-gray-600">Visualizza e monitora tutte le transazioni del sistema</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Fatturato Totale</p>
-                    <p className="text-xl font-bold text-gray-900">€2.250</p>
+                    <p className="text-2xl font-bold text-gray-900">€2.250</p>
                   </div>
                   <div className="w-10 h-10 bg-secondary bg-opacity-10 rounded-lg flex items-center justify-center">
                     <i className="fas fa-euro-sign text-secondary"></i>
@@ -103,11 +103,11 @@ export default function TransactionsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Transazioni Oggi</p>
-                    <p className="text-xl font-bold text-gray-900">12</p>
+                    <p className="text-2xl font-bold text-gray-900">12</p>
                   </div>
                   <div className="w-10 h-10 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center">
                     <i className="fas fa-chart-line text-primary"></i>
@@ -117,11 +117,11 @@ export default function TransactionsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">In Sospeso</p>
-                    <p className="text-xl font-bold text-gray-900">3</p>
+                    <p className="text-2xl font-bold text-gray-900">3</p>
                   </div>
                   <div className="w-10 h-10 bg-accent bg-opacity-10 rounded-lg flex items-center justify-center">
                     <i className="fas fa-clock text-accent"></i>
@@ -131,11 +131,11 @@ export default function TransactionsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Fallite</p>
-                    <p className="text-xl font-bold text-gray-900">1</p>
+                    <p className="text-2xl font-bold text-gray-900">1</p>
                   </div>
                   <div className="w-10 h-10 bg-error bg-opacity-10 rounded-lg flex items-center justify-center">
                     <i className="fas fa-times text-error"></i>
@@ -146,8 +146,8 @@ export default function TransactionsPage() {
           </div>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Elenco Transazioni</CardTitle>
+            <CardHeader>
+              <CardTitle>Elenco Transazioni</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">

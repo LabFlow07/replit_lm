@@ -508,8 +508,8 @@ export default function CompaniesPage() {
 
     return (
       <div className={`${level > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''}`}>
-        <Card className="mb-2 hover:shadow-md transition-shadow">
-          <CardContent className="p-3">
+        <Card className="mb-3 hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 flex-1">
                 {hasChildren && (
@@ -738,14 +738,14 @@ export default function CompaniesPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 bg-surface">
+      <main className="flex-1 ml-64 bg-surface">
         <TopBar />
 
-        <div className="p-4 space-y-3">
+        <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Gestione Aziende</h1>
-              <p className="text-sm text-gray-600">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Aziende</h1>
+              <p className="text-gray-600">
                 {user?.role === 'superadmin' ? 'Visualizza la struttura gerarchica completa delle aziende' :
                  user?.role === 'admin' ? 'Gestisci la tua azienda e le sotto-aziende associate' :
                  user?.role === 'rivenditore' ? 'Gestisci la tua rete di sotto-aziende e agenti' :
@@ -766,11 +766,11 @@ export default function CompaniesPage() {
 
           {/* Filters */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Filtri e Ricerca</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle>Filtri e Ricerca</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col lg:flex-row gap-3">
+              <div className="flex flex-col md:flex-row gap-4">
                 <Input
                   placeholder="Cerca aziende per nome..."
                   value={searchTerm}
@@ -779,7 +779,7 @@ export default function CompaniesPage() {
                 />
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="lg:w-44">
+                  <SelectTrigger className="md:w-48">
                     <SelectValue placeholder="Tipo azienda" />
                   </SelectTrigger>
                   <SelectContent>

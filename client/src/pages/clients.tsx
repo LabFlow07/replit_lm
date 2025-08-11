@@ -203,14 +203,14 @@ export default function ClientsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 bg-surface">
+      <main className="flex-1 ml-64 bg-surface">
         <TopBar />
 
-        <div className="p-4 space-y-4">
+        <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestione Clienti</h1>
-              <p className="text-sm text-gray-600">Visualizza e gestisci tutti i clienti del sistema</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Clienti</h1>
+              <p className="text-gray-600">Visualizza e gestisci tutti i clienti del sistema</p>
             </div>
             <Button 
               className="bg-primary hover:bg-blue-700"
@@ -223,11 +223,11 @@ export default function ClientsPage() {
 
           {/* Search and Filter Section */}
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
-                <CardTitle className="text-lg">Elenco Clienti ({filteredClients.length} di {clients.length})</CardTitle>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <CardTitle>Elenco Clienti ({filteredClients.length} di {clients.length})</CardTitle>
 
-                <div className="flex flex-col lg:flex-row gap-2 w-full lg:w-auto">
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                   <Input
                     placeholder="Cerca per nome o email..."
                     value={searchTerm}

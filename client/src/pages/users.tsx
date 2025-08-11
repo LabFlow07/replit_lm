@@ -257,28 +257,27 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-surface">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <main className="flex-1 bg-surface">
-        <TopBar />
-        <div className="p-4 space-y-3">
+      <div className="flex-1 ml-64 overflow-auto">
+        <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Users className="h-8 w-8 text-primary" />
                 Gestione Utenti
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-2">
                 {user.role === 'superadmin' 
                   ? 'Gestisci tutti gli utenti del sistema'
                   : 'Gestisci gli utenti della tua azienda e sotto-aziende'
                 }
               </p>
             </div>
-            
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-              <DialogTrigger asChild>
+        
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogTrigger asChild>
             <Button data-testid="button-create-user">
               <Plus className="h-4 w-4 mr-2" />
               Nuovo Utente
@@ -566,7 +565,7 @@ export default function UsersPage() {
         </Dialog>
       )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
