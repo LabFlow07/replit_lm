@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch } from 'wouter';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Toaster } from '@/components/ui/toaster';
-import SidebarWrapper from '@/components/layout/sidebar';
-import Topbar from '@/components/layout/topbar';
+import Sidebar from '@/components/layout/sidebar';
 import Dashboard from '@/pages/dashboard';
 import Licenses from '@/pages/licenses';
 import SoftwareRegistrations from '@/pages/software-registrations';
@@ -43,9 +42,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarWrapper>
-      {children}
-    </SidebarWrapper>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full overflow-auto">
+          <div className="p-6">
+            {children}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
 
