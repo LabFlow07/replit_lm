@@ -4,7 +4,156 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useQuery } from "@tanstack/react-query";
 import type { LicenseWithDetails } from "@/types";
+
+interface DeviceRegistration {
+  id: string;
+  partitaIva: string;
+  nomeSoftware: string;
+  versione: string;
+  ragioneSociale: string;
+  uidDispositivo: string;
+  sistemaOperativo: string;
+  computerKey: string;
+  status: string;
+  primaRegistrazione: string;
+  ultimaAttivita: string;
+}
+
+interface DeviceKeysSectionProps {
+  licenseId: string;
+}
+
+function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
+  const { data: registrations = [], isLoading } = useQuery({
+    queryKey: ['/api/software/registrazioni', { licenseId }],
+    queryFn: async () => {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch('/api/software/registrazioni', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch registrations');
+      }
+      const data = await response.json();
+      // Filtra solo le registrazioni con questa licenza e che hanno computer_key
+      return data.filter((reg: DeviceRegistration) => 
+        reg.licenzaAssegnata === licenseId && 
+        reg.computerKey && 
+        reg.computerKey.trim() !== ''
+      );
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+      </div>
+    );
+  }
+
+  if (registrations.length === 0) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+        <div className="flex items-center">
+          <i className="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+          <div>
+            <p className="text-sm font-medium text-yellow-800">Nessun Dispositivo Autorizzato</p>
+            <p className="text-xs text-yellow-700 mt-1">
+              Non ci sono dispositivi con Computer Key assegnata per questa licenza.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-green-50 border border-green-200 p-3 rounded-lg mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <i className="fas fa-shield-alt text-green-600 mr-2"></i>
+            <span className="text-sm font-medium text-green-800">
+              {registrations.length} Dispositivo{registrations.length !== 1 ? 'i' : ''} Autorizzato{registrations.length !== 1 ? 'i' : ''}
+            </span>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            Attivi
+          </Badge>
+        </div>
+      </div>
+
+      <div className="space-y-3 max-h-60 overflow-y-auto">
+        {registrations.map((registration: DeviceRegistration, index: number) => (
+          <div key={registration.id} className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <i className="fas fa-desktop text-blue-500 text-sm"></i>
+                  <span className="font-medium text-sm text-gray-900">
+                    Dispositivo #{index + 1}
+                  </span>
+                  <Badge variant="outline" className="text-xs">
+                    {registration.status === 'classificato' ? 'Attivo' : registration.status}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
+                  <div>
+                    <span className="font-medium">Azienda:</span> {registration.ragioneSociale}
+                  </div>
+                  <div>
+                    <span className="font-medium">Software:</span> {registration.nomeSoftware} v{registration.versione}
+                  </div>
+                  <div>
+                    <span className="font-medium">Sistema:</span> {registration.sistemaOperativo || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="font-medium">Registrato:</span> {new Date(registration.primaRegistrazione).toLocaleDateString('it-IT')}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700">Computer Key:</span>
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(registration.computerKey)}
+                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                      title="Copia Computer Key"
+                    >
+                      <i className="fas fa-copy mr-1"></i>
+                      Copia
+                    </button>
+                  </div>
+                  <p className="text-xs font-mono text-gray-900 mt-1 break-all bg-white px-2 py-1 rounded border">
+                    {registration.computerKey}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-3">
+        <div className="flex items-start">
+          <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
+          <p className="text-sm text-blue-800">
+            <strong>Gestione Dispositivi:</strong> Le Computer Key vengono assegnate tramite la sezione 
+            "QLMRegister" durante la classificazione delle registrazioni software.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface LicenseModalProps {
   license: LicenseWithDetails | null;
@@ -206,15 +355,10 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
             </div>
           </div>
 
-          {/* Info Dispositivi */}
-          <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-            <div className="flex items-start">
-              <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
-              <p className="text-sm text-blue-800">
-                <strong>Dispositivi Autorizzati:</strong> Le chiavi computer sono gestite individualmente 
-                per ogni dispositivo nella sezione "Registrazioni Software".
-              </p>
-            </div>
+          {/* Dispositivi Autorizzati */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 border-b pb-1 mb-3">Dispositivi Autorizzati</h3>
+            <DeviceKeysSection licenseId={license.id} />
           </div>
         </div>
 
