@@ -663,23 +663,78 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
       // Create a registration entry for each device
       for (const device of devices) {
-        // Additional device-level filtering for search
+        // Additional device-level filtering for search including related data
         let includeDevice = true;
         if (search) {
           const searchTerm = (search as string).toLowerCase().trim();
+          
+          // Search in device fields
           const matchDevice = device.uidDispositivo?.toLowerCase().includes(searchTerm) ||
                              device.sistemaOperativo?.toLowerCase().includes(searchTerm) ||
                              device.computerKey?.toLowerCase().includes(searchTerm) ||
                              device.note?.toLowerCase().includes(searchTerm);
           
-          // Include device if company matched OR device specific fields match
+          // Search in company fields
           const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
                              company.partitaIva?.toLowerCase().includes(searchTerm) ||
                              company.prodotto?.toLowerCase().includes(searchTerm) ||
                              company.versione?.toLowerCase().includes(searchTerm) ||
                              company.modulo?.toLowerCase().includes(searchTerm);
           
-          includeDevice = matchCompany || matchDevice;
+          // Search in related license data if license is assigned
+          let matchLicense = false;
+          if (company.idLicenza) {
+            try {
+              const license = await storage.getLicense(company.idLicenza);
+              if (license) {
+                matchLicense = license.activationKey?.toLowerCase().includes(searchTerm) ||
+                              license.client?.name?.toLowerCase().includes(searchTerm) ||
+                              license.client?.email?.toLowerCase().includes(searchTerm) ||
+                              license.product?.name?.toLowerCase().includes(searchTerm) ||
+                              license.product?.version?.toLowerCase().includes(searchTerm) ||
+                              license.company?.name?.toLowerCase().includes(searchTerm);
+                
+                if (matchLicense) {
+                  console.log('License matched:', {
+                    activationKey: license.activationKey,
+                    clientName: license.client?.name,
+                    productName: license.product?.name,
+                    companyName: license.company?.name,
+                    searchTerm: searchTerm
+                  });
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching license for search:', error);
+            }
+          }
+          
+          // Also search in all clients and companies for global search
+          let matchGlobal = false;
+          try {
+            // Search in all clients
+            const allClients = await storage.getClients();
+            const matchClient = allClients.some(client => 
+              client.name?.toLowerCase().includes(searchTerm) ||
+              client.email?.toLowerCase().includes(searchTerm)
+            );
+            
+            // Search in all companies
+            const allCompanies = await storage.getCompanies();
+            const matchSystemCompany = allCompanies.some(comp => 
+              comp.name?.toLowerCase().includes(searchTerm)
+            );
+            
+            matchGlobal = matchClient || matchSystemCompany;
+            
+            if (matchGlobal) {
+              console.log('Global search matched (client or system company):', searchTerm);
+            }
+          } catch (error) {
+            console.error('Error in global search:', error);
+          }
+          
+          includeDevice = matchCompany || matchDevice || matchLicense || matchGlobal;
         }
         
         if (!includeDevice) continue;
