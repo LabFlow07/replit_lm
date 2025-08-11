@@ -617,6 +617,17 @@ export default function SoftwareRegistrations() {
                               Rilevata: {registration.versione}
                             </Badge>
                           )}
+                          {registration.computerKey && (
+                            <div className="mt-1 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                              <div className="flex items-center gap-1 text-green-700 font-medium mb-1">
+                                <i className="fas fa-key text-xs"></i>
+                                Computer Key
+                              </div>
+                              <div className="font-mono text-green-800 break-all text-xs">
+                                {registration.computerKey}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -754,13 +765,53 @@ export default function SoftwareRegistrations() {
         <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
-              {selectedRegistration?.status === 'classificato' ? 'Modifica Assegnazione' : 'Classifica Registrazione Software'}
+              {selectedRegistration?.status === 'classificato' ? 'Gestione Computer Key' : 
+               selectedRegistration?.status === 'in_attesa_computer_key' ? 'Genera Computer Key' :
+               'Classifica Registrazione Software'}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
+            {/* Modal semplificata per generazione Computer Key */}
+            {(selectedRegistration?.status === 'in_attesa_computer_key' || 
+              (selectedRegistration?.status === 'classificato' && !selectedRegistration?.computerKey)) && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <i className="fas fa-info-circle text-blue-600"></i>
+                    <span className="font-medium text-blue-800">Registrazione Classificata</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+                    <div>
+                      <strong>Azienda:</strong> {selectedRegistration.ragioneSociale}
+                    </div>
+                    <div>
+                      <strong>Software:</strong> {selectedRegistration.nomeSoftware}
+                    </div>
+                    <div>
+                      <strong>Versione:</strong> {selectedRegistration.versione}
+                    </div>
+                    <div>
+                      <strong>Stato:</strong> Licenza assegnata
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-key text-yellow-600"></i>
+                    <span className="font-medium text-yellow-800">Autorizzazione Dispositivo Richiesta</span>
+                  </div>
+                  <p className="text-sm text-yellow-700">
+                    Questa registrazione ha una licenza assegnata ma il dispositivo non è ancora autorizzato. 
+                    Genera una Computer Key per autorizzare questo specifico dispositivo.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Mostra i dropdown solo se la registrazione non è già classificata */}
-            {selectedRegistration?.status !== 'classificato' && (
+            {selectedRegistration?.status === 'non_assegnato' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
