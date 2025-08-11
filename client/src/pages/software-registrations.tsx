@@ -1003,13 +1003,40 @@ export default function SoftwareRegistrations() {
               )}
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsClassifyDialogOpen(false)}>
-                Annulla
-              </Button>
-              <Button type="submit" disabled={classifyMutation.isPending}>
-                {classifyMutation.isPending ? 'Classificando...' : 'Classifica'}
-              </Button>
+            <div className="flex justify-between space-x-2 pt-4">
+              <div>
+                {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    onClick={() => {
+                      if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
+                        const removeAssignmentData = {
+                          aziendaAssegnata: null,
+                          clienteAssegnato: null,
+                          licenzaAssegnata: null,
+                          prodottoAssegnato: null,
+                          note: selectedRegistration.note,
+                          authorizeDevice: false
+                        };
+                        classifyMutation.mutate(removeAssignmentData);
+                      }
+                    }}
+                    disabled={classifyMutation.isPending}
+                  >
+                    <i className="fas fa-unlink mr-2"></i>
+                    Rimuovi Assegnazione
+                  </Button>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsClassifyDialogOpen(false)}>
+                  Annulla
+                </Button>
+                <Button type="submit" disabled={classifyMutation.isPending}>
+                  {classifyMutation.isPending ? 'Salvando...' : 'Salva'}
+                </Button>
+              </div>
             </div>
           </form>
         </DialogContent>

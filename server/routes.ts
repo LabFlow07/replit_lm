@@ -726,7 +726,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       return res.status(400).json({ message: "Invalid registration ID format" });
     }
 
-    // If a license is assigned, activate it and update company record
+    // Handle license assignment or removal
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
 
@@ -741,6 +741,25 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       });
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
+    } else if (licenzaAssegnata === null) {
+      // Remove license assignment - set company license to null and suspend any existing license
+      const company = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+      
+      if (company && company.idLicenza) {
+        console.log(`Removing license assignment ${company.idLicenza} from registration ${registrationId}`);
+        
+        // Suspend the license instead of deactivating it completely
+        await storage.updateLicense(company.idLicenza, {
+          status: 'sospesa'
+        });
+
+        // Remove license assignment from company
+        await storage.updateTestaRegAzienda(partitaIva, {
+          idLicenza: null
+        });
+
+        console.log(`License assignment removed from company ${partitaIva}`);
+      }
     }
 
     // Update device notes and computer key
@@ -754,15 +773,18 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       // Get current device to check if it already has a computer key
       const currentDevice = await storage.getDettRegAziendaById(parseInt(deviceId));
 
-      // If device should be authorized and doesn't already have a computer key, generate one
+      // Handle device authorization
       if (authorizeDevice && !currentDevice?.computerKey) {
+        // Generate new computer key if device should be authorized and doesn't have one
         const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         deviceUpdates.computerKey = computerKey;
         console.log(`Generated new computer key ${computerKey} for device ${deviceId}`);
-      } else if (!authorizeDevice && currentDevice?.computerKey) {
-        // If authorization is being removed, clear the computer key
-        deviceUpdates.computerKey = null;
-        console.log(`Removed computer key for device ${deviceId}`);
+      } else if (!authorizeDevice) {
+        // Remove computer key if authorization is being removed or assignment is being cleared
+        if (currentDevice?.computerKey) {
+          deviceUpdates.computerKey = null;
+          console.log(`Removed computer key for device ${deviceId}`);
+        }
       }
 
       if (Object.keys(deviceUpdates).length > 0) {
