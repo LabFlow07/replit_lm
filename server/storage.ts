@@ -88,6 +88,8 @@ export interface IStorage {
   getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined>;
   createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda>;
   updateDettRegAzienda(id: number, updates: Partial<DettRegAzienda>): Promise<DettRegAzienda>;
+  deleteTestaRegAzienda(partitaIva: string): Promise<void>;
+  deleteDettRegAzienda(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1971,6 +1973,14 @@ export class DatabaseStorage implements IStorage {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  async deleteTestaRegAzienda(partitaIva: string): Promise<void> {
+    await database.query('DELETE FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
+  }
+
+  async deleteDettRegAzienda(id: number): Promise<void> {
+    await database.query('DELETE FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
   }
 }
 

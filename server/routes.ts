@@ -1674,6 +1674,52 @@ router.post("/api/assign-license-to-company", authenticateToken, async (req: Req
   }
 });
 
+// Delete software registration
+router.delete("/api/software/registrazioni/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const registrationId = req.params.id;
+
+    // Only admin/superadmin can delete registrations
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Accesso negato" });
+    }
+
+    // ID format: "partitaIva-deviceId"
+    const [partitaIva, deviceId] = registrationId.split('-');
+
+    if (!partitaIva || !deviceId) {
+      return res.status(400).json({ message: "Invalid registration ID format" });
+    }
+
+    console.log(`Deleting registration ${registrationId} - Device ${deviceId} from company ${partitaIva}`);
+
+    // First, delete the specific device
+    await storage.deleteDettRegAzienda(parseInt(deviceId));
+    console.log(`Deleted device ${deviceId} from Dett_Reg_Azienda`);
+
+    // Check if there are any remaining devices for this company
+    const remainingDevices = await storage.getDettRegAzienda(partitaIva);
+
+    // If no devices remain, delete the company entry too
+    if (remainingDevices.length === 0) {
+      await storage.deleteTestaRegAzienda(partitaIva);
+      console.log(`Deleted company ${partitaIva} from Testa_Reg_Azienda (no devices remaining)`);
+    } else {
+      // Update the device count
+      await storage.updateTestaRegAzienda(partitaIva, {
+        totDispositivi: remainingDevices.length
+      });
+      console.log(`Updated device count for company ${partitaIva} to ${remainingDevices.length}`);
+    }
+
+    res.json({ message: "Registrazione eliminata con successo" });
+  } catch (error) {
+    console.error('Delete software registration error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }
