@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ interface SoftwareRegistration {
   indirizzoIp?: string;
   computerKey?: string;
   installationPath?: string;
-  status: 'non_assegnato' | 'classificato' | 'licenziato';
+  status: 'non_assegnato' | 'classificato' | 'licenziato' | 'in_attesa_computer_key';
   clienteAssegnato?: string;
   licenzaAssegnata?: string;
   prodottoAssegnato?: string; // Added to match the dialog
@@ -49,7 +49,6 @@ interface SoftwareRegistration {
   clientId?: string; // Assuming API returns this
   registrationDate?: string; // Assuming API returns this
   lastSeen?: string; // Assuming API returns this
-  computerKey?: string;
 }
 
 interface Client {
@@ -58,13 +57,13 @@ interface Client {
   email: string;
   status: string;
   company_id?: string;
-  company_id?: string;
+  companyId?: string; // Added for compatibility
 }
 
 interface License {
   id: string;
   activationKey: string;
-  client?: { id: string; name?: string; email?: string; }; // Updated to match typical API responses
+  client?: { id: string; name?: string; email?: string; company_id?: string; companyId?: string; }; // Updated to match typical API responses
   company?: { id: string; name?: string; }; // Added company field for display
   product: { name: string, version?: string, id: string }; // Added product id and version for completeness
   status: string;
@@ -73,6 +72,7 @@ interface License {
   expiryDate?: string; // Added for display
   clientName?: string; // Added fallback if client object is not present
   companyName?: string; // Added fallback if company object is not present
+  companyId?: string; // Added for compatibility
 }
 
 interface Product {
@@ -84,12 +84,33 @@ interface Product {
 
 export default function SoftwareRegistrations() {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // State for the input field
+  const [searchTerm, setSearchTerm] = useState(''); // State for the actual search term after debounce
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
 
+  const debouncedSearchTerm = useRef(searchTerm);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const { register, handleSubmit, reset, setValue, watch } = useForm();
+
+  // Debounce effect for search input
+  useEffect(() => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      debouncedSearchTerm.current = searchInput;
+      setSearchTerm(searchInput); // Update searchTerm only after debounce delay
+    }, 500); // 500ms delay
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [searchInput]);
 
   // Fetch software registrations
   const { data: registrations = [], isLoading } = useQuery({
@@ -109,14 +130,10 @@ export default function SoftwareRegistrations() {
       if (!response.ok) {
         throw new Error('Failed to fetch registrations');
       }
-      // Assuming the API returns fields that match the SoftwareRegistration interface,
-      // potentially needing mapping if API field names differ.
-      // For example, if API returns 'softwareName' instead of 'nomeSoftware'.
       const data = await response.json();
-      // Simple mapping example, adjust based on actual API response
       return data.map((reg: any) => ({
         ...reg,
-        nomeSoftware: reg.nomeSoftware || reg.softwareName, // Use nomeSoftware or fallback to softwareName
+        nomeSoftware: reg.nomeSoftware || reg.softwareName,
         versione: reg.versione || reg.version,
         ragioneSociale: reg.ragioneSociale || reg.clientName,
         computerKey: reg.computerKey,
@@ -164,12 +181,10 @@ export default function SoftwareRegistrations() {
       if (!response.ok) {
         throw new Error('Failed to fetch licenses');
       }
-      // Ensure each license has a product object with id and name
       const data = await response.json();
       return data.map((license: any) => ({
         ...license,
-        // Map company and client fields for easier access
-        client: license.client || (license.clientId ? { id: license.clientId, name: license.clientName } : undefined),
+        client: license.client || (license.clientId ? { id: license.clientId, name: license.clientName, company_id: license.companyId } : undefined),
         company: license.company || (license.companyId ? { id: license.companyId, name: license.companyName } : undefined),
         product: license.product || { id: license.productId, name: license.productName, version: license.productVersion }
       }));
@@ -218,13 +233,11 @@ export default function SoftwareRegistrations() {
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Auto-determina la licenza se cliente e prodotto sono selezionati
       let finalLicenseId = data.licenzaAssegnata;
 
       if (data.clienteAssegnato && data.clienteAssegnato !== 'none' &&
           data.prodottoAssegnato && data.prodottoAssegnato !== 'none') {
 
-        // Filtra le licenze del cliente (incluse quelle non attive per consentire l'attivazione)
         const clientLicenses = licenses.filter((license: License) =>
           license.client?.id === data.clienteAssegnato &&
           (license.product?.id === data.prodottoAssegnato ||
@@ -232,11 +245,9 @@ export default function SoftwareRegistrations() {
           (license.status === 'attiva' || license.status === 'in_attesa_convalida' || license.status === 'sospesa')
         );
 
-        // Se c'è una sola licenza, la usa automaticamente
         if (clientLicenses.length === 1) {
           finalLicenseId = clientLicenses[0].id;
         } else if (clientLicenses.length > 1 && !finalLicenseId) {
-          // Se ci sono multiple licenze ma nessuna è stata selezionata, usa la prima
           finalLicenseId = clientLicenses[0].id;
         }
       }
@@ -324,7 +335,6 @@ export default function SoftwareRegistrations() {
       registration.clientName,
       registration.productName,
       registration.productVersion,
-      // Cerca anche nei dati delle licenze assegnate
       (() => {
         if (registration.licenzaAssegnata) {
           const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
@@ -340,7 +350,6 @@ export default function SoftwareRegistrations() {
         }
         return '';
       })(),
-      // Cerca anche nei nomi delle aziende assegnate
       (() => {
         if (registration.licenzaAssegnata) {
           const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
@@ -365,11 +374,9 @@ export default function SoftwareRegistrations() {
     const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
 
-    // Reset form first
     reset();
 
     if (registrationToClassify) {
-      // Find the client to get the company if already assigned
       const client = clients.find(c => c.id === registrationToClassify.clienteAssegnato);
       const companyId = client?.company_id || client?.companyId || 'none';
 
@@ -387,7 +394,6 @@ export default function SoftwareRegistrations() {
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
 
-    // Find the client to get the company
     const client = clients.find(c => c.id === registration.clienteAssegnato);
     const companyId = client?.company_id || client?.companyId || 'none';
 
@@ -396,17 +402,14 @@ export default function SoftwareRegistrations() {
     console.log('Company ID:', companyId);
     console.log('Computer Key:', registration.computerKey);
 
-    // Reset form first
     reset();
 
-    // Use setTimeout to ensure the form is reset before setting new values
     setTimeout(() => {
       setValue('aziendaAssegnata', companyId);
       setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
       setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
       setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
       setValue('note', registration.note || '');
-      // Set authorization checkbox based on computer key presence
       setValue('authorizeDevice', !!registration.computerKey);
     }, 100);
 
@@ -466,7 +469,6 @@ export default function SoftwareRegistrations() {
             </div>
           </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -477,12 +479,12 @@ export default function SoftwareRegistrations() {
         <CardContent className="space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <Label htmlFor="search">Ricerca Software/Azienda</Label>
+              <Label htmlFor="search-input">Ricerca Software/Azienda</Label>
               <Input
-                id="search"
+                id="search-input"
                 placeholder="Cerca in tutti i campi (software, azienda, cliente, prodotto, note, computer key, etc.)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 data-testid="input-search"
               />
             </div>
@@ -505,7 +507,6 @@ export default function SoftwareRegistrations() {
         </CardContent>
       </Card>
 
-      {/* Results Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -561,7 +562,6 @@ export default function SoftwareRegistrations() {
         </Card>
       </div>
 
-      {/* Excel-style Table */}
       {filteredRegistrations.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
@@ -593,7 +593,6 @@ export default function SoftwareRegistrations() {
                 <tbody>
                   {filteredRegistrations.map((registration: SoftwareRegistration, index: number) => (
                     <tr key={registration.id} className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? 'bg-white' : 'bg-muted/10'}`}>
-                      {/* Azienda/Cliente */}
                       <td className="p-3 border-r">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-500" />
@@ -604,7 +603,10 @@ export default function SoftwareRegistrations() {
                             {registration.licenzaAssegnata && (() => {
                               const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
                               if (assignedLicense) {
-                                const clientCompany = companies.find(c => c.id === assignedLicense.client?.company_id || c.id === assignedLicense.client?.companyId);
+                                const clientCompany = companies.find(c => 
+                                  c.id === assignedLicense.client?.company_id || 
+                                  c.id === assignedLicense.client?.companyId
+                                );
                                 return (
                                   <div className="text-xs text-muted-foreground space-y-1">
                                     <div>Cliente: {assignedLicense.client?.name || 'Non specificato'}</div>
@@ -618,7 +620,6 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Software/Prodotto */}
                       <td className="p-3 border-r">
                         <div className="flex items-center gap-2">
                           <Monitor className="h-4 w-4 text-green-500" />
@@ -646,7 +647,6 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Versione */}
                       <td className="p-3 border-r">
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="text-xs font-mono">
@@ -667,7 +667,6 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Totale Ordini */}
                       <td className="p-3 border-r text-center">
                         <div className="font-medium text-sm">
                           {registration.totaleOrdini || 0}
@@ -677,7 +676,6 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Totale Venduto */}
                       <td className="p-3 border-r text-right">
                         <div className="font-medium text-sm text-green-600">
                           {formatCurrency(registration.totaleVenduto || 0)}
@@ -687,16 +685,14 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Stato */}
                       <td className="p-3 border-r">
                         {getStatusBadge(registration.status)}
                       </td>
 
-                      {/* Data Registrazione */}
                       <td className="p-3 border-r text-sm">
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'dd/MM/yyyy', { locale: it })} {/* Display registration date */}
+                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'dd/MM/yyyy', { locale: it })}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'HH:mm', { locale: it })}
@@ -704,12 +700,11 @@ export default function SoftwareRegistrations() {
                         </div>
                       </td>
 
-                      {/* Ultimo Accesso */}
                       <td className="p-3 border-r text-sm">
                         {registration.ultimaAttivita || registration.lastSeen ? (
                           <div className="flex flex-col">
                             <span className="font-medium">
-                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'dd/MM/yyyy', { locale: it })} {/* Display last activity date */}
+                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'dd/MM/yyyy', { locale: it })}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'HH:mm', { locale: it })}
@@ -720,7 +715,6 @@ export default function SoftwareRegistrations() {
                         )}
                       </td>
 
-                      {/* Azioni */}
                       <td className="p-3">
                         <div className="flex gap-1">
                           <Button
@@ -796,7 +790,6 @@ export default function SoftwareRegistrations() {
         </Card>
       )}
 
-      {/* Classify Registration Dialog */}
       <Dialog open={isClassifyDialogOpen} onOpenChange={setIsClassifyDialogOpen}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
@@ -808,7 +801,6 @@ export default function SoftwareRegistrations() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-            {/* Modal semplificata per generazione Computer Key */}
             {(selectedRegistration?.status === 'in_attesa_computer_key' || 
               (selectedRegistration?.status === 'classificato' && !selectedRegistration?.computerKey)) && (
               <div className="space-y-4">
@@ -846,7 +838,6 @@ export default function SoftwareRegistrations() {
               </div>
             )}
 
-            {/* Mostra i dropdown solo se la registrazione non è già classificata */}
             {selectedRegistration?.status === 'non_assegnato' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -854,7 +845,6 @@ export default function SoftwareRegistrations() {
                     <Label htmlFor="aziendaAssegnata">Azienda</Label>
                     <Select value={watch('aziendaAssegnata') || 'none'} onValueChange={(value) => {
                       setValue('aziendaAssegnata', value);
-                      // Reset dependent fields when company changes only if it's a new selection
                       if (value !== watch('aziendaAssegnata')) {
                         setValue('clienteAssegnato', 'none');
                         setValue('licenzaAssegnata', 'none');
@@ -883,12 +873,11 @@ export default function SoftwareRegistrations() {
                       if (!selectedCompanyId || selectedCompanyId === 'none') {
                         return (
                           <div className="p-3 bg-gray-50 rounded-md border text-center">
-                            <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
+                            <p className="text-sm text-gray-500">Seleziona prima un\'azienda</p>
                           </div>
                         );
                       }
 
-                      // Filtra i clienti per l'azienda selezionata
                       const companyClients = clients.filter((client: Client) => 
                         client.company_id === selectedCompanyId
                       );
@@ -907,7 +896,6 @@ export default function SoftwareRegistrations() {
                       return (
                         <Select value={watch('clienteAssegnato') || 'none'} onValueChange={(value) => {
                           setValue('clienteAssegnato', value);
-                          // Reset dependent fields when client changes only if it's a new selection
                           if (value !== watch('clienteAssegnato')) {
                             setValue('licenzaAssegnata', 'none');
                             setValue('prodottoAssegnato', 'none');
@@ -943,7 +931,6 @@ export default function SoftwareRegistrations() {
                       );
                     }
 
-                    // Trova le licenze del cliente selezionato (includi tutte le licenze valide, non solo quelle attive)
                     const clientLicenses = licenses.filter((license: License) => {
                       return license.client?.id === selectedClientId && 
                              (license.status === 'attiva' || 
@@ -965,7 +952,6 @@ export default function SoftwareRegistrations() {
                     return (
                       <Select value={watch('licenzaAssegnata') || 'none'} onValueChange={(value) => {
                         setValue('licenzaAssegnata', value);
-                        // Reset product field when license changes only if it's a new selection
                         if (value !== watch('licenzaAssegnata')) {
                           setValue('prodottoAssegnato', 'none');
                         }
@@ -1010,7 +996,6 @@ export default function SoftwareRegistrations() {
                       );
                     }
 
-                    // Trova il prodotto della licenza selezionata
                     const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
 
                     if (!selectedLicense || !selectedLicense.product) {
@@ -1024,7 +1009,6 @@ export default function SoftwareRegistrations() {
                       );
                     }
 
-                    // Auto-seleziona il prodotto della licenza
                     if (watch('prodottoAssegnato') !== selectedLicense.product.id) {
                       setValue('prodottoAssegnato', selectedLicense.product.id);
                     }
@@ -1050,7 +1034,6 @@ export default function SoftwareRegistrations() {
               </>
             )}
 
-            {/* Mostra dettagli licenza se già classificata */}
             {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (() => {
               const selectedLicense = licenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
               if (!selectedLicense) return null;
@@ -1178,10 +1161,14 @@ export default function SoftwareRegistrations() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setIsClassifyDialogOpen(false)}
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                  }}
                   className="flex-1 md:flex-none"
                 >
-                  Annulla
+                  Reset Filtri
                 </Button>
                 <Button 
                   type="submit" 
