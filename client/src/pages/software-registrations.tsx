@@ -147,7 +147,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: true
+    enabled: isClassifyDialogOpen
   });
 
   // Fetch licenses for classification

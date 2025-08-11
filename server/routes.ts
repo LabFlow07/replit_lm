@@ -1720,6 +1720,93 @@ router.delete("/api/software/registrazioni/:id", authenticateToken, async (req: 
   }
 });
 
+// Software registration endpoint (anonymous - for client software registrations)
+router.post("/api/software/register", async (req: Request, res: Response) => {
+  try {
+    const {
+      nomeAzienda,
+      partitaIva,
+      nomeSoftware,
+      versione,
+      computerKey,
+      installationPath,
+      machineInfo,
+      registrationDate
+    } = req.body;
+
+    // Input validation
+    if (!partitaIva || !nomeAzienda || !nomeSoftware || !computerKey) {
+      return res.status(400).json({ 
+        message: "Campi obbligatori: partitaIva, nomeAzienda, nomeSoftware, computerKey" 
+      });
+    }
+
+    // Step 1: Check/Create Testa_Reg_Azienda entry
+    let testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
+
+    if (!testaReg) {
+      // Create new company registration
+      testaReg = await storage.createTestaRegAzienda({
+        partitaIva,
+        nomeAzienda,
+        prodotto: nomeSoftware,
+        versione: versione || null,
+        modulo: null,
+        utenti: 1,
+        totDispositivi: 1,
+        idLicenza: null, // Initially no license assigned
+        totOrdini: 0,
+        totVendite: "0.00"
+      });
+    } else {
+      // Update device count
+      await storage.updateTestaRegAzienda(partitaIva, {
+        totDispositivi: (testaReg.totDispositivi || 0) + 1
+      });
+    }
+
+    // Step 2: Register the specific device
+    const now = new Date();
+    const deviceData = {
+      partitaIva,
+      uidDispositivo: computerKey, // Use computerKey as unique device identifier
+      sistemaOperativo: machineInfo || null,
+      note: installationPath ? `Percorso: ${installationPath}` : null,
+      dataAttivazione: now.toISOString().split('T')[0], // Today's date as YYYY-MM-DD
+      dataUltimoAccesso: now.toISOString().replace('T', ' ').split('.')[0], // MySQL DATETIME format
+      ordini: 0,
+      vendite: "0.00",
+      computerKey: computerKey
+    };
+
+    const dettReg = await storage.createDettRegAzienda(deviceData);
+
+    // Step 3: Return successful registration response
+    const response = {
+      success: true,
+      testaId: testaReg.id,
+      dettId: dettReg.id,
+      partitaIva: partitaIva,
+      nomeAzienda: nomeAzienda,
+      nomeSoftware: nomeSoftware,
+      computerKey: computerKey,
+      registrationStatus: "accepted",
+      deviceAuthorized: false,
+      licenseValidityDays: 0,
+      message: "Registrazione software completata con successo. In attesa di classificazione amministratore."
+    };
+
+    console.log(`Software registration completed: ${nomeAzienda} - ${computerKey}`);
+    res.json(response);
+  } catch (error) {
+    console.error('Software registration error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Errore interno del server durante la registrazione" 
+    });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }
