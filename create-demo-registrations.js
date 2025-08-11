@@ -1,10 +1,10 @@
 
-const axios = require('axios');
+import axios from 'axios';
 
 // Configurazione dell'endpoint API
 const API_BASE_URL = 'http://localhost:5000';
 
-// Dati demo per le registrazioni
+// Dati demo per le registrazioni software
 const demoRegistrations = [
   {
     partitaIva: '01234567890',
@@ -13,7 +13,7 @@ const demoRegistrations = [
     versione: '4.2.1',
     modulo: 'standard',
     uidDispositivo: 'WS-001-MAIN',
-    sistemaOperativo: 'Windows 10 Pro',
+    sistemaOperativo: 'Windows 11 Pro',
     note: 'Installazione principale su workstation'
   },
   {
@@ -33,7 +33,7 @@ const demoRegistrations = [
     versione: '3.8.5',
     modulo: 'restaurant',
     uidDispositivo: 'POS-001-CASSA1',
-    sistemaOperativo: 'Linux Ubuntu 20.04',
+    sistemaOperativo: 'Linux Ubuntu 22.04',
     note: 'POS principale sala ristorante'
   },
   {
@@ -43,7 +43,7 @@ const demoRegistrations = [
     versione: '3.8.5',
     modulo: 'restaurant',
     uidDispositivo: 'POS-002-CASSA2',
-    sistemaOperativo: 'Linux Ubuntu 20.04',
+    sistemaOperativo: 'Linux Ubuntu 22.04',
     note: 'POS secondario per picchi di lavoro'
   },
   {
@@ -148,6 +148,7 @@ const demoRegistrations = [
   }
 ];
 
+// Funzione per creare una registrazione tramite API
 async function createRegistration(registration) {
   try {
     console.log(`Creando registrazione per ${registration.nomeAzienda} - ${registration.uidDispositivo}...`);
@@ -155,72 +156,94 @@ async function createRegistration(registration) {
     const response = await axios.post(`${API_BASE_URL}/api/device-registration`, registration, {
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 10000
     });
     
-    console.log(`✅ Registrazione creata con successo:`, {
-      id: response.data.registrationId,
-      azienda: registration.nomeAzienda,
-      dispositivo: registration.uidDispositivo,
-      status: response.data.registrationStatus
-    });
-    
+    console.log(`✅ Registrazione creata con successo: ${response.data.message}`);
     return response.data;
   } catch (error) {
-    console.error(`❌ Errore durante la creazione della registrazione per ${registration.nomeAzienda}:`, 
-      error.response?.data?.message || error.message);
+    if (error.response) {
+      console.error(`❌ Errore API (${error.response.status}):`, error.response.data.message);
+    } else if (error.request) {
+      console.error('❌ Errore di connessione:', error.message);
+    } else {
+      console.error('❌ Errore generico:', error.message);
+    }
     return null;
   }
 }
 
+// Funzione principale per creare tutte le registrazioni demo
 async function generateAllDemoRegistrations() {
-  console.log('🚀 Inizio generazione registrazioni demo...\n');
+  console.log('🚀 SCRIPT GENERAZIONE REGISTRAZIONI DEMO SOFTWARE');
+  console.log('==================================================\n');
   
-  const results = [];
+  // Verifica connessione al server
+  try {
+    console.log('🔍 Verificando connessione al server...');
+    await axios.get(`${API_BASE_URL}/api/products`, { timeout: 5000 });
+    console.log('✅ Server raggiungibile\n');
+  } catch (error) {
+    console.error('❌ Server non raggiungibile. Assicurati che il server sia avviato.');
+    console.error('💡 Suggerimento: Il server deve essere in esecuzione sulla porta 5000.');
+    return;
+  }
+
+  let successCount = 0;
+  let errorCount = 0;
   
-  for (let i = 0; i < demoRegistrations.length; i++) {
-    const registration = demoRegistrations[i];
+  console.log(`📋 Creando ${demoRegistrations.length} registrazioni demo...\n`);
+  
+  for (const registration of demoRegistrations) {
     const result = await createRegistration(registration);
     
     if (result) {
-      results.push(result);
+      successCount++;
+    } else {
+      errorCount++;
     }
     
-    // Pausa di 500ms tra le registrazioni per evitare sovraccarico
-    if (i < demoRegistrations.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    // Pausa di 300ms tra le registrazioni per evitare sovraccarico
+    await new Promise(resolve => setTimeout(resolve, 300));
   }
   
-  console.log(`\n📊 Riepilogo creazione registrazioni:`);
-  console.log(`   ✅ Successo: ${results.length}`);
-  console.log(`   ❌ Fallite: ${demoRegistrations.length - results.length}`);
-  console.log(`   📊 Totale: ${demoRegistrations.length}`);
+  console.log('\n📊 RIEPILOGO CREAZIONE REGISTRAZIONI:');
+  console.log(`   ✅ Registrazioni completate: ${successCount}`);
+  console.log(`   ❌ Registrazioni fallite: ${errorCount}`);
+  console.log(`   📈 Totale tentativi: ${demoRegistrations.length}`);
   
   // Raggruppamento per azienda
   const companiesMap = {};
-  results.forEach(result => {
-    const registration = demoRegistrations.find(r => r.uidDispositivo === result.uidDispositivo);
-    if (registration) {
-      if (!companiesMap[registration.nomeAzienda]) {
-        companiesMap[registration.nomeAzienda] = {
-          partitaIva: registration.partitaIva,
-          prodotto: registration.prodotto,
-          devices: 0
-        };
-      }
-      companiesMap[registration.nomeAzienda].devices++;
+  for (const registration of demoRegistrations) {
+    if (!companiesMap[registration.nomeAzienda]) {
+      companiesMap[registration.nomeAzienda] = {
+        partitaIva: registration.partitaIva,
+        prodotto: registration.prodotto,
+        devices: 0
+      };
     }
-  });
+    companiesMap[registration.nomeAzienda].devices++;
+  }
   
-  console.log(`\n🏢 Aziende create:`);
+  console.log('\n🏢 AZIENDE CREATE:');
   Object.entries(companiesMap).forEach(([azienda, info]) => {
     console.log(`   • ${azienda} (${info.partitaIva}) - ${info.prodotto} - ${info.devices} dispositivi`);
   });
   
-  console.log(`\n🎯 Le registrazioni sono pronte per i test di assegnazione licenze!`);
-  console.log(`   Vai in "Registrazioni Software" per vedere tutte le registrazioni create.`);
+  if (successCount > 0) {
+    console.log('\n🎉 SCRIPT COMPLETATO CON SUCCESSO!');
+    console.log('📋 Le registrazioni demo sono state create nelle tabelle:');
+    console.log('   - Testa_Reg_Azienda (informazioni aziende)');
+    console.log('   - Dett_Reg_Azienda (dettagli dispositivi)');
+    console.log('\n💡 Vai nella sezione "Registrazioni Software" per visualizzarle.');
+  } else {
+    console.log('\n⚠️  Nessuna registrazione creata. Controlla i logs per maggiori dettagli.');
+  }
 }
 
-// Esecuzione dello script
-generateAllDemoRegistrations().catch(console.error);
+// Avvia lo script
+generateAllDemoRegistrations().catch(error => {
+  console.error('\n💥 ERRORE FATALE:', error.message);
+  process.exit(1);
+});
