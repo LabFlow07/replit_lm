@@ -709,32 +709,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
             }
           }
           
-          // Also search in all clients and companies for global search
-          let matchGlobal = false;
-          try {
-            // Search in all clients
-            const allClients = await storage.getClients();
-            const matchClient = allClients.some(client => 
-              client.name?.toLowerCase().includes(searchTerm) ||
-              client.email?.toLowerCase().includes(searchTerm)
-            );
-            
-            // Search in all companies
-            const allCompanies = await storage.getCompanies();
-            const matchSystemCompany = allCompanies.some(comp => 
-              comp.name?.toLowerCase().includes(searchTerm)
-            );
-            
-            matchGlobal = matchClient || matchSystemCompany;
-            
-            if (matchGlobal) {
-              console.log('Global search matched (client or system company):', searchTerm);
-            }
-          } catch (error) {
-            console.error('Error in global search:', error);
-          }
-          
-          includeDevice = matchCompany || matchDevice || matchLicense || matchGlobal;
+          includeDevice = matchCompany || matchDevice || matchLicense;
         }
         
         if (!includeDevice) continue;

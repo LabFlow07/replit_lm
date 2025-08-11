@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Monitor, User, MapPin, Calendar, Activity, Settings } from "lucide-react";
+import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
@@ -85,33 +85,30 @@ interface Product {
 export default function SoftwareRegistrations() {
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState(''); // State for the input field
-  const [searchTerm, setSearchTerm] = useState(''); // State for the actual search term after debounce
+  const [searchTerm, setSearchTerm] = useState(''); // State for the actual search term after user action
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
 
-  const debouncedSearchTerm = useRef(searchTerm);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const { register, handleSubmit, reset, setValue, watch } = useForm();
 
-  // Debounce effect for search input
-  useEffect(() => {
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-    debounceTimeout.current = setTimeout(() => {
-      console.log('Setting search term to:', searchInput);
-      debouncedSearchTerm.current = searchInput;
-      setSearchTerm(searchInput); // Update searchTerm only after debounce delay
-    }, 300); // Ridotto a 300ms per una risposta più veloce
+  // Function to execute search
+  const executeSearch = () => {
+    setSearchTerm(searchInput.trim());
+  };
 
-    return () => {
-      if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current);
-      }
-    };
-  }, [searchInput]);
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchInput('');
+    setSearchTerm('');
+  };
 
   // Fetch software registrations
   const { data: registrations = [], isLoading } = useQuery({
@@ -435,13 +432,36 @@ export default function SoftwareRegistrations() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <Label htmlFor="search-input">Ricerca Software/Azienda</Label>
-              <Input
-                id="search-input"
-                placeholder="Cerca in tutti i campi (software, azienda, cliente, prodotto, note, computer key, etc.)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                data-testid="input-search"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="search-input"
+                  placeholder="Cerca in tutti i campi (software, azienda, cliente, prodotto, note, computer key, etc.)..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  data-testid="input-search"
+                />
+                <Button 
+                  onClick={executeSearch}
+                  variant="outline"
+                  size="sm"
+                  className="px-4"
+                  data-testid="button-search"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+                {searchTerm && (
+                  <Button 
+                    onClick={clearSearch}
+                    variant="ghost"
+                    size="sm"
+                    className="px-4"
+                    data-testid="button-clear-search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {searchTerm && (
                 <div className="mt-1 text-xs text-gray-500">
                   Ricercando: "{searchTerm}" - Trovati: {registrations.length} risultati
