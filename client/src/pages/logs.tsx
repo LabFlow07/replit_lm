@@ -122,10 +122,10 @@ export default function LogsPage() {
       <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Log Attività</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Log Attività</h1>
               <p className="text-sm text-gray-600">Monitora tutte le attività e gli accessi del sistema</p>
             </div>
             <div className="flex items-center space-x-4">
@@ -148,9 +148,9 @@ export default function LogsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Eventi Oggi</p>
@@ -164,7 +164,7 @@ export default function LogsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Accessi</p>
@@ -178,11 +178,11 @@ export default function LogsPage() {
             </Card>
 
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Avvisi</p>
-                    <p className="text-2xl font-bold text-gray-900">8</p>
+                    <p className="text-xl font-bold text-gray-900">8</p>
                   </div>
                   <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                     <i className="fas fa-exclamation-triangle text-yellow-600"></i>

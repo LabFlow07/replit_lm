@@ -246,11 +246,11 @@ export default function LicensesPage() {
       <main className="flex-1 bg-surface">
         <TopBar />
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestione Licenze</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Gestione Licenze</h1>
               <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <Button 

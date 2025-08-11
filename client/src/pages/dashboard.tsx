@@ -95,7 +95,7 @@ export default function Dashboard() {
       <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
           {/* Welcome Header - More compact */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg p-4 text-white">
             <div className="flex justify-between items-center">
@@ -111,13 +111,13 @@ export default function Dashboard() {
           </div>
 
           {/* Primary Statistics Cards - More compact */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-600">Licenze Totali</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {statsLoading ? '...' : totalLicenses}
                     </p>
                   </div>
@@ -134,11 +134,11 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-600">Licenze Attive</p>
-                    <p className="text-2xl font-bold text-green-700">
+                    <p className="text-xl font-bold text-green-700">
                       {statsLoading ? '...' : activeLicenses}
                     </p>
                   </div>
@@ -155,11 +155,11 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-600">Clienti Attivi</p>
-                    <p className="text-2xl font-bold text-indigo-700">
+                    <p className="text-xl font-bold text-indigo-700">
                       {validatedClients}
                     </p>
                   </div>
@@ -176,11 +176,11 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-600">Aziende Partner</p>
-                    <p className="text-2xl font-bold text-purple-700">
+                    <p className="text-xl font-bold text-purple-700">
                       {activeCompanies}
                     </p>
                   </div>
@@ -200,7 +200,7 @@ export default function Dashboard() {
           </div>
 
           {/* Detailed Analytics Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* License Status Breakdown */}
             <Card>
               <CardHeader>
