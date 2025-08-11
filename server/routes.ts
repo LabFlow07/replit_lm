@@ -626,6 +626,18 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
       // Create a registration entry for each device
       for (const device of devices) {
         const hasLicense = company.idLicenza !== null;
+        const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
+        
+        // Determina lo stato del dispositivo
+        let deviceStatus = 'non_assegnato';
+        if (hasLicense) {
+          if (hasComputerKey) {
+            deviceStatus = 'classificato'; // Licenza assegnata E computer_key presente
+          } else {
+            deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
+          }
+        }
+        
         const registration = {
           id: `${company.partitaIva}-${device.id}`,
           partitaIva: company.partitaIva,
@@ -638,7 +650,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           computerKey: device.computerKey,
           totaleOrdini: device.ordini,
           totaleVenduto: parseFloat(device.vendite || '0'),
-          status: hasLicense ? 'classificato' : 'non_assegnato',
+          status: deviceStatus,
           clienteAssegnato: null, // Will be populated when license is assigned
           licenzaAssegnata: company.idLicenza,
           prodottoAssegnato: company.prodotto,
@@ -682,6 +694,18 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
     }
 
     const hasLicense = company.idLicenza !== null;
+    const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
+    
+    // Determina lo stato del dispositivo
+    let deviceStatus = 'non_assegnato';
+    if (hasLicense) {
+      if (hasComputerKey) {
+        deviceStatus = 'classificato'; // Licenza assegnata E computer_key presente
+      } else {
+        deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
+      }
+    }
+    
     const registration = {
       id: registrationId,
       partitaIva: company.partitaIva,
@@ -694,7 +718,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
       computerKey: device.computerKey,
       totaleOrdini: device.ordini,
       totaleVenduto: parseFloat(device.vendite || '0'),
-      status: hasLicense ? 'classificato' : 'non_assegnato',
+      status: deviceStatus,
       clienteAssegnato: null,
       licenzaAssegnata: company.idLicenza,
       prodottoAssegnato: company.prodotto,
@@ -801,6 +825,18 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     }
 
     const hasLicense = company.idLicenza !== null;
+    const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
+    
+    // Determina lo stato del dispositivo
+    let deviceStatus = 'non_assegnato';
+    if (hasLicense) {
+      if (hasComputerKey) {
+        deviceStatus = 'classificato'; // Licenza assegnata E computer_key presente
+      } else {
+        deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
+      }
+    }
+    
     const updatedRegistration = {
       id: registrationId,
       partitaIva: company.partitaIva,
@@ -813,7 +849,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       computerKey: device.computerKey,
       totaleOrdini: device.ordini,
       totaleVenduto: parseFloat(device.vendite || '0'),
-      status: hasLicense ? 'classificato' : 'non_assegnato',
+      status: deviceStatus,
       clienteAssegnato: clienteAssegnato || null,
       licenzaAssegnata: company.idLicenza,
       prodottoAssegnato: company.prodotto,

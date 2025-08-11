@@ -291,6 +291,7 @@ export default function SoftwareRegistrations() {
     const statusMap = {
       'non_assegnato': { variant: 'destructive', label: 'Non Assegnato' },
       'classificato': { variant: 'default', label: 'Classificato' },
+      'in_attesa_computer_key': { variant: 'outline', label: 'In Attesa Computer Key' },
       'licenziato': { variant: 'secondary', label: 'Licenziato' }
     };
 
@@ -454,6 +455,7 @@ export default function SoftwareRegistrations() {
                 <SelectContent>
                   <SelectItem value="all">Tutti gli stati</SelectItem>
                   <SelectItem value="non_assegnato">Non Assegnato</SelectItem>
+                  <SelectItem value="in_attesa_computer_key">In Attesa Computer Key</SelectItem>
                   <SelectItem value="classificato">Classificato</SelectItem>
                   <SelectItem value="licenziato">Licenziato</SelectItem>
                 </SelectContent>
@@ -507,11 +509,11 @@ export default function SoftwareRegistrations() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-blue-500" />
+              <Settings className="h-5 w-5 text-yellow-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Licenziate</p>
-                <p className="text-2xl font-bold text-blue-600" data-testid="text-licensed">
-                  {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'licenziato').length}
+                <p className="text-sm text-muted-foreground">In Attesa Computer Key</p>
+                <p className="text-2xl font-bold text-yellow-600" data-testid="text-waiting-key">
+                  {filteredRegistrations.filter((r: SoftwareRegistration) => r.status === 'in_attesa_computer_key').length}
                 </p>
               </div>
             </div>
@@ -675,13 +677,21 @@ export default function SoftwareRegistrations() {
                       <td className="p-3">
                         <div className="flex gap-1">
                           <Button
-                            variant={registration.status === 'non_assegnato' ? "default" : "outline"}
+                            variant={registration.status === 'non_assegnato' || registration.status === 'in_attesa_computer_key' ? "default" : "outline"}
                             size="sm"
                             onClick={() => handleEdit(registration)}
-                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                            title={registration.status === 'non_assegnato' ? "Classifica registrazione" : "Visualizza registrazione"}
+                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-green-600 hover:bg-green-700' : registration.status === 'in_attesa_computer_key' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
+                            title={
+                              registration.status === 'non_assegnato' ? "Classifica registrazione" : 
+                              registration.status === 'in_attesa_computer_key' ? "Assegna Computer Key" :
+                              "Visualizza registrazione"
+                            }
                           >
-                            <i className={`fas ${registration.status === 'non_assegnato' ? 'fa-check' : 'fa-eye'} text-xs`}></i>
+                            <i className={`fas ${
+                              registration.status === 'non_assegnato' ? 'fa-check' : 
+                              registration.status === 'in_attesa_computer_key' ? 'fa-key' :
+                              'fa-eye'
+                            } text-xs`}></i>
                           </Button>
 
                           {user.role === 'superadmin' && (
