@@ -36,7 +36,6 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
 export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -44,12 +43,6 @@ export default function Sidebar() {
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setIsCollapsed(true);
-      } else {
-        // Ensure desktop sidebar is always expanded for uniform layout
-        setIsCollapsed(false);
-      }
     };
     
     checkIsMobile();
@@ -117,12 +110,12 @@ export default function Sidebar() {
           ? `fixed left-0 top-0 z-50 transform transition-transform duration-300 ${
               isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
             } w-56 bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg`
-          : `${isCollapsed ? 'w-14' : 'w-56'} bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300`
+          : `w-56 bg-white border-r border-gray-200 h-screen flex flex-col`
         }
       `}>
         {/* Header */}
         <div className="flex items-center justify-between p-3">
-          {(!isCollapsed || isMobile) && (
+          {!isMobile && (
             <div className="flex items-center space-x-2">
               <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
                 <img 
@@ -165,7 +158,7 @@ export default function Sidebar() {
         </div>
 
         {/* Company Info for non-superadmin users */}
-        {(!isCollapsed || isMobile) && user?.role !== 'superadmin' && user?.company && (
+        {!isMobile && user?.role !== 'superadmin' && user?.company && (
           <div className="px-3 py-2 border-b border-gray-100">
             <div className="text-xs text-gray-600 mb-1">Azienda</div>
             <div className="font-medium text-gray-900 text-xs">{user.company.name}</div>
@@ -184,11 +177,10 @@ export default function Sidebar() {
                   ? 'bg-primary text-white'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
-              title={isCollapsed && !isMobile ? item.label : undefined}
               data-testid={`nav-${item.id}`}
             >
-              <i className={`${item.icon} ${isCollapsed && !isMobile ? 'text-sm' : 'text-xs mr-2'}`}></i>
-              {(!isCollapsed || isMobile) && (
+              <i className={`${item.icon} text-xs mr-2`}></i>
+              {(
                 <>
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.badge && (
@@ -208,7 +200,7 @@ export default function Sidebar() {
             <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
               <i className="fas fa-user text-gray-600 text-xs"></i>
             </div>
-            {(!isCollapsed || isMobile) && (
+            {(
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-900 truncate">
                   {user?.name}
