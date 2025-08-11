@@ -46,6 +46,9 @@ export default function Sidebar() {
       setIsMobile(window.innerWidth < 768);
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
+      } else {
+        // Ensure desktop sidebar is always expanded for uniform layout
+        setIsCollapsed(false);
       }
     };
     
@@ -94,9 +97,8 @@ export default function Sidebar() {
   const toggleMobileMenu = () => {
     if (isMobile) {
       setIsMobileMenuOpen(!isMobileMenuOpen);
-    } else {
-      setIsCollapsed(!isCollapsed);
     }
+    // Removed desktop collapse toggle to ensure uniform sidebar width
   };
 
   return (
