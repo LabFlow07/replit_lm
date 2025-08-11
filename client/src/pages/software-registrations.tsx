@@ -413,7 +413,7 @@ export default function SoftwareRegistrations() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-registrations">
-                QLMRegister
+                QlmRegister
               </h1>
               <p className="text-muted-foreground">
                 Gestisci le registrazioni automatiche dei software installati presso i clienti
