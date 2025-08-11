@@ -75,6 +75,13 @@
     color: var(--primary);
   }
 
+  /* Force sidebar width uniformity */
+  .sidebar-container {
+    width: 224px !important;
+    min-width: 224px !important;
+    max-width: 224px !important;
+  }
+
   .bg-primary {
     background-color: var(--primary);
   }

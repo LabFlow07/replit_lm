@@ -105,14 +105,17 @@ export default function Sidebar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className={`
-        ${isMobile 
-          ? `fixed left-0 top-0 z-50 transform transition-transform duration-300 ${
-              isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            } w-56 bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg`
-          : `w-56 bg-white border-r border-gray-200 h-screen flex flex-col`
+      <div 
+        className={
+          isMobile 
+            ? `fixed left-0 top-0 z-50 transform transition-transform duration-300 ${
+                isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+              } w-56 bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg`
+            : `bg-white border-r border-gray-200 h-screen flex flex-col`
         }
-      `}>
+        style={{ width: isMobile ? undefined : '224px' }}
+        data-testid="sidebar-container"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-3">
           {!isMobile && (
