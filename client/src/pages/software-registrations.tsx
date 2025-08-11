@@ -551,9 +551,19 @@ export default function SoftwareRegistrations() {
                             <div className="font-medium text-sm text-gray-900">
                               {registration.ragioneSociale || 'Non specificato'}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              Cliente: {registration.clientName || 'Non assegnato'}
-                            </div>
+                            {registration.licenzaAssegnata && (() => {
+                              const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+                              if (assignedLicense) {
+                                const clientCompany = companies.find(c => c.id === assignedLicense.client?.company_id || c.id === assignedLicense.client?.companyId);
+                                return (
+                                  <div className="text-xs text-muted-foreground space-y-1">
+                                    <div>Cliente: {assignedLicense.client?.name || 'Non specificato'}</div>
+                                    <div>Azienda: {clientCompany?.name || 'Non specificata'}</div>
+                                  </div>
+                                );
+                              }
+                              return <div className="text-xs text-muted-foreground">Cliente: Non assegnato</div>;
+                            })() || <div className="text-xs text-muted-foreground">Cliente: Non assegnato</div>}
                           </div>
                         </div>
                       </td>
@@ -566,9 +576,17 @@ export default function SoftwareRegistrations() {
                             <div className="font-medium text-sm text-gray-900">
                               {registration.nomeSoftware || registration.softwareName || 'Non specificato'}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              Prodotto: {registration.productName || 'Non assegnato'}
-                            </div>
+                            {registration.licenzaAssegnata && (() => {
+                              const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+                              if (assignedLicense && assignedLicense.product) {
+                                return (
+                                  <div className="text-xs text-muted-foreground">
+                                    Prodotto: {assignedLicense.product.name || 'Non specificato'}
+                                  </div>
+                                );
+                              }
+                              return <div className="text-xs text-muted-foreground">Prodotto: Non assegnato</div>;
+                            })() || <div className="text-xs text-muted-foreground">Prodotto: Non assegnato</div>}
                             {registration.note && (
                               <div className="text-xs text-muted-foreground truncate max-w-[150px]" title={registration.note}>
                                 Note: {registration.note}
