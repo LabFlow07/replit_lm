@@ -618,13 +618,9 @@ export default function SoftwareRegistrations() {
                             </Badge>
                           )}
                           {registration.computerKey && (
-                            <div className="mt-1 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                              <div className="flex items-center gap-1 text-green-700 font-medium mb-1">
-                                <i className="fas fa-key text-xs"></i>
-                                Computer Key
-                              </div>
-                              <div className="font-mono text-green-800 break-all text-xs">
-                                {registration.computerKey}
+                            <div className="mt-1 p-1 bg-green-50 border border-green-200 rounded text-xs">
+                              <div className="font-mono text-green-800 text-xs" title={registration.computerKey}>
+                                {registration.computerKey.substring(0, 10)}...
                               </div>
                             </div>
                           )}
