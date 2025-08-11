@@ -625,6 +625,14 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
     if (search) {
       const searchTerm = (search as string).toLowerCase().trim();
       console.log('Applying search filter for term:', searchTerm);
+      console.log('Total companies before filter:', companies.length);
+      
+      // Debug: log first few companies
+      console.log('Sample companies data:', companies.slice(0, 3).map(c => ({
+        nomeAzienda: c.nomeAzienda,
+        prodotto: c.prodotto,
+        partitaIva: c.partitaIva
+      })));
       
       filteredCompanies = companies.filter(company => {
         // Search in company fields
@@ -634,8 +642,18 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
                            company.versione?.toLowerCase().includes(searchTerm) ||
                            company.modulo?.toLowerCase().includes(searchTerm);
         
+        if (matchCompany) {
+          console.log('Company matched:', {
+            nomeAzienda: company.nomeAzienda,
+            prodotto: company.prodotto,
+            searchTerm: searchTerm
+          });
+        }
+        
         return matchCompany;
       });
+      
+      console.log('Filtered companies count:', filteredCompanies.length);
     }
 
     // Build response with device details
