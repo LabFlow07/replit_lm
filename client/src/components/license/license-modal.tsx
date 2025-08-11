@@ -84,19 +84,26 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Cliente</h3>
 
               <div>
-                <Label className="text-sm font-medium text-gray-700">Nome</Label>
-                <p className="mt-1 text-sm text-gray-900">{license.client?.name || 'N/A'}</p>
+                <Label className="text-sm font-medium text-gray-700">Nome Cliente</Label>
+                <p className="mt-1 text-sm text-gray-900">{license.client?.name || license.clientName || 'N/A'}</p>
               </div>
 
               <div>
-                <Label className="text-sm font-medium text-gray-700">Email</Label>
-                <p className="mt-1 text-sm text-gray-900">{license.client?.email || 'N/A'}</p>
+                <Label className="text-sm font-medium text-gray-700">Email Cliente</Label>
+                <p className="mt-1 text-sm text-gray-900">{license.client?.email || license.clientEmail || 'N/A'}</p>
               </div>
 
               <div>
-                <Label className="text-sm font-medium text-gray-700">Azienda</Label>
-                <p className="mt-1 text-sm text-gray-900">{license.company?.name || 'N/A'}</p>
+                <Label className="text-sm font-medium text-gray-700">Nome Azienda</Label>
+                <p className="mt-1 text-sm text-gray-900">{license.company?.name || license.companyName || 'N/A'}</p>
               </div>
+
+              {(license.company?.parent_id || license.parentCompanyId) && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Azienda Padre</Label>
+                  <p className="mt-1 text-sm text-gray-900">{license.parentCompanyName || 'N/A'}</p>
+                </div>
+              )}
             </div>
 
             {/* Informazioni Prodotto */}

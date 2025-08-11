@@ -352,43 +352,86 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
     console.log('Fetching licenses for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
 
     let licenses;
+    let whereClause = '';
+    const queryParams: any[] = [];
 
     if (user.role === 'superadmin') {
       // Superadmin can see all licenses
-      licenses = await storage.getAllLicenses();
-      console.log('Superadmin: fetched all', licenses.length, 'licenses');
+      console.log('Superadmin: fetching all licenses');
     } else if (user.role === 'admin') {
       // Admin can see licenses from their company hierarchy
-      licenses = await storage.getLicensesByCompanyHierarchy(user.companyId);
-      console.log('Admin: fetched', licenses.length, 'licenses in company hierarchy', user.companyId);
+      whereClause = 'WHERE c.company_id IN (?) OR comp.parent_id IN (?) OR comp.id IN (?)';
+      queryParams.push(user.companyId, user.companyId, user.companyId);
+      console.log('Admin: fetching licenses for company hierarchy', user.companyId);
     } else {
       // Other roles can only see licenses from their own company
-      const companyLicenses = await storage.getLicensesByCompany(user.companyId);
-      licenses = companyLicenses.map(license => ({
-        ...license,
-        client: {
-          id: license.client_id || '',
-          name: license.client?.name || '',
-          email: license.client?.email || '',
-          status: license.client?.status || '',
-          companyId: license.client?.companyId || '',
-          contactInfo: {},
-          isMultiSite: false,
-          isMultiUser: false,
-          createdAt: new Date()
-        },
-        product: {
-          id: license.product_id || '',
-          name: license.product?.name || '',
-          version: license.product?.version || '',
-          description: '',
-          supportedLicenseTypes: [],
-          createdAt: new Date()
-        }
-      }));
-      console.log('User role', user.role, ': fetched', licenses.length, 'licenses from company', user.companyId);
+      whereClause = 'WHERE c.company_id = ?';
+      queryParams.push(user.companyId);
+      console.log('User role', user.role, ': fetching licenses for company', user.companyId);
     }
 
+    // Use a database query that joins clients, companies, and products
+    const query = `
+      SELECT 
+        l.*,
+        c.name as clientName,
+        c.email as clientEmail,
+        c.company_id as clientCompanyId,
+        comp.name as companyName,
+        comp.parent_id as parentCompanyId,
+        parent_comp.name as parentCompanyName,
+        p.name as productName,
+        p.version as productVersion
+      FROM licenses l
+      LEFT JOIN clients c ON l.client_id = c.id
+      LEFT JOIN companies comp ON c.company_id = comp.id
+      LEFT JOIN companies parent_comp ON comp.parent_id = parent_comp.id
+      LEFT JOIN products p ON l.product_id = p.id
+      ${whereClause}
+      ORDER BY l.created_at DESC
+    `;
+
+    const rows = await database.query(query, queryParams);
+
+    const mappedLicenses = rows.map((row: any) => ({
+      id: row.id,
+      activationKey: row.activation_key,
+      client: {
+        id: row.client_id,
+        name: row.clientName,
+        email: row.clientEmail,
+        company_id: row.clientCompanyId
+      },
+      company: {
+        id: row.clientCompanyId,
+        name: row.companyName,
+        parent_id: row.parentCompanyId
+      },
+      product: {
+        id: row.product_id,
+        name: row.productName,
+        version: row.productVersion
+      },
+      status: row.status,
+      licenseType: row.license_type,
+      maxDevices: row.max_devices,
+      maxUsers: row.max_users,
+      expirationDate: row.expiration_date,
+      isActive: row.is_active,
+      lastActivation: row.last_activation,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      price: row.price,
+      notes: row.notes,
+      // Additional fields for fallback display
+      clientName: row.clientName,
+      clientEmail: row.clientEmail,
+      companyName: row.companyName,
+      parentCompanyId: row.parentCompanyId,
+      parentCompanyName: row.parentCompanyName
+    }));
+
+    licenses = mappedLicenses;
     console.log(`Licenses API returned ${licenses.length} licenses for user ${user.username}`);
 
     res.json(licenses);
@@ -475,7 +518,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
     // Get all company registrations
     const companies = await storage.getAllTestaRegAzienda();
-    
+
     // Filter based on query parameters
     let filteredCompanies = companies;
     if (nomeSoftware) {
@@ -488,7 +531,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
     const registrations = [];
     for (const company of filteredCompanies) {
       const devices = await storage.getDettRegAziendaByPartitaIva(company.partitaIva);
-      
+
       // Create a registration entry for each device
       for (const device of devices) {
         const hasLicense = company.idLicenza !== null;
@@ -514,7 +557,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           createdAt: device.createdAt,
           updatedAt: device.updatedAt
         };
-        
+
         // Filter by status if specified
         if (!status || status === 'all' || registration.status === status) {
           registrations.push(registration);
@@ -535,7 +578,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
     const registrationId = req.params.id;
     // ID format: "partitaIva-deviceId"
     const [partitaIva, deviceId] = registrationId.split('-');
-    
+
     if (!partitaIva || !deviceId) {
       return res.status(400).json({ message: "Invalid registration ID format" });
     }
@@ -582,12 +625,12 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
   try {
     const registrationId = req.params.id;
     const { aziendaAssegnata, clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
-    
+
     console.log(`Classifying registration ${registrationId} with data:`, req.body);
-    
+
     // ID format: "partitaIva-deviceId"
     const [partitaIva, deviceId] = registrationId.split('-');
-    
+
     if (!partitaIva || !deviceId) {
       return res.status(400).json({ message: "Invalid registration ID format" });
     }
@@ -595,31 +638,31 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     // If a license is assigned, activate it and update company record
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
-      
+
       // Always activate the license when it's assigned through classification
       await storage.updateLicense(licenzaAssegnata, {
         status: 'attiva'
       });
-      
+
       // Update company record with license assignment
       await storage.updateTestaRegAzienda(partitaIva, {
         idLicenza: licenzaAssegnata
       });
-      
+
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     }
 
     // Update device notes and computer key
     if (deviceId) {
       const deviceUpdates: any = {};
-      
+
       if (note !== undefined) {
         deviceUpdates.note = note;
       }
-      
+
       // Get current device to check if it already has a computer key
       const currentDevice = await storage.getDettRegAziendaById(parseInt(deviceId));
-      
+
       // If device should be authorized and doesn't already have a computer key, generate one
       if (authorizeDevice && !currentDevice?.computerKey) {
         const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -630,7 +673,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         deviceUpdates.computerKey = null;
         console.log(`Removed computer key for device ${deviceId}`);
       }
-      
+
       if (Object.keys(deviceUpdates).length > 0) {
         await storage.updateDettRegAzienda(parseInt(deviceId), deviceUpdates);
       }
@@ -667,7 +710,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       createdAt: device.createdAt,
       updatedAt: device.updatedAt
     };
-    
+
     console.log('Device registration classified successfully:', updatedRegistration);
     res.json(updatedRegistration);
   } catch (error) {
@@ -1372,7 +1415,7 @@ router.post("/api/device-registration", async (req: Request, res: Response) => {
 
     // Step 1: Check/Create Testa_Reg_Azienda entry
     let testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
-    
+
     if (!testaReg) {
       // Create new company registration
       testaReg = await storage.createTestaRegAzienda({
@@ -1425,7 +1468,7 @@ router.post("/api/device-registration", async (req: Request, res: Response) => {
     // If license is already assigned, check validity and authorization
     if (testaReg.idLicenza) {
       const license = await storage.getLicense(testaReg.idLicenza);
-      
+
       if (license) {
         // Calculate remaining days
         let validityDays = 0;
@@ -1468,14 +1511,14 @@ router.post("/api/device-registration", async (req: Request, res: Response) => {
 router.get("/api/device-registrations/:partitaIva", authenticateToken, async (req: Request, res: Response) => {
   try {
     const { partitaIva } = req.params;
-    
+
     const testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
     if (!testaReg) {
       return res.status(404).json({ message: "Azienda non trovata" });
     }
 
     const devices = await storage.getDettRegAzienda(partitaIva);
-    
+
     res.json({
       company: testaReg,
       devices: devices
