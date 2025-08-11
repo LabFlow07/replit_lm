@@ -1232,8 +1232,22 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (filters?.nomeSoftware) {
-      whereClauses.push('sr.nome_software LIKE ?');
-      params.push(`%${filters.nomeSoftware}%`);
+      whereClauses.push(`(
+        sr.nome_software LIKE ? OR 
+        sr.ragione_sociale LIKE ? OR 
+        sr.versione LIKE ? OR 
+        sr.partita_iva LIKE ? OR 
+        sr.note LIKE ? OR 
+        sr.computer_key LIKE ? OR 
+        sr.sistema_operativo LIKE ? OR 
+        sr.indirizzo_ip LIKE ? OR
+        c.name LIKE ? OR 
+        c.email LIKE ? OR 
+        p.name LIKE ? OR 
+        p.version LIKE ?
+      )`);
+      const searchTerm = `%${filters.nomeSoftware}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     if (whereClauses.length > 0) {

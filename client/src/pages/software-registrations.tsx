@@ -312,9 +312,49 @@ export default function SoftwareRegistrations() {
   };
 
   const filteredRegistrations = Array.isArray(registrations) ? registrations.filter((registration: SoftwareRegistration) => {
-    const matchesSearch = !searchTerm ||
-      (registration.nomeSoftware && registration.nomeSoftware.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (registration.ragioneSociale && registration.ragioneSociale.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = !searchTerm || [
+      registration.nomeSoftware,
+      registration.ragioneSociale,
+      registration.versione,
+      registration.partitaIva,
+      registration.note,
+      registration.computerKey,
+      registration.sistemaOperativo,
+      registration.indirizzoIp,
+      registration.clientName,
+      registration.productName,
+      registration.productVersion,
+      // Cerca anche nei dati delle licenze assegnate
+      (() => {
+        if (registration.licenzaAssegnata) {
+          const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+          if (assignedLicense) {
+            return [
+              assignedLicense.client?.name,
+              assignedLicense.client?.email,
+              assignedLicense.product?.name,
+              assignedLicense.activationKey,
+              assignedLicense.licenseType
+            ].join(' ');
+          }
+        }
+        return '';
+      })(),
+      // Cerca anche nei nomi delle aziende assegnate
+      (() => {
+        if (registration.licenzaAssegnata) {
+          const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+          if (assignedLicense && assignedLicense.client) {
+            const clientCompany = companies.find(c => 
+              c.id === assignedLicense.client?.company_id || 
+              c.id === assignedLicense.client?.companyId
+            );
+            return clientCompany?.name || '';
+          }
+        }
+        return '';
+      })()
+    ].filter(Boolean).join(' ').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = !statusFilter || statusFilter === 'all' || registration.status === statusFilter;
 
@@ -440,7 +480,7 @@ export default function SoftwareRegistrations() {
               <Label htmlFor="search">Ricerca Software/Azienda</Label>
               <Input
                 id="search"
-                placeholder="Cerca per nome software o ragione sociale..."
+                placeholder="Cerca in tutti i campi (software, azienda, cliente, prodotto, note, computer key, etc.)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 data-testid="input-search"
