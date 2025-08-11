@@ -216,12 +216,12 @@ export default function SoftwareRegistrations() {
       if (data.clienteAssegnato && data.clienteAssegnato !== 'none' &&
           data.prodottoAssegnato && data.prodottoAssegnato !== 'none') {
 
-        // Auto-determina la licenza se cliente e prodotto sono selezionati
+        // Filtra le licenze del cliente (incluse quelle non attive per consentire l'attivazione)
         const clientLicenses = licenses.filter((license: License) =>
           license.client?.id === data.clienteAssegnato &&
           (license.product?.id === data.prodottoAssegnato ||
            license.product?.name === data.prodottoAssegnato) &&
-          license.status === 'attiva'
+          (license.status === 'attiva' || license.status === 'in_attesa_convalida' || license.status === 'sospesa')
         );
 
         // Se c'è una sola licenza, la usa automaticamente
@@ -242,6 +242,8 @@ export default function SoftwareRegistrations() {
         authorizeDevice: data.authorizeDevice || false
       };
 
+      console.log('Classifying registration with data:', requestBody);
+
       const response = await fetch(`/api/software/registrazioni/${selectedRegistration?.id}/classifica`, {
         method: 'PATCH',
         headers: {
@@ -252,18 +254,24 @@ export default function SoftwareRegistrations() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to classify registration');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to classify registration');
       }
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Classification successful:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
       setIsClassifyDialogOpen(false);
       setSelectedRegistration(null);
       reset();
+    },
+    onError: (error) => {
+      console.error('Classification error:', error);
+      alert(`Errore nella classificazione: ${error.message}`);
     }
   });
 
@@ -337,6 +345,10 @@ export default function SoftwareRegistrations() {
     console.log('Edit registration:', registration);
     console.log('Found client:', client);
     console.log('Company ID:', companyId);
+    console.log('Computer Key:', registration.computerKey);
+    
+    // Reset form first
+    reset();
     
     // Use setTimeout to ensure the form is reset before setting new values
     setTimeout(() => {
@@ -345,6 +357,8 @@ export default function SoftwareRegistrations() {
       setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
       setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
       setValue('note', registration.note || '');
+      // Set authorization checkbox based on computer key presence
+      setValue('authorizeDevice', !!registration.computerKey);
     }, 100);
     
     setIsClassifyDialogOpen(true);
@@ -892,22 +906,47 @@ export default function SoftwareRegistrations() {
               />
             </div>
 
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="authorizeDevice"
-                {...register('authorizeDevice')}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                data-testid="checkbox-authorize-device"
-              />
-              <Label htmlFor="authorizeDevice" className="flex items-center">
-                <span className="ml-1">Autorizza Dispositivo (Computer Key)</span>
-              </Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="authorizeDevice"
+                  {...register('authorizeDevice')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  data-testid="checkbox-authorize-device"
+                />
+                <Label htmlFor="authorizeDevice" className="flex items-center">
+                  <span className="ml-1">Autorizza Dispositivo (Computer Key)</span>
+                </Label>
+              </div>
+              
+              {selectedRegistration?.computerKey && (
+                <div className="ml-7 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-800">
+                        <i className="fas fa-key mr-2"></i>
+                        Computer Key Assegnata
+                      </p>
+                      <p className="text-xs font-mono text-green-600 mt-1 bg-white px-2 py-1 rounded border">
+                        {selectedRegistration.computerKey}
+                      </p>
+                    </div>
+                    <i className="fas fa-check-circle text-green-500"></i>
+                  </div>
+                  <p className="text-xs text-green-600 mt-2">
+                    Dispositivo già autorizzato. La licenza funziona solo su questo dispositivo.
+                  </p>
+                </div>
+              )}
+              
+              {!selectedRegistration?.computerKey && (
+                <p className="text-xs text-gray-500 ml-7">
+                  Genera una chiave computer per autorizzare questo dispositivo specifico.
+                  La licenza sarà utilizzabile solo su questo dispositivo.
+                </p>
+              )}
             </div>
-            <p className="text-xs text-gray-500 ml-7">
-              Genera una chiave computer per autorizzare questo dispositivo specifico.
-              La licenza sarà utilizzabile solo su questo dispositivo.
-            </p>
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsClassifyDialogOpen(false)}>

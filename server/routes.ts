@@ -581,7 +581,9 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
 router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, async (req: Request, res: Response) => {
   try {
     const registrationId = req.params.id;
-    const { clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
+    const { aziendaAssegnata, clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
+    
+    console.log(`Classifying registration ${registrationId} with data:`, req.body);
     
     // ID format: "partitaIva-deviceId"
     const [partitaIva, deviceId] = registrationId.split('-');
@@ -607,7 +609,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     }
 
-    // Update device notes and computer key if provided
+    // Update device notes and computer key
     if (deviceId) {
       const deviceUpdates: any = {};
       
@@ -615,11 +617,18 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         deviceUpdates.note = note;
       }
       
-      // If device should be authorized, generate computer key
-      if (authorizeDevice) {
+      // Get current device to check if it already has a computer key
+      const currentDevice = await storage.getDettRegAziendaById(parseInt(deviceId));
+      
+      // If device should be authorized and doesn't already have a computer key, generate one
+      if (authorizeDevice && !currentDevice?.computerKey) {
         const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         deviceUpdates.computerKey = computerKey;
-        console.log(`Generated computer key ${computerKey} for device ${deviceId}`);
+        console.log(`Generated new computer key ${computerKey} for device ${deviceId}`);
+      } else if (!authorizeDevice && currentDevice?.computerKey) {
+        // If authorization is being removed, clear the computer key
+        deviceUpdates.computerKey = null;
+        console.log(`Removed computer key for device ${deviceId}`);
       }
       
       if (Object.keys(deviceUpdates).length > 0) {
@@ -649,7 +658,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       totaleOrdini: device.ordini,
       totaleVenduto: parseFloat(device.vendite || '0'),
       status: hasLicense ? 'classificato' : 'non_assegnato',
-      clienteAssegnato: null,
+      clienteAssegnato: clienteAssegnato || null,
       licenzaAssegnata: company.idLicenza,
       prodottoAssegnato: company.prodotto,
       note: device.note,
@@ -659,11 +668,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       updatedAt: device.updatedAt
     };
     
-    console.log('Device registration classified successfully');
+    console.log('Device registration classified successfully:', updatedRegistration);
     res.json(updatedRegistration);
   } catch (error) {
     console.error('Classify device registration error:', error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 });
 
