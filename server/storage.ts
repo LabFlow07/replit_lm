@@ -10,7 +10,7 @@ import type {
   ActivationLog, InsertActivationLog,
   AccessLog, InsertAccessLog,
   SoftwareRegistration, InsertSoftwareRegistration,
-  DashboardStats, UserWithCompany
+  DashboardStats, UserWithCompany, TestaRegAzienda, InsertTestaRegAzienda, DettRegAzienda, InsertDettRegAzienda
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -21,7 +21,7 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<UserWithCompany | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  getUsers(companyId?: string): Promise<UserWithCompany[]>;
+  getUsers(companyId?: string, includingInactive?: boolean): Promise<UserWithCompany[]>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   deleteUser(id: string): Promise<void>;
 
@@ -31,11 +31,14 @@ export interface IStorage {
   getCompaniesByType(type: string): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<Company>): Promise<Company>;
+  deleteCompany(id: string): Promise<void>;
 
   // Product methods
   getProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: string, updates: Partial<Product>): Promise<Product>;
+  deleteProduct(id: string): Promise<void>;
 
   // Module methods
   getModulesByProduct(productId: string): Promise<Module[]>;
@@ -43,11 +46,15 @@ export interface IStorage {
 
   // Client methods
   getClients(companyId?: string): Promise<Client[]>;
+  getClientsByCompany(companyId: string): Promise<Client[]>;
+  getClientsByCompanyHierarchy(companyId: string): Promise<Client[]>;
+  getClientsByCompanyAndSubcompanies(companyId: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   getClientById(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, updates: Partial<Client>): Promise<Client>;
   updateClientStatus(id: string, status: string): Promise<void>;
+  deleteClient(id: string): Promise<void>;
 
   // License methods
   getLicenses(filters?: any): Promise<LicenseWithDetails[]>;
@@ -55,19 +62,27 @@ export interface IStorage {
   getLicenseByActivationKey(key: string): Promise<LicenseWithDetails | undefined>;
   createLicense(license: InsertLicense): Promise<License>;
   updateLicense(id: string, updates: Partial<License>): Promise<void>;
+  deleteLicense(id: string): Promise<void>;
   activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License>;
   validateLicense(activationKey: string, computerKey?: string): Promise<LicenseWithDetails | null>;
+  getLicensesExpiringByDate(): Promise<LicenseWithDetails[]>;
+  getLicensesExpiringByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]>;
 
   // Transaction methods
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransactionsByLicense(licenseId: string): Promise<Transaction[]>;
+  getAllTransactions(): Promise<Transaction[]>;
+  getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]>;
+  getTransactionsByCompany(companyId: string): Promise<Transaction[]>;
+  getTransactionById(id: string): Promise<Transaction | null>;
+  deleteTransaction(id: string): Promise<void>;
 
   // Logging methods
   logActivation(log: InsertActivationLog): Promise<void>;
   logAccess(log: InsertAccessLog): Promise<void>;
 
   // Statistics
-  getDashboardStats(userId: string, userRole: string): Promise<DashboardStats>;
+  getDashboardStats(userId: string, userRole: string, userCompanyId?: string): Promise<DashboardStats>;
   getActiveLicensesCount(): Promise<number>;
   getActiveLicensesCountByCompanyHierarchy(companyId: string): Promise<number>;
   getActiveLicensesCountByCompany(companyId: string): Promise<number>;
@@ -77,17 +92,28 @@ export interface IStorage {
   getLicensesByCompanyHierarchy(companyId: string): Promise<LicenseWithDetails[]>;
   getClientsByCompanyHierarchy(companyId: string): Promise<Client[]>;
   getAllProducts(): Promise<Product[]>;
+  getAllCompanies(): Promise<Company[]>;
+  getAllClients(): Promise<Client[]>;
 
+  // Software Registration methods
+  getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]>;
+  getSoftwareRegistration(id: string): Promise<SoftwareRegistration | undefined>;
+  getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined>;
+  createSoftwareRegistration(registration: InsertSoftwareRegistration): Promise<SoftwareRegistration>;
+  updateSoftwareRegistration(id: string, updates: Partial<SoftwareRegistration>): Promise<SoftwareRegistration>;
+  
   // Device Registration methods - New tables
   getTestaRegAzienda(): Promise<TestaRegAzienda[]>;
   getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined>;
   createTestaRegAzienda(registration: InsertTestaRegAzienda): Promise<TestaRegAzienda>;
+  getAllTestaRegAzienda(): Promise<TestaRegAzienda[]>;
   updateTestaRegAzienda(partitaIva: string, updates: Partial<TestaRegAzienda>): Promise<TestaRegAzienda>;
-  
   getDettRegAzienda(partitaIva?: string): Promise<DettRegAzienda[]>;
   getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined>;
   createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda>;
   updateDettRegAzienda(id: number, updates: Partial<DettRegAzienda>): Promise<DettRegAzienda>;
+  getDettRegAziendaByPartitaIva(partitaIva: string): Promise<DettRegAzienda[]>;
+  getDettRegAziendaByComputerKey(computerKey: string): Promise<DettRegAzienda | undefined>;
   deleteTestaRegAzienda(partitaIva: string): Promise<void>;
   deleteDettRegAzienda(id: number): Promise<void>;
 }
@@ -462,7 +488,7 @@ export class DatabaseStorage implements IStorage {
       contactInfo: JSON.parse(row.contact_info || '{}')
     }));
 
-    console.log(`getClientsByCompanyHierarchy: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.companyId })));
+    console.log(`getClientsByCompanyHierarchy: Mapped clients:`, mappedClients.map(c => ({ id: c.id, name: c.name, email: c.email, company_id: c.company_id })));
     return mappedClients;
 
   }
@@ -519,16 +545,17 @@ export class DatabaseStorage implements IStorage {
     return this.getClient(id);
   }
 
-  async createClient(insertClient: InsertClient): Promise<Client> {
-    const id = randomUUID();
-    await database.query(`
-      INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
-        JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
+  // createClient is defined twice. Keeping the last one.
+  // async createClient(insertClient: InsertClient): Promise<Client> {
+  //   const id = randomUUID();
+  //   await database.query(`
+  //     INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
+  //     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  //   `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
+  //       JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
 
-    return { ...insertClient, id, createdAt: new Date() };
-  }
+  //   return { ...insertClient, id, createdAt: new Date() };
+  // }
 
   async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
     const updateFields: string[] = [];
@@ -998,7 +1025,7 @@ export class DatabaseStorage implements IStorage {
     return rows[0] || null;
   }
 
-  
+
 
   async deleteTransaction(id: string): Promise<void> {
     await database.query('DELETE FROM transactions WHERE id = ?', [id]);
@@ -1214,16 +1241,17 @@ export class DatabaseStorage implements IStorage {
   // Software Registration methods
   async getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]> {
     let sql = `
-      SELECT 
-        sr.*,
-        c.name as client_name,
-        p.name as product_name,
-        p.version as product_version
+      SELECT sr.*, 
+             c.name as client_name, 
+             p.name as product_name, 
+             p.version as product_version,
+             comp.name as company_name
       FROM software_registrations sr
       LEFT JOIN clients c ON sr.cliente_assegnato = c.id
       LEFT JOIN products p ON sr.prodotto_assegnato = p.id
+      LEFT JOIN companies comp ON c.company_id = comp.id
     `;
-    const params = [];
+    const params: any[] = [];
     const whereClauses = [];
 
     if (filters?.status) {
@@ -1244,10 +1272,11 @@ export class DatabaseStorage implements IStorage {
         c.name LIKE ? OR 
         c.email LIKE ? OR 
         p.name LIKE ? OR 
-        p.version LIKE ?
+        p.version LIKE ? OR
+        comp.name LIKE ?
       )`);
       const searchTerm = `%${filters.nomeSoftware}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     if (whereClauses.length > 0) {
@@ -1267,6 +1296,7 @@ export class DatabaseStorage implements IStorage {
       clientName: row.client_name,
       productName: row.product_name,
       productVersion: row.product_version,
+      companyName: row.company_name,
       // Ensure these fields are properly mapped
       nomeSoftware: row.nome_software,
       versione: row.versione,
@@ -1704,7 +1734,7 @@ export class DatabaseStorage implements IStorage {
   // Device Registration methods - New tables implementation
   async getTestaRegAzienda(): Promise<TestaRegAzienda[]> {
     const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
-    
+
     return rows.map((row: any) => ({
       partitaIva: row.PartitaIva,
       nomeAzienda: row.NomeAzienda,
@@ -1723,9 +1753,9 @@ export class DatabaseStorage implements IStorage {
 
   async getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined> {
     const rows = await database.query('SELECT * FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
-    
+
     if (rows.length === 0) return undefined;
-    
+
     const row = rows[0];
     return {
       partitaIva: row.PartitaIva,
@@ -1745,7 +1775,7 @@ export class DatabaseStorage implements IStorage {
 
   async createTestaRegAzienda(registration: InsertTestaRegAzienda): Promise<TestaRegAzienda> {
     const now = new Date();
-    
+
     await database.query(`
       INSERT INTO Testa_Reg_Azienda (
         PartitaIva, NomeAzienda, Prodotto, Versione, Modulo,
@@ -1772,7 +1802,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAllTestaRegAzienda(): Promise<TestaRegAzienda[]> {
     const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
-    
+
     return rows.map((row: any) => ({
       partitaIva: row.PartitaIva,
       nomeAzienda: row.NomeAzienda,
@@ -1825,10 +1855,10 @@ export class DatabaseStorage implements IStorage {
 
     return this.getTestaRegAziendaByPartitaIva(partitaIva) as Promise<TestaRegAzienda>;
   }
-  
+
   async getDettRegAziendaByPartitaIva(partitaIva: string): Promise<DettRegAzienda[]> {
     const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE PartitaIva = ? ORDER BY created_at DESC', [partitaIva]);
-    
+
     return rows.map((row: any) => ({
       id: row.ID,
       partitaIva: row.PartitaIva,
@@ -1848,16 +1878,16 @@ export class DatabaseStorage implements IStorage {
   async getDettRegAzienda(partitaIva?: string): Promise<DettRegAzienda[]> {
     let query = 'SELECT * FROM Dett_Reg_Azienda';
     const params: any[] = [];
-    
+
     if (partitaIva) {
       query += ' WHERE PartitaIva = ?';
       params.push(partitaIva);
     }
-    
+
     query += ' ORDER BY created_at DESC';
-    
+
     const rows = await database.query(query, params);
-    
+
     return rows.map((row: any) => ({
       id: row.ID,
       partitaIva: row.PartitaIva,
@@ -1876,9 +1906,9 @@ export class DatabaseStorage implements IStorage {
 
   async getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined> {
     const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
-    
+
     if (rows.length === 0) return undefined;
-    
+
     const row = rows[0];
     return {
       id: row.ID,
@@ -1898,14 +1928,14 @@ export class DatabaseStorage implements IStorage {
 
   async createDettRegAzienda(registration: InsertDettRegAzienda): Promise<DettRegAzienda> {
     const now = new Date();
-    
+
     // Convert dataUltimoAccesso to MySQL DATETIME format if it's an ISO string
     let dataUltimoAccesso = registration.dataUltimoAccesso;
     if (typeof dataUltimoAccesso === 'string' && dataUltimoAccesso.includes('T')) {
       // Convert ISO string to MySQL DATETIME format
       dataUltimoAccesso = dataUltimoAccesso.replace('T', ' ').replace('Z', '').split('.')[0];
     }
-    
+
     const result = await database.query(`
       INSERT INTO Dett_Reg_Azienda (
         PartitaIva, UID_Dispositivo, SistemaOperativo, Note,
@@ -1969,9 +1999,9 @@ export class DatabaseStorage implements IStorage {
 
   async getDettRegAziendaByComputerKey(computerKey: string): Promise<DettRegAzienda | undefined> {
     const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE Computer_Key = ?', [computerKey]);
-    
+
     if (rows.length === 0) return undefined;
-    
+
     const row = rows[0];
     return {
       id: row.ID,
