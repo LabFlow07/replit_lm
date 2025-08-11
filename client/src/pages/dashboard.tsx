@@ -92,40 +92,40 @@ export default function Dashboard() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
       
-      <main className="flex-1 ml-64 bg-surface">
+      <main className="flex-1 bg-surface">
         <TopBar />
         
-        <div className="p-6 space-y-6">
-          {/* Welcome Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg p-6 text-white">
+        <div className="p-4 space-y-4">
+          {/* Welcome Header - More compact */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg p-4 text-white">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold mb-2">
+                <h1 className="text-xl font-bold mb-1">
                   Benvenuto, {user.name}
                 </h1>
-                <p className="text-blue-100">
+                <p className="text-blue-100 text-sm">
                   Panoramica generale del sistema di gestione licenze
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Primary Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Primary Statistics Cards - More compact */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Licenze Totali</p>
-                    <p className="text-3xl font-bold text-gray-900">
+                    <p className="text-xs font-medium text-gray-600">Licenze Totali</p>
+                    <p className="text-2xl font-bold text-gray-900">
                       {statsLoading ? '...' : totalLicenses}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-key text-blue-600 text-xl"></i>
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-key text-blue-600 text-lg"></i>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center text-sm">
+                <div className="mt-3 flex items-center text-xs">
                   <i className="fas fa-arrow-up text-green-500 mr-1"></i>
                   <span className="text-green-600 font-medium">+{recentLicenses}</span>
                   <span className="text-gray-500 ml-1">negli ultimi 30 giorni</span>
@@ -134,19 +134,19 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Licenze Attive</p>
-                    <p className="text-3xl font-bold text-green-700">
+                    <p className="text-xs font-medium text-gray-600">Licenze Attive</p>
+                    <p className="text-2xl font-bold text-green-700">
                       {statsLoading ? '...' : activeLicenses}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-check-circle text-green-600 text-xl"></i>
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-check-circle text-green-600 text-lg"></i>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center text-sm">
+                <div className="mt-3 flex items-center text-xs">
                   <i className="fas fa-exclamation-triangle text-orange-500 mr-1"></i>
                   <span className="text-orange-600 font-medium">{expiringLicenses}</span>
                   <span className="text-gray-500 ml-1">in scadenza (30gg)</span>
@@ -155,19 +155,19 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Clienti Attivi</p>
-                    <p className="text-3xl font-bold text-indigo-700">
+                    <p className="text-xs font-medium text-gray-600">Clienti Attivi</p>
+                    <p className="text-2xl font-bold text-indigo-700">
                       {validatedClients}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-users text-indigo-600 text-xl"></i>
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-users text-indigo-600 text-lg"></i>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center text-sm">
+                <div className="mt-3 flex items-center text-xs">
                   <i className="fas fa-clock text-yellow-500 mr-1"></i>
                   <span className="text-yellow-600 font-medium">{pendingClients}</span>
                   <span className="text-gray-500 ml-1">in attesa validazione</span>
@@ -176,19 +176,19 @@ export default function Dashboard() {
             </Card>
 
             <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Aziende Partner</p>
-                    <p className="text-3xl font-bold text-purple-700">
+                    <p className="text-xs font-medium text-gray-600">Aziende Partner</p>
+                    <p className="text-2xl font-bold text-purple-700">
                       {activeCompanies}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-building text-purple-600 text-xl"></i>
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-building text-purple-600 text-lg"></i>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center text-sm">
+                <div className="mt-3 flex items-center text-xs">
                   <i className="fas fa-store text-blue-500 mr-1"></i>
                   <span className="text-blue-600 font-medium">
                     {(companies as any[]).filter(c => c.type === 'rivenditore').length}

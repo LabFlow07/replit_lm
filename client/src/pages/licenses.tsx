@@ -243,15 +243,15 @@ export default function LicensesPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 ml-64 bg-surface">
+      <main className="flex-1 bg-surface">
         <TopBar />
 
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="p-4 space-y-4">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
-              <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestione Licenze</h1>
+              <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <Button 
               className="bg-primary hover:bg-blue-700 w-full sm:w-auto"
@@ -263,38 +263,34 @@ export default function LicensesPage() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="space-y-6">
-
-
-
-
+          <div className="space-y-4">
             {/* Licenses Grid */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5" />
-                  <h2 className="text-xl font-semibold">Elenco Licenze</h2>
-                  <Badge variant="outline" className="ml-2">
+                  <Key className="h-4 w-4" />
+                  <h2 className="text-lg font-semibold">Elenco Licenze</h2>
+                  <Badge variant="outline" className="ml-2 text-xs">
                     {filteredLicenses.length} licenze
                   </Badge>
                 </div>
               </div>
 
               {/* Filters */}
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="flex flex-col md:flex-row gap-4">
+            <Card className="mb-4">
+              <CardContent className="p-3">
+                <div className="flex flex-col lg:flex-row gap-3">
                   <div className="flex-1">
                     <Input
                       placeholder="Cerca per chiave, cliente, prodotto..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
+                      className="w-full text-sm"
                     />
                   </div>
                   <div className="flex gap-2">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-44">
                         <SelectValue placeholder="Tutti gli stati" />
                       </SelectTrigger>
                       <SelectContent>
@@ -309,7 +305,7 @@ export default function LicensesPage() {
                     </Select>
 
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-44">
                         <SelectValue placeholder="Tutti i tipi" />
                       </SelectTrigger>
                       <SelectContent>
