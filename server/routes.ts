@@ -593,6 +593,8 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     // If a license is assigned, activate it and update company record
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
+      
+      // Always activate the license when it's assigned through classification
       await storage.updateLicense(licenzaAssegnata, {
         status: 'attiva'
       });

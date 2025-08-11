@@ -777,9 +777,12 @@ export default function SoftwareRegistrations() {
                   );
                 }
 
-                // Trova le licenze del cliente selezionato
+                // Trova le licenze del cliente selezionato (includi tutte le licenze valide, non solo quelle attive)
                 const clientLicenses = licenses.filter((license: License) => {
-                  return license.client?.id === selectedClientId && license.status === 'attiva';
+                  return license.client?.id === selectedClientId && 
+                         (license.status === 'attiva' || 
+                          license.status === 'in_attesa_convalida' || 
+                          license.status === 'sospesa');
                 });
 
                 if (clientLicenses.length === 0) {
@@ -787,7 +790,7 @@ export default function SoftwareRegistrations() {
                     <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                       <p className="text-sm text-yellow-700">
                         <i className="fas fa-exclamation-triangle mr-2"></i>
-                        Questo cliente non ha licenze attive
+                        Questo cliente non ha licenze disponibili per l'assegnazione
                       </p>
                     </div>
                   );
@@ -810,7 +813,15 @@ export default function SoftwareRegistrations() {
                         <SelectItem key={license.id} value={license.id}>
                           <div className="flex flex-col">
                             <span className="font-medium">{license.activationKey}</span>
-                            <span className="text-xs text-gray-500">{license.licenseType} - {license.product?.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">{license.licenseType} - {license.product?.name}</span>
+                              {license.status !== 'attiva' && (
+                                <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">
+                                  {license.status === 'in_attesa_convalida' ? 'In Attesa' : 
+                                   license.status === 'sospesa' ? 'Sospesa' : license.status}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
