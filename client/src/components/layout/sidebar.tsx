@@ -1,9 +1,21 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
   const baseItems = [
@@ -32,10 +44,9 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
   return baseItems;
 };
 
-export default function Sidebar() {
+export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
-  const [activeRole, setActiveRole] = useState(user?.role || 'superadmin');
 
   // Get active licenses count based on user profile
   const { data: activeLicensesCount = 0 } = useQuery({
@@ -64,105 +75,122 @@ export default function Sidebar() {
 
   const activeItem = getActiveItem();
 
-  const handleRoleChange = (role: string) => {
-    setActiveRole(role);
-    // TODO: Update user permissions based on role
-  };
-
   const handleLogout = () => {
     logout();
   };
 
   return (
-    <aside className="w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full overflow-y-auto">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
-              <img 
-                src="/cmh-logo.png" 
-                alt="CMH Logo" 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  console.log('Logo load error, falling back to text');
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.style.display = 'none';
-                  const fallback = target.parentElement?.querySelector('.logo-fallback') as HTMLElement;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-              <div 
-                className="logo-fallback text-white font-bold text-sm w-full h-full items-center justify-center"
-                style={{ display: 'none' }}
-              >
-                CMH
+    <Sidebar collapsible="icon" className="border-r">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center space-x-3 px-2 py-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/cmh-logo.png" 
+                  alt="CMH Logo" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.parentElement?.querySelector('.logo-fallback') as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div 
+                  className="logo-fallback text-white font-bold text-xs w-full h-full items-center justify-center"
+                  style={{ display: 'none' }}
+                >
+                  CMH
+                </div>
+              </div>
+              <div className="group-data-[collapsible=icon]:hidden">
+                <h1 className="text-lg font-bold text-gray-900">QLM Platform</h1>
+                <p className="text-xs text-gray-500">License Manager</p>
               </div>
             </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">QLM Platform</h1>
-            <p className="text-sm text-gray-500">License Manager</p>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {/* Company Info for non-superadmin users */}
+        {user?.role !== 'superadmin' && user?.company && (
+          <SidebarGroup>
+            <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
+              <div className="text-xs text-gray-600 mb-1">Azienda</div>
+              <div className="font-medium text-gray-900 text-sm">{user.company.name}</div>
+              <div className="text-xs text-gray-500 capitalize">{user.role}</div>
+            </div>
+          </SidebarGroup>
+        )}
+
+        <SidebarGroup>
+          <SidebarMenu>
+            {navigationItems.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  isActive={activeItem === item.id}
+                  onClick={() => setLocation(item.route)}
+                  className="w-full"
+                >
+                  <i className={`${item.icon} text-sm`}></i>
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-secondary text-white text-xs px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center space-x-3 px-2 py-2">
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                <i className="fas fa-user text-gray-600 text-sm"></i>
+              </div>
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.company?.name || 'QLM Platform'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <i className="fas fa-sign-out-alt text-sm"></i>
+              </Button>
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+export default function SidebarWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <main className="flex-1 overflow-hidden">
+          <div className="p-4">
+            <SidebarTrigger className="mb-4" />
+            {children}
           </div>
-        </div>
+        </main>
       </div>
-
-      {/* Company Info for non-superadmin users */}
-      {user?.role !== 'superadmin' && user?.company && (
-        <div className="p-4 border-b border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Azienda</div>
-          <div className="font-medium text-gray-900">{user.company.name}</div>
-          <div className="text-xs text-gray-500 capitalize">{user.role}</div>
-        </div>
-      )}
-
-      {/* Navigation Menu */}
-      <nav className="p-4 space-y-2">
-        {navigationItems.map((item) => (
-          <div key={item.id}>
-            {item.separator && <div className="pt-4 border-t border-gray-200" />}
-            <button
-              onClick={() => setLocation(item.route)}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg w-full text-left transition-colors ${
-                activeItem === item.id
-                  ? 'bg-primary text-white'
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}
-            >
-              <i className={`${item.icon} text-sm`}></i>
-              <span className="font-medium flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="bg-secondary text-white text-xs px-2 py-1 rounded-full">
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          </div>
-        ))}
-      </nav>
-
-      {/* User Profile */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <i className="fas fa-user text-gray-600 text-sm"></i>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.name}
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {user?.company?.name || 'QLM Platform'}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-gray-600 p-1"
-          >
-            <i className="fas fa-sign-out-alt text-sm"></i>
-          </Button>
-        </div>
-      </div>
-    </aside>
+    </SidebarProvider>
   );
 }

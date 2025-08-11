@@ -1,53 +1,89 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "./hooks/use-auth";
-import Dashboard from "@/pages/dashboard";
-import Login from "@/pages/login";
-import NotFound from "@/pages/not-found";
-import LicensesPage from "@/pages/licenses";
-import ClientsPage from "@/pages/clients";
-import CompaniesPage from "@/pages/companies";
-import ProductsPage from "@/pages/products";
-import TransactionsPage from "@/pages/transactions";
-import SettingsPage from "@/pages/settings";
-import LogsPage from "@/pages/logs";
-import SoftwareRegistrationsPage from "@/pages/software-registrations";
-import UsersPage from "@/pages/users";
 
-function Router() {
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Route, Switch } from 'wouter';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { Toaster } from '@/components/ui/toaster';
+import SidebarWrapper from '@/components/layout/sidebar';
+import Topbar from '@/components/layout/topbar';
+import Dashboard from '@/pages/dashboard';
+import Licenses from '@/pages/licenses';
+import SoftwareRegistrations from '@/pages/software-registrations';
+import Companies from '@/pages/companies';
+import Clients from '@/pages/clients';
+import Products from '@/pages/products';
+import Transactions from '@/pages/transactions';
+import Users from '@/pages/users';
+import Settings from '@/pages/settings';
+import Logs from '@/pages/logs';
+import Login from '@/pages/login';
+import NotFound from '@/pages/not-found';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return (
+    <SidebarWrapper>
+      {children}
+    </SidebarWrapper>
+  );
+}
+
+function AppRoutes() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/licenses" component={LicensesPage} />
-      <Route path="/clients" component={ClientsPage} />
-      <Route path="/companies" component={CompaniesPage} />
-      <Route path="/products" component={ProductsPage} />
-      <Route path="/transactions" component={TransactionsPage} />
-      <Route path="/software-registrations" component={SoftwareRegistrationsPage} />
-      <Route path="/users" component={UsersPage} />
-      <Route path="/settings" component={SettingsPage} />
-      <Route path="/logs" component={LogsPage} />
       <Route path="/login" component={Login} />
-      <Route component={NotFound} />
+      <Route path="/" nest>
+        <ProtectedRoute>
+          <Switch>
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/licenses" component={Licenses} />
+            <Route path="/software-registrations" component={SoftwareRegistrations} />
+            <Route path="/companies" component={Companies} />
+            <Route path="/clients" component={Clients} />
+            <Route path="/products" component={Products} />
+            <Route path="/transactions" component={Transactions} />
+            <Route path="/users" component={Users} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/logs" component={Logs} />
+            <Route path="/" component={Dashboard} />
+            <Route component={NotFound} />
+          </Switch>
+        </ProtectedRoute>
+      </Route>
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <div className="min-h-screen bg-gray-50">
+          <AppRoutes />
           <Toaster />
-          <Router />
-        </AuthProvider>
-      </TooltipProvider>
+        </div>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
-
-export default App;
