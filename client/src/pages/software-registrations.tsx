@@ -699,9 +699,42 @@ export default function SoftwareRegistrations() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDelete(registration.id)}
-                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                              title="Elimina registrazione"
+                              onClick={async () => {
+                                if (confirm('Sei sicuro di voler eliminare questa registrazione? Questa azione non può essere annullata.')) {
+                                  try {
+                                    const token = localStorage.getItem('qlm_token');
+                                    const response = await fetch(`/api/software/registrazioni/${registration.id}`, {
+                                      method: 'DELETE',
+                                      headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json'
+                                      }
+                                    });
+
+                                    if (response.ok) {
+                                      queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+                                      alert('Registrazione eliminata con successo!');
+                                    } else {
+                                      const errorData = await response.json().catch(() => ({}));
+                                      alert(`Errore nell'eliminazione: ${errorData.message || 'Errore sconosciuto'}`);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error deleting registration:', error);
+                                    alert('Errore nell\'eliminazione della registrazione');
+                                  }
+                                }
+                              }}
+                              disabled={registration.status === 'classificato' && registration.licenzaAssegnata}
+                              className={`h-8 w-8 p-0 ${
+                                registration.status === 'classificato' && registration.licenzaAssegnata
+                                  ? 'text-gray-400 cursor-not-allowed'
+                                  : 'text-red-600'
+                              }`}
+                              title={
+                                registration.status === 'classificato' && registration.licenzaAssegnata
+                                  ? "Prima rimuovi l'assegnazione della licenza"
+                                  : "Elimina registrazione"
+                              }
                             >
                               <i className="fas fa-trash text-xs"></i>
                             </Button>
@@ -990,7 +1023,7 @@ export default function SoftwareRegistrations() {
                     <i className="fas fa-check-circle text-green-500"></i>
                   </div>
                   <p className="text-xs text-green-600 mt-2">
-                    Dispositivo già autorizzato. La licenza funziona solo su questo dispositivo.
+                    Dispositivo già autorizzato. La licenza funzionerà solo su questo dispositivo.
                   </p>
                 </div>
               )}
