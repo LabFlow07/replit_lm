@@ -373,6 +373,22 @@ export default function LicensesPage() {
                               <div className="font-mono text-sm">
                                 {license.activationKey}
                               </div>
+                              {(() => {
+                                // Trova l'azienda del cliente
+                                const client = clients.find((c: Client) => c.id === license.client?.id);
+                                const companyId = client?.companyId || client?.company_id;
+                                const company = companies.find((comp: any) => comp.id === companyId);
+                                
+                                if (company) {
+                                  return (
+                                    <div className="text-xs text-gray-600 mt-1">
+                                      <i className="fas fa-building mr-1"></i>
+                                      {company.name}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               {license.computerKey && (
                                 <div className="text-xs text-muted-foreground font-mono">
                                   {license.computerKey}
