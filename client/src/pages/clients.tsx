@@ -121,14 +121,28 @@ export default function ClientsPage() {
 
   // Function to get client licenses count
   const getClientLicensesCount = (clientId: string) => {
-    return licenses.filter((license: any) => license.clientId === clientId).length;
+    const count = licenses.filter((license: any) => 
+      license.clientId === clientId || 
+      license.client_id === clientId || 
+      license.client?.id === clientId
+    ).length;
+    console.log(`Client ${clientId} has ${count} licenses`);
+    return count;
   };
 
   // Function to get client's licensed products
   const getClientProducts = (clientId: string) => {
-    const clientLicenses = licenses.filter((license: any) => license.clientId === clientId);
-    const products = clientLicenses.map((license: any) => license.product?.name).filter(Boolean);
-    return Array.from(new Set(products)); // Remove duplicates
+    const clientLicenses = licenses.filter((license: any) => 
+      license.clientId === clientId || 
+      license.client_id === clientId || 
+      license.client?.id === clientId
+    );
+    const products = clientLicenses.map((license: any) => 
+      license.product?.name || license.productName
+    ).filter(Boolean);
+    const uniqueProducts = Array.from(new Set(products)); // Remove duplicates
+    console.log(`Client ${clientId} has products:`, uniqueProducts);
+    return uniqueProducts;
   };
 
     // Function to get accessible companies for admin (simulated hierarchy)
