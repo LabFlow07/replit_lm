@@ -213,6 +213,27 @@ export default function LicensesPage() {
     const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
 
     return searchMatch && statusMatch && typeMatch;
+  }).sort((a: License, b: License) => {
+    // Priorità di ordinamento: 1. In attesa, 2. Sospese, 3. Attive, 4. Altre
+    const statusOrder = {
+      'in_attesa_convalida': 1,
+      'sospesa': 2, 
+      'attiva': 3,
+      'demo': 4,
+      'trial': 4,
+      'scaduta': 5
+    };
+    
+    const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 6;
+    const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 6;
+    
+    // Prima ordina per priorità stato
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    
+    // Poi per data di creazione (più recenti prima)
+    return new Date(b.activationDate || '').getTime() - new Date(a.activationDate || '').getTime();
   });
 
   const handleEditLicense = (license: License) => {
@@ -246,12 +267,12 @@ export default function LicensesPage() {
       <main className={`flex-1 ${contentMargin} bg-surface transition-all duration-300 ease-in-out`}>
         <TopBar />
 
-        <div className="p-4 md:p-6 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-3 md:p-4 space-y-4">
+          {/* Header Compatto */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
-              <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Gestione Licenze</h1>
+              <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <Button 
               className="bg-primary hover:bg-blue-700 w-full sm:w-auto"
@@ -263,7 +284,7 @@ export default function LicensesPage() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="space-y-6">
+          <div className="space-y-4">
 
 
 
@@ -280,21 +301,21 @@ export default function LicensesPage() {
                 </div>
               </div>
 
-              {/* Filters */}
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="flex flex-col md:flex-row gap-4">
+              {/* Filtri Compatti */}
+            <Card className="mb-4">
+              <CardContent className="p-3">
+                <div className="flex flex-col md:flex-row gap-3">
                   <div className="flex-1">
                     <Input
                       placeholder="Cerca per chiave, cliente, prodotto..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
+                      className="w-full h-9"
                     />
                   </div>
                   <div className="flex gap-2">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-40 h-9">
                         <SelectValue placeholder="Tutti gli stati" />
                       </SelectTrigger>
                       <SelectContent>
@@ -309,7 +330,7 @@ export default function LicensesPage() {
                     </Select>
 
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-40 h-9">
                         <SelectValue placeholder="Tutti i tipi" />
                       </SelectTrigger>
                       <SelectContent>
@@ -323,6 +344,7 @@ export default function LicensesPage() {
 
                     <Button 
                       variant="outline"
+                      size="sm"
                       onClick={() => {
                         setSearchTerm("");
                         setStatusFilter("all");
@@ -354,23 +376,23 @@ export default function LicensesPage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 font-medium text-sm border-r">Chiave Licenza</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Prodotto</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Cliente</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Tipo</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Stato</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Utenti/Dispositivi</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Prezzo</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Attivazione</th>
-                          <th className="text-left p-3 font-medium text-sm border-r">Scadenza</th>
-                          <th className="text-left p-3 font-medium text-sm">Azioni</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Chiave Licenza</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Prodotto</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Cliente</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Tipo</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Stato</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Utenti/Dispositivi</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Prezzo</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Attivazione</th>
+                          <th className="text-left p-2 font-medium text-xs border-r">Scadenza</th>
+                          <th className="text-left p-2 font-medium text-xs">Azioni</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredLicenses.map((license: License, index: number) => (
                           <tr key={license.id} className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? 'bg-white' : 'bg-muted/10'}`}>
-                            <td className="p-3 border-r">
-                              <div className="font-mono text-sm">
+                            <td className="p-2 border-r">
+                              <div className="font-mono text-xs">
                                 {license.activationKey}
                               </div>
                               {(() => {
@@ -381,7 +403,7 @@ export default function LicensesPage() {
                                 
                                 if (company) {
                                   return (
-                                    <div className="text-xs text-gray-600 mt-1">
+                                    <div className="text-xs text-gray-600 mt-0.5">
                                       <i className="fas fa-building mr-1"></i>
                                       {company.name}
                                     </div>
@@ -390,20 +412,20 @@ export default function LicensesPage() {
                                 return null;
                               })()}
                               {license.computerKey && (
-                                <div className="text-xs text-muted-foreground font-mono">
+                                <div className="text-xs text-muted-foreground font-mono mt-0.5">
                                   {license.computerKey}
                                 </div>
                               )}
                               {license.notes && license.notes.includes('registrazione software') && (
-                                <div className="text-xs text-blue-600 mt-1">
+                                <div className="text-xs text-blue-600 mt-0.5">
                                   <i className="fas fa-desktop mr-1"></i>
                                   Da registrazione SW
                                 </div>
                               )}
                             </td>
 
-                            <td className="p-3 border-r">
-                              <div className="font-medium text-sm">
+                            <td className="p-2 border-r">
+                              <div className="font-medium text-xs">
                                 {license.product?.name || 'N/A'}
                               </div>
                               <div className="text-xs text-muted-foreground">
@@ -411,14 +433,14 @@ export default function LicensesPage() {
                               </div>
                             </td>
 
-                            <td className="p-3 border-r">
-                              <div className="font-medium text-sm">
+                            <td className="p-2 border-r">
+                              <div className="font-medium text-xs">
                                 {license.client?.name || 'N/A'}
                               </div>
                             </td>
 
-                            <td className="p-3 border-r">
-                              <Badge variant="outline" className="text-xs">
+                            <td className="p-2 border-r">
+                              <Badge variant="outline" className="text-xs px-1 py-0">
                                 {license.licenseType === 'permanente' ? 'Permanente' :
                                  license.licenseType === 'abbonamento_mensile' ? 'Mensile' :
                                  license.licenseType === 'abbonamento_annuale' ? 'Annuale' :
@@ -427,15 +449,16 @@ export default function LicensesPage() {
                               </Badge>
                             </td>
 
-                            <td className="p-3 border-r">
+                            <td className="p-2 border-r">
                               <Badge 
                                 variant={
                                   license.status === 'attiva' ? 'default' :
                                   license.status === 'scaduta' ? 'destructive' :
                                   license.status === 'sospesa' ? 'secondary' :
+                                  license.status === 'in_attesa_convalida' ? 'outline' :
                                   'outline'
                                 }
-                                className="text-xs"
+                                className="text-xs px-1 py-0"
                               >
                                 {license.status === 'attiva' ? 'Attiva' :
                                  license.status === 'scaduta' ? 'Scaduta' :
@@ -447,25 +470,25 @@ export default function LicensesPage() {
                               </Badge>
                             </td>
 
-                            <td className="p-3 border-r text-sm">
+                            <td className="p-2 border-r text-xs">
                               <div>{license.maxUsers || '∞'} utenti</div>
                               <div className="text-xs text-muted-foreground">
                                 {license.maxDevices || '∞'} dispositivi
                               </div>
                             </td>
 
-                            <td className="p-3 border-r text-sm font-medium">
+                            <td className="p-2 border-r text-xs font-medium">
                               {formatCurrency(parseFloat(license.price || '0'))}
                             </td>
 
-                            <td className="p-3 border-r text-sm">
+                            <td className="p-2 border-r text-xs">
                               {license.activationDate ? 
                                 format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it }) : 
                                 '-'
                               }
                             </td>
 
-                            <td className="p-3 border-r text-sm">
+                            <td className="p-2 border-r text-xs">
                               {license.expiryDate ? (
                                 <div className={
                                   isExpired(license.expiryDate) ? 'text-red-600 font-medium' :
@@ -485,7 +508,7 @@ export default function LicensesPage() {
                               )}
                             </td>
 
-                            <td className="p-3">
+                            <td className="p-2">
                               <div className="flex gap-1">
                                 <Button
                                   variant="ghost"
