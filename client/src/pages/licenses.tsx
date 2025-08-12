@@ -596,104 +596,104 @@ export default function LicensesPage() {
                     Informazioni Base
                   </h3>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-client">Cliente *</Label>
-                      <Select name="clientId" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona cliente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.map((client: Client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name} ({client.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+              {/* Prima Riga: Cliente e Prodotto */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <Label htmlFor="clientId" className="text-sm font-medium">Cliente *</Label>
+                  <Select name="clientId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client: Client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name} ({client.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-product">Prodotto *</Label>
-                      <Select name="productId" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona prodotto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product: Product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} {product.version && `v${product.version}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                <div>
+                  <Label htmlFor="productId" className="text-sm font-medium">Prodotto *</Label>
+                  <Select name="productId" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona prodotto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product: Product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} {product.version && `v${product.version}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-type">Tipo Licenza *</Label>
-                      <Select name="licenseType" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="permanente">Permanente</SelectItem>
-                          <SelectItem value="trial">Trial</SelectItem>
-                          <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                          <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+              {/* Seconda Riga: Tipo Licenza, Prezzo, Max Utenti, Max Dispositivi, Sconto */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <Label htmlFor="licenseType" className="text-sm font-medium">Tipo Licenza *</Label>
+                  <Select name="licenseType" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                      <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-price">Prezzo €</Label>
-                      <Input
-                        id="new-license-price"
-                        name="price"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <Label htmlFor="price" className="text-sm font-medium">Prezzo €</Label>
+                  <Input
+                    id="new-license-price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-users">Max Utenti</Label>
-                      <Input
-                        id="new-license-users"
-                        name="maxUsers"
-                        type="number"
-                        defaultValue="1"
-                        min="1"
-                      />
-                    </div>
+                <div>
+                  <Label htmlFor="maxUsers" className="text-sm font-medium">Max Utenti</Label>
+                  <Input
+                    id="new-license-users"
+                    name="maxUsers"
+                    type="number"
+                    defaultValue="1"
+                    min="1"
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-devices">Max Dispositivi</Label>
-                      <Input
-                        id="new-license-devices"
-                        name="maxDevices"
-                        type="number"
-                        defaultValue="1"
-                        min="1"
-                      />
-                    </div>
+                <div>
+                  <Label htmlFor="maxDevices" className="text-sm font-medium">Max Dispositivi</Label>
+                  <Input
+                    id="new-license-devices"
+                    name="maxDevices"
+                    type="number"
+                    defaultValue="1"
+                    min="1"
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="new-license-discount">Sconto %</Label>
-                      <Input
-                        id="new-license-discount"
-                        name="discount"
-                        type="number"
-                        step="0.01"
-                        defaultValue="0"
-                        min="0"
-                        max="100"
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <Label htmlFor="discount" className="text-sm font-medium">Sconto %</Label>
+                  <Input
+                    id="new-license-discount"
+                    name="discount"
+                    type="number"
+                    step="0.01"
+                    defaultValue="0"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              </div>
                 </div>
 
                 {/* Sezione Attivazione */}
