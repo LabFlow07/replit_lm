@@ -147,47 +147,6 @@ export default function ProductsPage() {
     });
   }, [products, searchTerm, licenseTypeFilter]);
 
-  const createProductMutation = useMutation({
-    mutationFn: async (productData: typeof newProduct) => {
-      const token = localStorage.getItem('qlm_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(productData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      setIsCreateModalOpen(false);
-      setNewProduct({ name: '', version: '', description: '', supportedLicenseTypes: [] });
-      toast({
-        title: "Successo",
-        description: "Prodotto creato con successo!",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Errore nella creazione del prodotto",
-        variant: "destructive",
-      });
-    }
-  });
-
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, productData }: { id: string, productData: typeof editProduct }) => {
       const token = localStorage.getItem('qlm_token');
