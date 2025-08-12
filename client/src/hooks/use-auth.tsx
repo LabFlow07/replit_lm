@@ -66,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshAuth = async (): Promise<boolean> => {
     const token = localStorage.getItem('qlm_token');
 
-    if (!token || !checkTokenValidity()) {
+    if (!token || !(await checkTokenValidity())) {
       logout();
       return false;
     }
@@ -212,7 +212,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, forceReauth }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      logout, 
+      forceReauth,
+      isTokenValid: checkTokenValidity,
+      refreshAuth
+    }}>
       {children}
     </AuthContext.Provider>
   );
