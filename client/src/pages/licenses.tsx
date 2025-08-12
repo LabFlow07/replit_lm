@@ -73,6 +73,9 @@ export default function LicensesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [isNewLicenseModalOpen, setIsNewLicenseModalOpen] = useState(false);
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
 
@@ -217,11 +220,6 @@ export default function LicensesPage() {
     setIsLicenseModalOpen(true);
   };
 
-  const handleActivateLicense = (license: License) => {
-    // Logic to activate license
-    alert(`Activating license: ${license.id}`);
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -255,7 +253,13 @@ export default function LicensesPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Gestione Licenze</h1>
               <p className="text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
-
+            <Button 
+              className="bg-primary hover:bg-blue-700 w-full sm:w-auto"
+              onClick={() => setIsNewLicenseModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuova Licenza
+            </Button>
           </div>
 
           {/* Main Content Grid */}
@@ -477,17 +481,6 @@ export default function LicensesPage() {
                                 >
                                   <Settings className="h-4 w-4" />
                                 </Button>
-                                {license.status === 'in_attesa_convalida' && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleActivateLicense(license)}
-                                    className="h-8 w-8 p-0 text-green-600"
-                                    title="Attiva licenza"
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                  </Button>
-                                )}
                                 {user.role === 'superadmin' && (
                                   <Button
                                     variant="ghost"

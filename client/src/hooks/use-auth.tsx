@@ -22,7 +22,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   forceReauth: () => void;
-  isTokenValid: () => boolean;
+  isTokenValid: () => Promise<boolean>;
   refreshAuth: () => Promise<boolean>;
 }
 
