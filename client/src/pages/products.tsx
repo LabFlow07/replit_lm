@@ -49,6 +49,8 @@ export default function ProductsPage() {
         throw new Error('No authentication token found');
       }
 
+      console.log('Creating product with data:', productData);
+
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
@@ -57,15 +59,38 @@ export default function ProductsPage() {
         },
         body: JSON.stringify(productData)
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          console.error('Failed to parse error response as JSON:', e);
+          throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}...`);
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
-      return response.json();
+      const responseText = await response.text();
+      console.log('Success response text:', responseText);
+      
+      try {
+        return JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse success response as JSON:', e);
+        console.error('Response text:', responseText);
+        throw new Error('Invalid response format from server');
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Product created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       setIsCreateModalOpen(false);
       setNewProduct({ name: '', version: '', description: '', supportedLicenseTypes: [] });
@@ -75,6 +100,7 @@ export default function ProductsPage() {
       });
     },
     onError: (error: any) => {
+      console.error('Product creation error:', error);
       toast({
         title: "Errore",
         description: error.message || "Errore nella creazione del prodotto",
@@ -189,7 +215,7 @@ export default function ProductsPage() {
   });
 
   const handleCreateProduct = () => {
-    if (!newProduct.name || !newProduct.version) {
+    if (!newProduct.name.trim() || !newProduct.version.trim()) {
       toast({
         title: "Errore",
         description: "Nome e versione sono obbligatori",
@@ -197,7 +223,25 @@ export default function ProductsPage() {
       });
       return;
     }
-    createProductMutation.mutate(newProduct);
+
+    if (newProduct.supportedLicenseTypes.length === 0) {
+      toast({
+        title: "Errore", 
+        description: "Seleziona almeno un tipo di licenza supportato",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const productData = {
+      name: newProduct.name.trim(),
+      version: newProduct.version.trim(),
+      description: newProduct.description.trim(),
+      supportedLicenseTypes: newProduct.supportedLicenseTypes
+    };
+
+    console.log('Submitting product data:', productData);
+    createProductMutation.mutate(productData);
   };
 
   const handleLicenseTypeToggle = (type: string) => {
