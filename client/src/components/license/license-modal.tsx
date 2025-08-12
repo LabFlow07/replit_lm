@@ -147,7 +147,7 @@ function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
           <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
           <p className="text-sm text-blue-800">
             <strong>Gestione Dispositivi:</strong> Le Computer Key vengono assegnate tramite la sezione 
-            "QLMRegister" durante la classificazione delle registrazioni software.
+            "Qlm Register" durante la classificazione delle registrazioni software.
           </p>
         </div>
       </div>
