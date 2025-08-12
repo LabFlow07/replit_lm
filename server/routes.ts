@@ -600,6 +600,43 @@ router.get("/api/products", authenticateToken, async (req: Request, res: Respons
   }
 });
 
+router.post("/api/products", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { name, version, description, supportedLicenseTypes } = req.body;
+
+    // Only superadmin and admin can create products
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to create products" });
+    }
+
+    // Validate required fields
+    if (!name || !version) {
+      return res.status(400).json({ message: "Name and version are required" });
+    }
+
+    if (!supportedLicenseTypes || supportedLicenseTypes.length === 0) {
+      return res.status(400).json({ message: "At least one supported license type is required" });
+    }
+
+    const productData = {
+      id: nanoid(),
+      name: name.trim(),
+      version: version.trim(),
+      description: description?.trim() || null,
+      supportedLicenseTypes: supportedLicenseTypes,
+      createdAt: new Date().toISOString()
+    };
+
+    const product = await storage.createProduct(productData);
+    console.log('Product created successfully:', product.name);
+    res.json(product);
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.get("/api/software/registrazioni", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
