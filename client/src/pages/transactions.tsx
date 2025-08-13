@@ -91,7 +91,7 @@ export function TransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   // Always call all hooks before any conditional returns
-  const { data: transactions = [], isLoading: transactionsLoading, error: transactionsError } = useQuery({
+  const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useQuery({
     queryKey: ['/api/transactions'],
     queryFn: () => apiRequest('GET', '/api/transactions'),
     enabled: !!user,
@@ -211,6 +211,11 @@ export function TransactionsPage() {
     });
   };
 
+  // Ensure all data is always arrays
+  const transactions = Array.isArray(transactionsData) ? transactionsData : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+
   // Filter transactions based on selections
   const filteredTransactions = transactions.filter((transaction: Transaction) => {
     // First, check if transaction has required data to avoid rendering errors
@@ -224,7 +229,7 @@ export function TransactionsPage() {
     
     if (selectedCompany !== 'all') {
       // Find client for this transaction
-      const client = clients.find((c: Client) => c.id === transaction.clientId);
+      const client = safeClients.find((c: Client) => c.id === transaction.clientId);
       if (!client) return false;
       
       const clientCompanyId = client.companyId || client.company_id;
@@ -240,8 +245,8 @@ export function TransactionsPage() {
 
   // Filter clients based on selected company
   const filteredClients = selectedCompany === 'all'
-    ? clients
-    : clients.filter((c: Client) => c.companyId === selectedCompany || c.company_id === selectedCompany);
+    ? safeClients
+    : safeClients.filter((c: Client) => c.companyId === selectedCompany || c.company_id === selectedCompany);
 
   // Calculate statistics
   const totalRevenue = filteredTransactions.reduce((sum: number, t: Transaction) => {
@@ -340,7 +345,7 @@ export function TransactionsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tutte le aziende</SelectItem>
-                      {companies.map((company: Company) => (
+                      {safeCompanies.map((company: Company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name}
                         </SelectItem>
