@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sidebar } from '../components/layout/sidebar';
-import { TopBar } from '../components/layout/topbar';
+import Sidebar from '../components/layout/sidebar';
+import TopBar from '../components/layout/topbar';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../hooks/use-auth';
 import { apiRequest } from '../lib/api';
@@ -531,3 +531,5 @@ export function TransactionsPage() {
     </div>
   );
 }
+
+export default TransactionsPage;
