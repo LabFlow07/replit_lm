@@ -944,7 +944,18 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           idLicenza: null
         });
 
-        console.log(`License assignment removed from company ${partitaIva}`);
+        // Remove computer keys from all devices of this company when license is removed
+        const allDevices = await storage.getDettRegAziendaByPartitaIva(partitaIva);
+        for (const device of allDevices) {
+          if (device.computerKey) {
+            await storage.updateDettRegAzienda(device.id, {
+              computerKey: null
+            });
+            console.log(`Removed computer key from device ${device.id} of company ${partitaIva}`);
+          }
+        }
+
+        console.log(`License assignment and all computer keys removed from company ${partitaIva}`);
       }
     }
 

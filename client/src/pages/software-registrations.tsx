@@ -1091,30 +1091,58 @@ export default function SoftwareRegistrations() {
             </div>
 
             <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
-              <div>
+              <div className="flex flex-wrap gap-2">
                 {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (
-                  <Button 
-                    type="button" 
-                    variant="destructive" 
-                    size="sm"
-                    onClick={() => {
-                      if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
-                        const removeAssignmentData = {
-                          aziendaAssegnata: null,
-                          clienteAssegnato: null,
-                          licenzaAssegnata: null,
-                          prodottoAssegnato: null,
-                          note: selectedRegistration.note,
-                          authorizeDevice: false
-                        };
-                        classifyMutation.mutate(removeAssignmentData);
-                      }
-                    }}
-                    disabled={classifyMutation.isPending}
-                  >
-                    <i className="fas fa-unlink mr-2"></i>
-                    Rimuovi Assegnazione
-                  </Button>
+                  <>
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
+                          const removeAssignmentData = {
+                            aziendaAssegnata: null,
+                            clienteAssegnato: null,
+                            licenzaAssegnata: null,
+                            prodottoAssegnato: null,
+                            note: selectedRegistration.note,
+                            authorizeDevice: false
+                          };
+                          classifyMutation.mutate(removeAssignmentData);
+                        }
+                      }}
+                      disabled={classifyMutation.isPending}
+                    >
+                      <i className="fas fa-unlink mr-2"></i>
+                      Rimuovi Assegnazione
+                    </Button>
+                    
+                    {selectedRegistration?.computerKey && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
+                            const removeKeyData = {
+                              aziendaAssegnata: null,
+                              clienteAssegnato: selectedRegistration.clienteAssegnato,
+                              licenzaAssegnata: selectedRegistration.licenzaAssegnata,
+                              prodottoAssegnato: selectedRegistration.prodottoAssegnato,
+                              note: selectedRegistration.note,
+                              authorizeDevice: false
+                            };
+                            classifyMutation.mutate(removeKeyData);
+                          }
+                        }}
+                        disabled={classifyMutation.isPending}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                      >
+                        <i className="fas fa-key mr-2"></i>
+                        Rimuovi Solo Computer Key
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
               <div className="flex space-x-2 w-full md:w-auto">
