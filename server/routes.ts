@@ -1212,7 +1212,10 @@ router.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Re
 
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
-    if (companyId !== undefined) updateData.company_id = companyId;
+    if (companyId !== undefined) {
+      updateData.company_id = companyId;
+      console.log('Updating client company_id to:', companyId);
+    }
     if (status !== undefined) updateData.status = status;
     if (isMultiSite !== undefined) updateData.is_multi_site = isMultiSite ? 1 : 0;
     if (isMultiUser !== undefined) updateData.is_multi_user = isMultiUser ? 1 : 0;

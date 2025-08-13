@@ -492,7 +492,7 @@ export default function ClientsPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                   },
-                  body: JSON.JSON.stringify(clientData)
+                  body: JSON.stringify(clientData)
                 });
 
                 if (response.ok) {
@@ -684,6 +684,7 @@ export default function ClientsPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-client-company-select">Azienda *</Label>
                 <select 
+                  id="edit-client-company-select"
                   name="companyId" 
                   required
                   defaultValue={selectedClient?.company_id || selectedClient?.companyId || ''}
