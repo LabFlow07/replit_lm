@@ -10,23 +10,27 @@ export default function AlertPanel() {
     queryKey: ['/api/clients'],
   });
 
+  // Safe arrays for calculation
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  
   // Calculate real-time alerts
-  const expiringToday = (licenses as any[]).filter(l => {
+  const expiringToday = safeLicenses.filter(l => {
     if (!l.expires_at && !l.expiryDate) return false;
     const expiryDate = new Date(l.expires_at || l.expiryDate);
     const today = new Date();
     return expiryDate.toDateString() === today.toDateString();
   }).length;
 
-  const expiredLicenses = (licenses as any[]).filter(l => {
+  const expiredLicenses = safeLicenses.filter(l => {
     if (!l.expires_at && !l.expiryDate) return false;
     const expiryDate = new Date(l.expires_at || l.expiryDate);
     return expiryDate < new Date() && l.status !== 'scaduta';
   }).length;
 
-  const pendingClients = (clients as any[]).filter(c => c.status === 'in_attesa').length;
+  const pendingClients = safeClients.filter(c => c.status === 'in_attesa').length;
 
-  const todayActivations = (licenses as any[]).filter(l => {
+  const todayActivations = safeLicenses.filter(l => {
     if (!l.activation_date && !l.activationDate) return false;
     const activationDate = new Date(l.activation_date || l.activationDate);
     const today = new Date();
@@ -67,7 +71,7 @@ export default function AlertPanel() {
     { label: 'Attivazioni oggi', value: todayActivations.toString() },
     { label: 'Conversioni demo', value: '0', color: 'text-green-600' },
     { label: 'Rinnovi in scadenza', value: expiringToday.toString(), color: 'text-amber-600' },
-    { label: 'Licenze attive', value: (licenses as any[]).filter(l => l.status === 'attiva').length.toString() }
+    { label: 'Licenze attive', value: safeLicenses.filter(l => l.status === 'attiva').length.toString() }
   ];
 
   return (

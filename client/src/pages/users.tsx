@@ -335,7 +335,7 @@ export default function UsersPage() {
                       <SelectValue placeholder="Seleziona azienda (opzionale per admin)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companies.map((company: Company) => (
+                      {(Array.isArray(companies) ? companies : []).map((company: Company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name} ({company.type})
                         </SelectItem>
@@ -531,7 +531,7 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nessuna azienda</SelectItem>
-                      {companies.map((company: Company) => (
+                      {(Array.isArray(companies) ? companies : []).map((company: Company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name} ({company.type})
                         </SelectItem>

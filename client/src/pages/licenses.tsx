@@ -74,14 +74,18 @@ function ClientSearchInput({ clients, companies, onClientSelect }: ClientSearchI
   const [isOpen, setIsOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
+  // Safe arrays
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+  
   // Funzione per ottenere il nome dell'azienda
   const getCompanyName = (companyId: string) => {
-    const company = companies.find((c: any) => c.id === companyId);
+    const company = safeCompanies.find((c: any) => c.id === companyId);
     return company ? company.name : 'N/A';
   };
 
   // Filtra i clienti in base al termine di ricerca
-  const filteredClients = clients.filter((client: Client) => {
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const filteredClients = safeClients.filter((client: Client) => {
     const searchLower = searchTerm.toLowerCase();
     const clientMatch = client.name?.toLowerCase().includes(searchLower) || 
                        client.email?.toLowerCase().includes(searchLower);
@@ -327,7 +331,12 @@ export default function LicensesPage() {
   // we don't need complex client-side filtering. Just trust the server response.
   console.log(`Licenses page: User ${user?.username} (${user?.role}) has ${licenses.length} licenses from server`);
 
-  const filteredLicenses = licenses.filter((license: License) => {
+  // Safe arrays for main component
+  const safeLicensesMain = Array.isArray(licenses) ? licenses : [];
+  const safeClientsMain = Array.isArray(clients) ? clients : [];
+  const safeCompaniesMain = Array.isArray(companies) ? companies : [];
+  
+  const filteredLicenses = safeLicensesMain.filter((license: License) => {
     const searchTermLower = searchTerm.toLowerCase();
     const clientName = license.client?.name?.toLowerCase() || '';
     const productName = license.product?.name?.toLowerCase() || '';
@@ -525,9 +534,9 @@ export default function LicensesPage() {
                               </div>
                               {(() => {
                                 // Trova l'azienda del cliente
-                                const client = clients.find((c: Client) => c.id === license.client?.id);
+                                const client = safeClientsMain.find((c: Client) => c.id === license.client?.id);
                                 const companyId = client?.companyId || client?.company_id;
-                                const company = companies.find((comp: any) => comp.id === companyId);
+                                const company = safeCompaniesMain.find((comp: any) => comp.id === companyId);
                                 
                                 if (company) {
                                   return (
@@ -1041,7 +1050,7 @@ export default function LicensesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Nessuna Azienda</SelectItem>
-                        {companies.map((company: any) => (
+                        {safeCompaniesMain.map((company: any) => (
                           <SelectItem key={company.id} value={company.id}>
                             {company.name}
                           </SelectItem>
