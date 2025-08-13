@@ -197,38 +197,30 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     return company ? company.name : 'N/A';
   };
 
-  // Filtra i clienti in base all'azienda selezionata e al termine di ricerca
+  // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = clients.filter((client: Client) => {
-    // Filtra prima per azienda se specificata
-    if (companyId && client.companyId !== companyId) {
+    // Filtra RIGOROSAMENTE per azienda - deve corrispondere esattamente
+    const clientCompanyId = client.companyId || client.company_id;
+    if (!companyId || clientCompanyId !== companyId) {
       return false;
     }
 
-    // Poi filtra per termine di ricerca
+    // Poi filtra per termine di ricerca se presente
     if (!searchTerm) return true;
 
     const searchLower = searchTerm.toLowerCase();
     const clientMatch = client.name?.toLowerCase().includes(searchLower) || 
                        client.email?.toLowerCase().includes(searchLower);
-    const companyName = getCompanyName(client.companyId || client.company_id || '');
-    const companyMatch = companyName.toLowerCase().includes(searchLower);
 
-    return clientMatch || companyMatch;
+    return clientMatch;
   }).sort((a, b) => {
-    // Ordina prima per azienda, poi per nome cliente
-    const companyA = getCompanyName(a.companyId || a.company_id || '');
-    const companyB = getCompanyName(b.companyId || b.company_id || '');
-
-    if (companyA !== companyB) {
-      return companyA.localeCompare(companyB);
-    }
+    // Ordina per nome cliente
     return (a.name || '').localeCompare(b.name || '');
   });
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
-    const companyName = getCompanyName(client.companyId || client.company_id || '');
-    setSearchTerm(`${client.name} - ${companyName}`);
+    setSearchTerm(client.name || '');
     setIsOpen(false);
     onClientSelect(client.id);
   };
@@ -244,10 +236,11 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
   // Reset quando cambia l'azienda
   useEffect(() => {
-    if (companyId !== selectedClient?.companyId) {
+    if (companyId !== (selectedClient?.companyId || selectedClient?.company_id)) {
       setSearchTerm("");
       setSelectedClient(null);
       setIsOpen(false);
+      onClientSelect('');
     }
   }, [companyId]);
 
@@ -266,43 +259,30 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
       {isOpen && companyId && filteredClients.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
-          {filteredClients.slice(0, 20).map((client: Client) => {
-            const companyName = getCompanyName(client.companyId || client.company_id || '');
-            return (
-              <div
-                key={client.id}
-                onClick={() => handleClientSelect(client)}
-                className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-              >
-                <div className="flex flex-col">
-                  <div className="font-medium text-sm text-gray-900">
-                    <i className="fas fa-user mr-2 text-green-600"></i>
-                    {client.name}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {client.email}
-                  </div>
-                  <div className="text-xs text-blue-600 font-medium">
-                    <i className="fas fa-building mr-1"></i>
-                    {companyName}
-                  </div>
+          {filteredClients.map((client: Client) => (
+            <div
+              key={client.id}
+              onClick={() => handleClientSelect(client)}
+              className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+            >
+              <div className="flex flex-col">
+                <div className="font-medium text-sm text-gray-900">
+                  <i className="fas fa-user mr-2 text-green-600"></i>
+                  {client.name}
+                </div>
+                <div className="text-xs text-gray-600">
+                  {client.email}
                 </div>
               </div>
-            );
-          })}
-
-          {filteredClients.length > 20 && (
-            <div className="px-3 py-2 text-xs text-gray-500 text-center bg-gray-50">
-              Visualizzati primi 20 risultati. Affina la ricerca per vedere di più.
             </div>
-          )}
+          ))}
         </div>
       )}
 
-      {isOpen && companyId && searchTerm && filteredClients.length === 0 && (
+      {isOpen && companyId && filteredClients.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
           <div className="px-3 py-2 text-sm text-gray-500 text-center">
-            Nessun cliente trovato per questa azienda
+            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda"}
           </div>
         </div>
       )}
@@ -1090,6 +1070,15 @@ export default function SoftwareRegistrations() {
                   <Label htmlFor="licenzaAssegnata">Licenza</Label>
                   {(() => {
                     const selectedClientId = watch('clienteAssegnato');
+                    const selectedCompanyId = watch('aziendaAssegnata');
+
+                    if (!selectedCompanyId) {
+                      return (
+                        <div className="p-3 bg-gray-50 rounded-md border text-center">
+                          <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
+                        </div>
+                      );
+                    }
 
                     if (!selectedClientId) {
                       return (
@@ -1099,18 +1088,30 @@ export default function SoftwareRegistrations() {
                       );
                     }
 
-                    // Filter licenses for the selected client
-                    const clientLicenses = licenses.filter((license: License) =>
-                      license.client?.id === selectedClientId &&
-                      (license.status === 'attiva' || license.status === 'in_attesa_convalida' || license.status === 'sospesa')
-                    );
+                    // Filter licenses for the selected client from the selected company
+                    const clientLicenses = licenses.filter((license: License) => {
+                      // Check if license belongs to the selected client
+                      const licenseClientId = license.client?.id || license.clientId;
+                      if (licenseClientId !== selectedClientId) {
+                        return false;
+                      }
+
+                      // Double check that the client belongs to the selected company
+                      const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                      if (licenseClientCompanyId !== selectedCompanyId) {
+                        return false;
+                      }
+
+                      // Only show active, pending, or suspended licenses
+                      return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                    });
 
                     if (clientLicenses.length === 0) {
                       return (
                         <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                           <p className="text-sm text-yellow-700">
                             <i className="fas fa-exclamation-triangle mr-2"></i>
-                            Nessuna licenza trovata per questo cliente
+                            Nessuna licenza disponibile per questo cliente
                           </p>
                         </div>
                       );
@@ -1128,7 +1129,7 @@ export default function SoftwareRegistrations() {
                               setValue('prodottoAssegnato', selectedLicense.product.id);
                             }
                           } else {
-                            setValue('prodottoAssegnato', null); // Reset product if license is deselected
+                            setValue('prodottoAssegnato', null);
                           }
                         }}>
                           <SelectTrigger data-testid="select-assign-license">
@@ -1138,7 +1139,12 @@ export default function SoftwareRegistrations() {
                             <SelectItem value="none">Nessuna Licenza</SelectItem>
                             {clientLicenses.map((license: License) => (
                               <SelectItem key={license.id} value={license.id}>
-                                {license.activationKey} - {license.product?.name} ({license.status})
+                                <div className="flex flex-col">
+                                  <span className="font-mono text-xs">{license.activationKey}</span>
+                                  <span className="text-xs text-gray-600">
+                                    {license.product?.name} ({license.status})
+                                  </span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1164,10 +1170,13 @@ export default function SoftwareRegistrations() {
                                 <div>
                                   <p className="text-sm font-medium text-green-800">
                                     <i className="fas fa-link mr-2"></i>
-                                    Prodotto collegato automaticamente
+                                    Licenza selezionata
                                   </p>
                                   <p className="text-xs text-green-600 mt-1">
-                                    {selectedLicense.product.name} v{selectedLicense.product.version}
+                                    {selectedLicense.product.name} v{selectedLicense.product.version || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-green-600">
+                                    Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
                                   </p>
                                 </div>
                                 <i className="fas fa-check-circle text-green-500"></i>
