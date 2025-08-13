@@ -650,24 +650,24 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
     // Filter based on query parameters
     let filteredCompanies = companies;
-    
+
     // Legacy nomeSoftware filter (manteniamo per compatibilità)
     if (nomeSoftware) {
       filteredCompanies = companies.filter(company => 
         company.prodotto?.toLowerCase().includes((nomeSoftware as string).toLowerCase())
       );
     }
-    
+
     // New unified search filter
     if (search) {
       const searchTerm = (search as string).toLowerCase().trim();
       console.log('Applying comprehensive search for term:', searchTerm);
       console.log('Total companies before filter:', companies.length);
-      
+
       // Search in multiple phases: direct fields, then related entities
       const directMatches = [];
       const relatedMatches = [];
-      
+
       for (const company of companies) {
         // Phase 1: Search in direct company fields
         const matchCompany = company.nomeAzienda?.toLowerCase().includes(searchTerm) ||
@@ -675,7 +675,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
                            company.prodotto?.toLowerCase().includes(searchTerm) ||
                            company.versione?.toLowerCase().includes(searchTerm) ||
                            company.modulo?.toLowerCase().includes(searchTerm);
-        
+
         if (matchCompany) {
           console.log('Direct match found:', {
             nomeAzienda: company.nomeAzienda,
@@ -685,10 +685,10 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           directMatches.push(company);
           continue; // Skip related search if direct match found
         }
-        
+
         // Phase 2: Search in related entities
         let hasRelatedMatch = false;
-        
+
         // Search in license data if assigned
         if (company.idLicenza && !hasRelatedMatch) {
           try {
@@ -700,7 +700,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
                                 license.product?.name?.toLowerCase().includes(searchTerm) ||
                                 license.product?.version?.toLowerCase().includes(searchTerm) ||
                                 license.company?.name?.toLowerCase().includes(searchTerm);
-              
+
               if (matchLicense) {
                 console.log('License match found:', {
                   companyName: company.nomeAzienda,
@@ -717,7 +717,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
             console.error('Error searching license for company:', company.nomeAzienda, error);
           }
         }
-        
+
         // Search in specific related entities only if this company has connections
         if (!hasRelatedMatch && (company.idCliente || company.idAzienda)) {
           try {
@@ -733,7 +733,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
                 hasRelatedMatch = true;
               }
             }
-            
+
             // Check if company is linked to a matching client
             if (!hasRelatedMatch && company.idCliente) {
               const client = await storage.getClient(company.idCliente);
@@ -751,12 +751,12 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
             console.error('Error searching linked entities:', error);
           }
         }
-        
+
         if (hasRelatedMatch) {
           relatedMatches.push(company);
         }
       }
-      
+
       filteredCompanies = [...directMatches, ...relatedMatches];
       console.log(`Search results: Direct matches: ${directMatches.length}, Related matches: ${relatedMatches.length}, Total: ${filteredCompanies.length}`);
     }
@@ -772,24 +772,24 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
         let includeDevice = true;
         if (search) {
           const searchTerm = (search as string).toLowerCase().trim();
-          
+
           // If no match at company level, check device-specific fields
           const companyAlreadyMatched = true; // Since company is already in filteredCompanies
-          
+
           // Only do additional device filtering if we want to exclude specific devices from matched companies
           const matchDevice = device.uidDispositivo?.toLowerCase().includes(searchTerm) ||
                              device.sistemaOperativo?.toLowerCase().includes(searchTerm) ||
                              device.computerKey?.toLowerCase().includes(searchTerm) ||
                              device.note?.toLowerCase().includes(searchTerm);
-          
+
           // For now, include all devices from matched companies, but could add device-level filtering logic here
           includeDevice = companyAlreadyMatched || matchDevice;
         }
-        
+
         if (!includeDevice) continue;
         const hasLicense = company.idLicenza !== null;
         const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
-        
+
         // Determina lo stato del dispositivo
         let deviceStatus = 'non_assegnato';
         if (hasLicense) {
@@ -799,7 +799,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
             deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
           }
         }
-        
+
         const registration = {
           id: `${company.partitaIva}-${device.id}`,
           partitaIva: company.partitaIva,
@@ -857,7 +857,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
 
     const hasLicense = company.idLicenza !== null;
     const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
-    
+
     // Determina lo stato del dispositivo
     let deviceStatus = 'non_assegnato';
     if (hasLicense) {
@@ -867,7 +867,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
         deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
       }
     }
-    
+
     const registration = {
       id: registrationId,
       partitaIva: company.partitaIva,
@@ -930,10 +930,10 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     } else if (licenzaAssegnata === null) {
       // Remove license assignment - set company license to null and suspend any existing license
       const company = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
-      
+
       if (company && company.idLicenza) {
         console.log(`Removing license assignment ${company.idLicenza} from registration ${registrationId}`);
-        
+
         // Suspend the license instead of deactivating it completely
         await storage.updateLicense(company.idLicenza, {
           status: 'sospesa'
@@ -988,7 +988,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
     const hasLicense = company.idLicenza !== null;
     const hasComputerKey = device.computerKey !== null && device.computerKey !== '';
-    
+
     // Determina lo stato del dispositivo
     let deviceStatus = 'non_assegnato';
     if (hasLicense) {
@@ -998,7 +998,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         deviceStatus = 'in_attesa_computer_key'; // Licenza assegnata ma computer_key mancante
       }
     }
-    
+
     const updatedRegistration = {
       id: registrationId,
       partitaIva: company.partitaIva,
@@ -1178,10 +1178,10 @@ router.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Re
   try {
     const user = (req as any).user;
     const clientId = req.params.id;
-    const updateData = req.body;
+    const { name, email, companyId, status, isMultiSite, isMultiUser, contactInfo } = req.body;
 
     console.log('Client update request for:', clientId, 'by user:', user.username);
-    console.log('Update data:', updateData);
+    console.log('Update data:', req.body);
 
     // Get the existing client to check permissions
     const existingClient = await storage.getClientById(clientId);
@@ -1207,6 +1207,25 @@ router.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Re
       }
     }
 
+    // Validate and prepare update data
+    const updateData: any = {};
+
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (companyId !== undefined) updateData.company_id = companyId;
+    if (status !== undefined) updateData.status = status;
+    if (isMultiSite !== undefined) updateData.is_multi_site = isMultiSite ? 1 : 0;
+    if (isMultiUser !== undefined) updateData.is_multi_user = isMultiUser ? 1 : 0;
+    if (contactInfo !== undefined) updateData.contactInfo = contactInfo;
+
+    // If companyId is being updated by an admin, ensure it's within their hierarchy
+    if (updateData.company_id && user.role === 'admin') {
+      const companyIds = await storage.getCompanyHierarchy(user.companyId);
+      if (!companyIds.includes(updateData.company_id)) {
+        return res.status(403).json({ message: "Not authorized to assign client to this company" });
+      }
+    }
+    
     // Update the client
     const updatedClient = await storage.updateClient(clientId, updateData);
     console.log('Client updated successfully:', updatedClient.name);

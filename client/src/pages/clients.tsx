@@ -33,7 +33,7 @@ export default function ClientsPage() {
     }
   }, [user, loading, setLocation]);
 
-  
+
 
   // Fetch clients
   const { data: clients = [] } = useQuery({
@@ -492,7 +492,7 @@ export default function ClientsPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                   },
-                  body: JSON.stringify(clientData)
+                  body: JSON.JSON.stringify(clientData)
                 });
 
                 if (response.ok) {
@@ -624,7 +624,7 @@ export default function ClientsPage() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
-              
+
               const updateData = {
                 name: formData.get('name') as string,
                 email: formData.get('email') as string,
@@ -781,7 +781,7 @@ export default function ClientsPage() {
                   <p className="text-gray-600">{getClientLicensesCount(selectedClient?.id || '')}</p>
                 </div>
               </div>
-              
+
               <div>
                 <Label className="font-semibold">Informazioni Contatto:</Label>
                 <div className="mt-2 p-3 bg-gray-50 rounded">
@@ -790,9 +790,10 @@ export default function ClientsPage() {
                       {selectedClient.contactInfo.phone && (
                         <p><strong>Telefono:</strong> {selectedClient.contactInfo.phone}</p>
                       )}
-                      {selectedClient.contactInfo.company && (
-                        <p><strong>Azienda Cliente:</strong> {selectedClient.contactInfo.company}</p>
-                      )}
+                      <div>
+                        <Label className="font-semibold">Persona di riferimento e annotazioni:</Label>
+                        <p className="text-gray-600">{selectedClient?.contactInfo?.company || 'Nessuna informazione'}</p>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-gray-500">Nessuna informazione di contatto</p>
