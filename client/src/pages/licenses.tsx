@@ -515,10 +515,9 @@ export default function LicensesPage() {
                                   size="sm"
                                   onClick={() => handleEditLicense(license)}
                                   className="h-8 w-8 p-0"
-                                  title="Visualizza/Modifica licenza"
-                                  disabled={license.notes && license.notes.includes('registrazione software') && user.role !== 'superadmin'}
+                                  title={user.role === 'superadmin' ? "Visualizza/Modifica licenza" : "Visualizza dettagli licenza"}
                                 >
-                                  <Settings className="h-4 w-4" />
+                                  <i className="fas fa-pencil-alt text-xs"></i>
                                 </Button>
                                 {user.role === 'superadmin' && (
                                   <Button
@@ -1115,6 +1114,7 @@ export default function LicensesPage() {
             setEditingLicense(null);
           }}
           isEditMode={false}
+          canEdit={user.role === 'superadmin'}
         />
 
       </main>

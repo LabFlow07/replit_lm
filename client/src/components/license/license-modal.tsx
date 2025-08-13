@@ -1,10 +1,13 @@
 
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LicenseWithDetails } from "@/types";
 
 interface DeviceRegistration {
@@ -161,9 +164,56 @@ interface LicenseModalProps {
   onClose: () => void;
   onEdit?: () => void;
   isEditMode: boolean;
+  canEdit?: boolean;
 }
 
-export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditMode }: LicenseModalProps) {
+export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditMode, canEdit = false }: LicenseModalProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedLicense, setEditedLicense] = useState<Partial<LicenseWithDetails>>({});
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (license && isOpen) {
+      setEditedLicense({
+        maxUsers: license.maxUsers,
+        maxDevices: license.maxDevices,
+        price: license.price,
+        discount: license.discount,
+        status: license.status,
+        licenseType: license.licenseType
+      });
+      setIsEditing(false);
+    }
+  }, [license, isOpen]);
+
+  const handleSave = async () => {
+    if (!license || !editedLicense) return;
+
+    try {
+      const token = localStorage.getItem('qlm_token');
+      const response = await fetch(`/api/licenses/${license.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editedLicense)
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+        setIsEditing(false);
+        alert('Licenza aggiornata con successo!');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Errore nell'aggiornamento: ${errorData.message || 'Errore sconosciuto'}`);
+      }
+    } catch (error) {
+      console.error('Error updating license:', error);
+      alert('Errore nell\'aggiornamento della licenza');
+    }
+  };
+
   if (!license) return null;
 
   const getStatusBadge = (status: string) => {
@@ -206,13 +256,13 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <i className={`fas ${isEditMode ? 'fa-edit text-green-600' : 'fa-key text-blue-600'}`}></i>
-              {isEditMode ? 'Modifica Licenza' : 'Dettagli Licenza'}
+              <i className={`fas ${isEditing ? 'fa-edit text-green-600' : 'fa-key text-blue-600'}`}></i>
+              {isEditing ? 'Modifica Licenza' : 'Dettagli Licenza'}
             </div>
             {getStatusBadge(license.status)}
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Informazioni complete sulla licenza selezionata
+            {isEditing ? 'Modifica i parametri della licenza' : 'Informazioni complete sulla licenza selezionata'}
           </DialogDescription>
         </DialogHeader>
 
@@ -265,21 +315,61 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Tipologia</p>
-                  <p className="text-sm text-gray-900">
-                    {getLicenseTypeLabel(license.licenseType)}
-                  </p>
+                  {isEditing ? (
+                    <Select 
+                      value={editedLicense.licenseType || license.licenseType} 
+                      onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="permanente">Permanente</SelectItem>
+                        <SelectItem value="trial">Trial</SelectItem>
+                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm text-gray-900">
+                      {getLicenseTypeLabel(license.licenseType)}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Prezzo</p>
-                  <p className="text-sm text-gray-900 font-semibold">
-                    €{parseFloat(license.price?.toString() || '0').toFixed(2)}
-                    {license.discount && parseFloat(license.discount.toString()) > 0 && (
-                      <span className="text-green-600 ml-1 text-xs">
-                        (-{license.discount}%)
-                      </span>
-                    )}
-                  </p>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedLicense.price || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, price: parseFloat(e.target.value) || 0})}
+                        className="h-8 text-sm"
+                        placeholder="0.00"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedLicense.discount || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, discount: parseFloat(e.target.value) || 0})}
+                        className="h-8 text-sm w-20"
+                        placeholder="% sconto"
+                        max="100"
+                        min="0"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-900 font-semibold">
+                      €{parseFloat(license.price?.toString() || '0').toFixed(2)}
+                      {license.discount && parseFloat(license.discount.toString()) > 0 && (
+                        <span className="text-green-600 ml-1 text-xs">
+                          (-{license.discount}%)
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -292,11 +382,31 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <p className="text-sm font-medium text-gray-700">Utenti</p>
-                    <p className="text-sm text-gray-900 font-semibold">{license.maxUsers || 1}</p>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        value={editedLicense.maxUsers || 1}
+                        onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
+                        className="h-8 text-sm"
+                        min="1"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 font-semibold">{license.maxUsers || 1}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Dispositivi</p>
-                    <p className="text-sm text-gray-900 font-semibold">{license.maxDevices || 1}</p>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        value={editedLicense.maxDevices || 1}
+                        onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
+                        className="h-8 text-sm"
+                        min="1"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 font-semibold">{license.maxDevices || 1}</p>
+                    )}
                   </div>
                 </div>
 
@@ -367,11 +477,35 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
           <Button variant="outline" onClick={onClose}>
             Chiudi
           </Button>
-          {onEdit && (
-            <Button onClick={onEdit} className="bg-primary hover:bg-blue-700">
+          {canEdit && !isEditing && (
+            <Button onClick={() => setIsEditing(true)} className="bg-primary hover:bg-blue-700">
               <i className="fas fa-edit mr-2"></i>
               Modifica
             </Button>
+          )}
+          {isEditing && (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditedLicense({
+                    maxUsers: license.maxUsers,
+                    maxDevices: license.maxDevices,
+                    price: license.price,
+                    discount: license.discount,
+                    status: license.status,
+                    licenseType: license.licenseType
+                  });
+                }}
+              >
+                Annulla
+              </Button>
+              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+                <i className="fas fa-save mr-2"></i>
+                Salva
+              </Button>
+            </>
           )}
         </div>
       </DialogContent>
