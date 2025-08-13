@@ -202,7 +202,7 @@ export default function PaymentsPage() {
     const csvData = transactions.map((t: Transaction) => {
       const client = clients.find((c: Client) => c.id === t.clientId);
       return [
-        format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: it }),
+        t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: it }) : 'N/A',
         client?.name || 'N/A',
         t.type,
         `€${t.amount}`,
@@ -363,7 +363,7 @@ export default function PaymentsPage() {
                     return (
                       <TableRow key={transaction.id}>
                         <TableCell data-testid={`text-date-${transaction.id}`}>
-                          {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}
+                          {transaction.createdAt ? format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: it }) : 'N/A'}
                         </TableCell>
                         <TableCell data-testid={`text-client-${transaction.id}`}>
                           {client?.name || 'N/A'}
