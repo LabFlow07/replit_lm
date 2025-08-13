@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -416,11 +417,25 @@ function ClassificationModal({
   // Filter licenses based on selected client
   const availableLicenses = selectedClientId
     ? licenses.filter(license => {
+        console.log(`Filtering licenses for client: ${selectedClientId}`);
+        console.log('All licenses:', licenses);
+        
         const clientMatch = license.clientId === selectedClientId;
         const statusValid = ['attiva', 'in_attesa_convalida'].includes(license.status);
+        
+        console.log(`License check:`, {
+          licenseId: license.id,
+          clientMatch,
+          productMatch: false, // We're not filtering by product anymore
+          statusValid,
+          status: license.status
+        });
+        
         return clientMatch && statusValid;
       })
     : [];
+
+  console.log(`Available licenses after filtering: ${availableLicenses.length}`);
 
   const handleSubmit = async () => {
     if (!registration || !selectedClientId) return;
