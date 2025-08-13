@@ -903,48 +903,91 @@ export default function SoftwareRegistrations() {
                 <div>
                   <Label htmlFor="licenzaAssegnata">Licenza</Label>
                   {(() => {
-                    const selectedLicenseId = watch('licenzaAssegnata');
+                    const selectedClientId = watch('clienteAssegnato');
 
-                    if (!selectedLicenseId || selectedLicenseId === 'none') {
+                    if (!selectedClientId || selectedClientId === 'none') {
                       return (
                         <div className="p-3 bg-gray-50 rounded-md border text-center">
-                          <p className="text-sm text-gray-500">Seleziona prima una licenza</p>
+                          <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
                         </div>
                       );
                     }
 
-                    const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
+                    // Filter licenses for the selected client
+                    const clientLicenses = licenses.filter((license: License) =>
+                      license.client?.id === selectedClientId &&
+                      (license.status === 'attiva' || license.status === 'in_attesa_convalida' || license.status === 'sospesa')
+                    );
 
-                    if (!selectedLicense || !selectedLicense.product) {
+                    if (clientLicenses.length === 0) {
                       return (
                         <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                           <p className="text-sm text-yellow-700">
                             <i className="fas fa-exclamation-triangle mr-2"></i>
-                            Prodotto non trovato per questa licenza
+                            Nessuna licenza trovata per questo cliente
                           </p>
                         </div>
                       );
                     }
 
-                    if (watch('prodottoAssegnato') !== selectedLicense.product.id) {
-                      setValue('prodottoAssegnato', selectedLicense.product.id);
-                    }
+                    const selectedLicenseId = watch('licenzaAssegnata');
 
                     return (
-                      <div className="p-3 bg-green-50 rounded-md border border-green-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-green-800">
-                              <i className="fas fa-link mr-2"></i>
-                              Prodotto collegato automaticamente
-                            </p>
-                            <p className="text-xs text-green-600 mt-1">
-                              {selectedLicense.product.name} v{selectedLicense.product.version}
-                            </p>
-                          </div>
-                          <i className="fas fa-check-circle text-green-500"></i>
-                        </div>
-                      </div>
+                      <>
+                        <Select value={selectedLicenseId || 'none'} onValueChange={(value) => {
+                          setValue('licenzaAssegnata', value);
+                          if (value !== 'none') {
+                            const selectedLicense = licenses.find(l => l.id === value);
+                            if (selectedLicense && selectedLicense.product) {
+                              setValue('prodottoAssegnato', selectedLicense.product.id);
+                            }
+                          }
+                        }}>
+                          <SelectTrigger data-testid="select-assign-license">
+                            <SelectValue placeholder="Seleziona licenza" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nessuna Licenza</SelectItem>
+                            {clientLicenses.map((license: License) => (
+                              <SelectItem key={license.id} value={license.id}>
+                                {license.activationKey} - {license.product?.name} ({license.status})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
+                          const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
+
+                          if (!selectedLicense || !selectedLicense.product) {
+                            return (
+                              <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
+                                <p className="text-sm text-yellow-700">
+                                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                                  Prodotto non trovato per questa licenza
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="p-3 bg-green-50 rounded-md border border-green-200 mt-2">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-green-800">
+                                    <i className="fas fa-link mr-2"></i>
+                                    Prodotto collegato automaticamente
+                                  </p>
+                                  <p className="text-xs text-green-600 mt-1">
+                                    {selectedLicense.product.name} v{selectedLicense.product.version}
+                                  </p>
+                                </div>
+                                <i className="fas fa-check-circle text-green-500"></i>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </>
                     );
                   })()}
                 </div>
