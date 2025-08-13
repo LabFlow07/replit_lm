@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,6 +81,233 @@ interface Product {
   name: string;
   version: string;
   description?: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
+  partitaIva?: string;
+}
+
+// Componente per la ricerca intelligente delle aziende
+interface CompanySearchInputProps {
+  companies: Company[];
+  onCompanySelect: (companyId: string) => void;
+  placeholder?: string;
+}
+
+function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca azienda..." }: CompanySearchInputProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+  // Filtra le aziende in base al termine di ricerca
+  const filteredCompanies = companies.filter((company: Company) => {
+    const searchLower = searchTerm.toLowerCase();
+    return company.name?.toLowerCase().includes(searchLower) ||
+           company.partitaIva?.toLowerCase().includes(searchLower);
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const handleCompanySelect = (company: Company) => {
+    setSelectedCompany(company);
+    setSearchTerm(company.name || '');
+    setIsOpen(false);
+    onCompanySelect(company.id);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setIsOpen(true);
+    if (!e.target.value) {
+      setSelectedCompany(null);
+      onCompanySelect('');
+    }
+  };
+
+  return (
+    <div className="relative company-search-container">
+      <Input
+        type="text"
+        value={searchTerm}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        placeholder={placeholder}
+        className="w-full"
+        autoComplete="off"
+      />
+
+      {isOpen && searchTerm && filteredCompanies.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto company-search-dropdown">
+          {filteredCompanies.slice(0, 20).map((company: Company) => (
+            <div
+              key={company.id}
+              onClick={() => handleCompanySelect(company)}
+              className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+            >
+              <div className="flex flex-col">
+                <div className="font-medium text-sm text-gray-900">
+                  <i className="fas fa-building mr-2 text-blue-600"></i>
+                  {company.name}
+                </div>
+                {company.partitaIva && (
+                  <div className="text-xs text-gray-600">
+                    P.IVA: {company.partitaIva}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {filteredCompanies.length > 20 && (
+            <div className="px-3 py-2 text-xs text-gray-500 text-center bg-gray-50">
+              Visualizzati primi 20 risultati. Affina la ricerca per vedere di più.
+            </div>
+          )}
+        </div>
+      )}
+
+      {isOpen && searchTerm && filteredCompanies.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg company-search-dropdown">
+          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+            Nessuna azienda trovata
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente per la ricerca intelligente dei clienti
+interface ClientSearchInputProps {
+  clients: Client[];
+  companies: Company[];
+  onClientSelect: (clientId: string) => void;
+  companyId?: string;
+  placeholder?: string;
+}
+
+function ClientSearchInput({ clients, companies, onClientSelect, companyId, placeholder = "Cerca cliente..." }: ClientSearchInputProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  // Funzione per ottenere il nome dell'azienda
+  const getCompanyName = (companyId: string) => {
+    const company = companies.find((c: Company) => c.id === companyId);
+    return company ? company.name : 'N/A';
+  };
+
+  // Filtra i clienti in base all'azienda selezionata e al termine di ricerca
+  const filteredClients = clients.filter((client: Client) => {
+    // Filtra prima per azienda se specificata
+    if (companyId && client.companyId !== companyId) {
+      return false;
+    }
+
+    // Poi filtra per termine di ricerca
+    if (!searchTerm) return true;
+
+    const searchLower = searchTerm.toLowerCase();
+    const clientMatch = client.name?.toLowerCase().includes(searchLower) || 
+                       client.email?.toLowerCase().includes(searchLower);
+    const companyName = getCompanyName(client.companyId || client.company_id || '');
+    const companyMatch = companyName.toLowerCase().includes(searchLower);
+
+    return clientMatch || companyMatch;
+  }).sort((a, b) => {
+    // Ordina prima per azienda, poi per nome cliente
+    const companyA = getCompanyName(a.companyId || a.company_id || '');
+    const companyB = getCompanyName(b.companyId || b.company_id || '');
+
+    if (companyA !== companyB) {
+      return companyA.localeCompare(companyB);
+    }
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const handleClientSelect = (client: Client) => {
+    setSelectedClient(client);
+    const companyName = getCompanyName(client.companyId || client.company_id || '');
+    setSearchTerm(`${client.name} - ${companyName}`);
+    setIsOpen(false);
+    onClientSelect(client.id);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setIsOpen(true);
+    if (!e.target.value) {
+      setSelectedClient(null);
+      onClientSelect('');
+    }
+  };
+
+  // Reset quando cambia l'azienda
+  useEffect(() => {
+    if (companyId !== selectedClient?.companyId) {
+      setSearchTerm("");
+      setSelectedClient(null);
+      setIsOpen(false);
+    }
+  }, [companyId]);
+
+  return (
+    <div className="relative client-search-container">
+      <Input
+        type="text"
+        value={searchTerm}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        placeholder={companyId ? placeholder : "Seleziona prima un'azienda"}
+        className="w-full"
+        autoComplete="off"
+        disabled={!companyId}
+      />
+
+      {isOpen && companyId && filteredClients.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
+          {filteredClients.slice(0, 20).map((client: Client) => {
+            const companyName = getCompanyName(client.companyId || client.company_id || '');
+            return (
+              <div
+                key={client.id}
+                onClick={() => handleClientSelect(client)}
+                className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="flex flex-col">
+                  <div className="font-medium text-sm text-gray-900">
+                    <i className="fas fa-user mr-2 text-green-600"></i>
+                    {client.name}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {client.email}
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium">
+                    <i className="fas fa-building mr-1"></i>
+                    {companyName}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredClients.length > 20 && (
+            <div className="px-3 py-2 text-xs text-gray-500 text-center bg-gray-50">
+              Visualizzati primi 20 risultati. Affina la ricerca per vedere di più.
+            </div>
+          )}
+        </div>
+      )}
+
+      {isOpen && companyId && searchTerm && filteredClients.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
+          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+            Nessun cliente trovato per questa azienda
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SoftwareRegistrations() {
@@ -164,7 +391,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: isClassifyDialogOpen
+    enabled: isClassifyDialogOpen // Only fetch when the dialog is open
   });
 
   // Fetch licenses for classification
@@ -332,15 +559,14 @@ export default function SoftwareRegistrations() {
 
     if (registrationToClassify) {
       const client = clients.find(c => c.id === registrationToClassify.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || 'none';
+      const companyId = client?.company_id || client?.companyId || null; // Use null if not found
 
-      setTimeout(() => {
-        setValue('aziendaAssegnata', companyId);
-        setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || 'none');
-        setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || 'none');
-        setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || 'none');
-        setValue('note', registrationToClassify.note || '');
-      }, 100);
+      // Set values using setValue with a slight delay to ensure state updates
+      setValue('aziendaAssegnata', companyId);
+      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || null);
+      setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || null);
+      setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || null);
+      setValue('note', registrationToClassify.note || '');
     }
     setIsClassifyDialogOpen(true);
   };
@@ -349,7 +575,7 @@ export default function SoftwareRegistrations() {
     setSelectedRegistration(registration);
 
     const client = clients.find(c => c.id === registration.clienteAssegnato);
-    const companyId = client?.company_id || client?.companyId || 'none';
+    const companyId = client?.company_id || client?.companyId || null; // Use null if not found
 
     console.log('Edit registration:', registration);
     console.log('Found client:', client);
@@ -358,14 +584,13 @@ export default function SoftwareRegistrations() {
 
     reset();
 
-    setTimeout(() => {
-      setValue('aziendaAssegnata', companyId);
-      setValue('clienteAssegnato', registration.clienteAssegnato || 'none');
-      setValue('prodottoAssegnato', registration.prodottoAssegnato || 'none');
-      setValue('licenzaAssegnata', registration.licenzaAssegnata || 'none');
-      setValue('note', registration.note || '');
-      setValue('authorizeDevice', !!registration.computerKey);
-    }, 100);
+    // Set values using setValue with a slight delay to ensure state updates
+    setValue('aziendaAssegnata', companyId);
+    setValue('clienteAssegnato', registration.clienteAssegnato || null);
+    setValue('prodottoAssegnato', registration.prodottoAssegnato || null);
+    setValue('licenzaAssegnata', registration.licenzaAssegnata || null);
+    setValue('note', registration.note || '');
+    setValue('authorizeDevice', !!registration.computerKey);
 
     setIsClassifyDialogOpen(true);
   };
@@ -825,78 +1050,39 @@ export default function SoftwareRegistrations() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="aziendaAssegnata">Azienda</Label>
-                    <Select value={watch('aziendaAssegnata') || 'none'} onValueChange={(value) => {
-                      setValue('aziendaAssegnata', value);
-                      if (value !== watch('aziendaAssegnata')) {
-                        setValue('clienteAssegnato', 'none');
-                        setValue('licenzaAssegnata', 'none');
-                        setValue('prodottoAssegnato', 'none');
-                      }
-                    }}>
-                      <SelectTrigger data-testid="select-assign-company">
-                        <SelectValue placeholder="Seleziona azienda" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nessuna Azienda</SelectItem>
-                        {companies.map((company: any) => (
-                          <SelectItem key={company.id} value={company.id}>
-                            {company.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CompanySearchInput 
+                      companies={companies} 
+                      onCompanySelect={(companyId) => {
+                        setValue('aziendaAssegnata', companyId || null);
+                        // Reset dei campi dipendenti
+                        setValue('clienteAssegnato', null);
+                        setValue('licenzaAssegnata', null);
+                        setValue('prodottoAssegnato', null);
+                      }}
+                      placeholder="Cerca azienda per nome o P.IVA..."
+                      // Set initial value from selectedRegistration if available
+                      companies={companies.map(c => ({
+                        ...c,
+                        name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
+                        partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
+                      }))}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="clienteAssegnato">Cliente</Label>
-                    {(() => {
-                      const selectedCompanyId = watch('aziendaAssegnata');
-
-                      if (!selectedCompanyId || selectedCompanyId === 'none') {
-                        return (
-                          <div className="p-3 bg-gray-50 rounded-md border text-center">
-                            <p className="text-sm text-gray-500">Seleziona prima un\'azienda</p>
-                          </div>
-                        );
-                      }
-
-                      const companyClients = clients.filter((client: Client) => 
-                        client.company_id === selectedCompanyId
-                      );
-
-                      if (companyClients.length === 0) {
-                        return (
-                          <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                            <p className="text-sm text-yellow-700">
-                              <i className="fas fa-exclamation-triangle mr-2"></i>
-                              Nessun cliente trovato per questa azienda
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <Select value={watch('clienteAssegnato') || 'none'} onValueChange={(value) => {
-                          setValue('clienteAssegnato', value);
-                          if (value !== watch('clienteAssegnato')) {
-                            setValue('licenzaAssegnata', 'none');
-                            setValue('prodottoAssegnato', 'none');
-                          }
-                        }}>
-                          <SelectTrigger data-testid="select-assign-client">
-                            <SelectValue placeholder="Seleziona cliente" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nessun Cliente</SelectItem>
-                            {companyClients.map((client: Client) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name} - {client.email}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
+                    <ClientSearchInput 
+                      clients={clients}
+                      companies={companies}
+                      companyId={watch('aziendaAssegnata')}
+                      onClientSelect={(clientId) => {
+                        setValue('clienteAssegnato', clientId || null);
+                        // Reset dei campi dipendenti
+                        setValue('licenzaAssegnata', null);
+                        setValue('prodottoAssegnato', null);
+                      }}
+                      placeholder="Cerca cliente per nome o email..."
+                    />
                   </div>
                 </div>
 
@@ -905,7 +1091,7 @@ export default function SoftwareRegistrations() {
                   {(() => {
                     const selectedClientId = watch('clienteAssegnato');
 
-                    if (!selectedClientId || selectedClientId === 'none') {
+                    if (!selectedClientId) {
                       return (
                         <div className="p-3 bg-gray-50 rounded-md border text-center">
                           <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
@@ -935,12 +1121,14 @@ export default function SoftwareRegistrations() {
                     return (
                       <>
                         <Select value={selectedLicenseId || 'none'} onValueChange={(value) => {
-                          setValue('licenzaAssegnata', value);
+                          setValue('licenzaAssegnata', value === 'none' ? null : value);
                           if (value !== 'none') {
                             const selectedLicense = licenses.find(l => l.id === value);
                             if (selectedLicense && selectedLicense.product) {
                               setValue('prodottoAssegnato', selectedLicense.product.id);
                             }
+                          } else {
+                            setValue('prodottoAssegnato', null); // Reset product if license is deselected
                           }
                         }}>
                           <SelectTrigger data-testid="select-assign-license">
@@ -955,7 +1143,7 @@ export default function SoftwareRegistrations() {
                             ))}
                           </SelectContent>
                         </Select>
-                        
+
                         {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
                           const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
 
@@ -1058,6 +1246,7 @@ export default function SoftwareRegistrations() {
                   {...register('authorizeDevice')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                   data-testid="checkbox-authorize-device"
+                  checked={!!selectedRegistration?.computerKey || watch('authorizeDevice')} // Ensure checkbox state reflects existing computerKey or form value
                 />
                 <div className="flex-1">
                   <Label htmlFor="authorizeDevice" className="font-medium">
@@ -1116,7 +1305,7 @@ export default function SoftwareRegistrations() {
                       <i className="fas fa-unlink mr-2"></i>
                       Rimuovi Assegnazione
                     </Button>
-                    
+
                     {selectedRegistration?.computerKey && (
                       <Button 
                         type="button" 
@@ -1125,12 +1314,12 @@ export default function SoftwareRegistrations() {
                         onClick={() => {
                           if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
                             const removeKeyData = {
-                              aziendaAssegnata: null,
-                              clienteAssegnato: selectedRegistration.clienteAssegnato,
-                              licenzaAssegnata: selectedRegistration.licenzaAssegnata,
-                              prodottoAssegnato: selectedRegistration.prodottoAssegnato,
+                              aziendaAssegnata: selectedRegistration.aziendaAssegnata || null, // Keep existing company
+                              clienteAssegnato: selectedRegistration.clienteAssegnato || null, // Keep existing client
+                              licenzaAssegnata: selectedRegistration.licenzaAssegnata || null, // Keep existing license
+                              prodottoAssegnato: selectedRegistration.prodottoAssegnato || null, // Keep existing product
                               note: selectedRegistration.note,
-                              authorizeDevice: false
+                              authorizeDevice: false // Explicitly set to false to remove the key
                             };
                             classifyMutation.mutate(removeKeyData);
                           }
@@ -1150,13 +1339,14 @@ export default function SoftwareRegistrations() {
                   type="button" 
                   variant="outline" 
                   onClick={() => {
-                    setSearchInput("");
-                    setSearchTerm("");
-                    setStatusFilter("all");
+                    // Reset the form and dialog state
+                    reset();
+                    setSelectedRegistration(null);
+                    setIsClassifyDialogOpen(false);
                   }}
                   className="flex-1 md:flex-none"
                 >
-                  Reset Filtri
+                  Annulla
                 </Button>
                 <Button 
                   type="submit" 
