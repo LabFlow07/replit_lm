@@ -73,6 +73,8 @@ export interface IStorage {
   getTransactionsByLicense(licenseId: string): Promise<Transaction[]>;
   getTransactionById(id: string): Promise<Transaction | null>;
   updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction>;
+  deleteTransaction(id: string): Promise<void>;
+  clearAllTransactions(): Promise<number>;
   getAllTransactions(): Promise<Transaction[]>;
   getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]>;
   getTransactionsByCompany(companyId: string): Promise<Transaction[]>;

@@ -280,10 +280,10 @@ export default function TransactionsPage() {
     mutationFn: async () => {
       return apiRequest('DELETE', '/api/transactions/clear-all');
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Tabella svuotata",
-        description: "Tutte le transazioni sono state eliminate.",
+        description: `Tutte le ${data.deletedCount} transazioni sono state eliminate.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
     },
@@ -294,6 +294,19 @@ export default function TransactionsPage() {
         variant: "destructive",
       });
     }
+  });
+
+  const handleDeleteTransaction = (id: string) => {
+    if (confirm('Sei sicuro di voler eliminare questa transazione?')) {
+      deleteTransactionMutation.mutate(id);
+    }
+  };
+
+  const handleClearAllTransactions = () => {
+    if (confirm('Sei sicuro di voler eliminare TUTTE le transazioni? Questa azione non può essere annullata.')) {
+      clearAllTransactionsMutation.mutate();
+    }
+  };
   });
 
   const handleDeleteTransaction = (id: string) => {
