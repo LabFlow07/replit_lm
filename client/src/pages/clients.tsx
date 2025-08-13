@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
 import TopBar from "@/components/layout/topbar";
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function ClientsPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -647,7 +648,10 @@ export default function ClientsPage() {
 
                 if (response.ok) {
                   setIsEditModalOpen(false);
-                  window.location.reload();
+                  // Invalida la cache per aggiornare i dati
+                  queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
                 } else {
                   const error = await response.json();
                   alert(`Errore nell'aggiornamento: ${error.message || 'Errore sconosciuto'}`);
