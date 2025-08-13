@@ -111,7 +111,7 @@ export interface IStorage {
   getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined>;
   createSoftwareRegistration(registration: InsertSoftwareRegistration): Promise<SoftwareRegistration>;
   updateSoftwareRegistration(id: string, updates: Partial<SoftwareRegistration>): Promise<SoftwareRegistration>;
-  
+
   // Device Registration methods - New tables
   getTestaRegAzienda(): Promise<TestaRegAzienda[]>;
   getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined>;
@@ -935,7 +935,7 @@ export class DatabaseStorage implements IStorage {
       const dbField = fieldMapping[field] || field;
       return `${dbField} = ?`;
     }).join(', ');
-    
+
     const values = fields.map(field => {
       let value = updates[field as keyof License];
       // Convert activeModules to JSON string if needed
@@ -948,8 +948,18 @@ export class DatabaseStorage implements IStorage {
     await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
   }
 
-  async deleteLicense(id: string): Promise<void> {
-    await database.query('DELETE FROM licenses WHERE id = ?', [id]);
+  async deleteLicense(licenseId: string): Promise<void> {
+    try {
+      // First delete any associated transactions
+      await this.database.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
+
+      // Then delete the license
+      const query = 'DELETE FROM licenses WHERE id = ?';
+      await this.database.query(query, [licenseId]);
+    } catch (error) {
+      console.error('Database query error:', error);
+      throw error;
+    }
   }
 
   async activateLicense(activationKey: string, computerKey: string, deviceInfo: any): Promise<License> {
@@ -1017,9 +1027,9 @@ export class DatabaseStorage implements IStorage {
 
       const result = await database.query(query, [licenseId]);
       const count = result[0]?.count || 0;
-      
+
       console.log(`License ${licenseId} has ${count} authorized devices through software registrations`);
-      
+
       return count;
     } catch (error) {
       console.error('Error counting authorized devices for license:', error);
@@ -1030,19 +1040,19 @@ export class DatabaseStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
     const now = new Date();
-    
+
     // Calculate final amount properly
     const amount = insertTransaction.amount || 0;
     const discount = insertTransaction.discount || 0;
     const finalAmount = insertTransaction.finalAmount !== undefined ? insertTransaction.finalAmount : Math.max(0, amount - discount);
-    
+
     // Set payment date for completed transactions
     const paymentDate = insertTransaction.paymentDate || 
       (insertTransaction.status === 'completed' ? now : null);
-    
+
     // Ensure clientId is properly set
     let clientId = insertTransaction.clientId;
-    
+
     // If no clientId provided but we have a licenseId, get client from license
     if (!clientId && insertTransaction.licenseId) {
       try {
@@ -1054,7 +1064,7 @@ export class DatabaseStorage implements IStorage {
         console.error('Error fetching license for client ID:', error);
       }
     }
-    
+
     await database.query(`
       INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1154,14 +1164,14 @@ export class DatabaseStorage implements IStorage {
   async updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction> {
     const updateFields = [];
     const updateValues = [];
-    
+
     for (const [key, value] of Object.entries(updates)) {
       if (key !== 'id' && key !== 'createdAt') {
         updateFields.push(`${key.replace(/([A-Z])/g, '_$1').toLowerCase()} = ?`);
         updateValues.push(value);
       }
     }
-    
+
     updateFields.push('updated_at = ?');
     updateValues.push(new Date());
     updateValues.push(id);
@@ -1201,12 +1211,12 @@ export class DatabaseStorage implements IStorage {
 
     if (companyId || clientId) {
       query += ' JOIN licenses l ON t.license_id = l.id JOIN clients c ON l.client_id = c.id';
-      
+
       if (companyId) {
         whereConditions.push('c.company_id = ?');
         queryParams.push(companyId);
       }
-      
+
       if (clientId) {
         whereConditions.push('c.id = ?');
         queryParams.push(clientId);
@@ -1511,7 +1521,6 @@ export class DatabaseStorage implements IStorage {
       sistemaOperativo: row.sistema_operativo,
       indirizzoIp: row.indirizzo_ip,
       computerKey: row.computer_key,
-      installationPath: row.installation_path,
       status: row.status,
       clienteAssegnato: row.cliente_assegnato,
       licenzaAssegnata: row.licenza_assegnata,

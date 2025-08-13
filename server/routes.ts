@@ -1768,33 +1768,7 @@ router.delete("/api/products/:id", authenticateToken, async (req: Request, res: 
   }
 });
 
-router.delete("/api/transactions/:id", authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const transactionId = req.params.id;
-
-    console.log(`Delete transaction request for ID: ${transactionId} by user: ${user.username} (${user.role})`);
-
-    // Only superadmin can delete transactions
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Only superadmin can delete transactions" });
-    }
-
-    const existingTransaction = await storage.getTransactionById(transactionId);
-    if (!existingTransaction) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
-
-    console.log(`Deleting transaction: ${transactionId}`);
-    await storage.deleteTransaction(transactionId);
-    console.log(`Transaction ${transactionId} deleted successfully`);
-
-    res.json({ message: "Transaction deleted successfully" });
-  } catch (error) {
-    console.error('Delete transaction error:', error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
+// Transaction deletion is now handled automatically when deleting associated licenses
 
 // Clear all transactions endpoint for testing purposes
 router.delete("/api/transactions/clear-all", authenticateToken, async (req: Request, res: Response) => {

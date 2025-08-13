@@ -257,93 +257,6 @@ export default function TransactionsPage() {
     });
   };
 
-  // Delete transaction mutation
-  const deleteTransactionMutation = useMutation({
-    mutationFn: async (transactionId: string) => {
-      // The actual fetch call with token is handled inline in the button's onClick
-      // This mutationFn is just a placeholder if we wanted to reuse the mutation logic elsewhere.
-      // For now, we directly handle the fetch with token in the button's onClick for clarity.
-      return Promise.resolve(); // Placeholder, actual logic is in the button
-    },
-    onSuccess: () => {
-      toast({
-        title: "Transazione eliminata",
-        description: "La transazione è stata eliminata con successo.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante l'eliminazione della transazione.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Placeholder mutations for new actions
-  const paymentLinkMutation = useMutation({
-    mutationFn: (transactionId: string) => apiRequest('POST', `/api/transactions/${transactionId}/payment-link`),
-    onSuccess: (data) => {
-      toast({ title: "Link generato", description: "Link di pagamento generato con successo." });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      if (data.paymentLink) {
-        navigator.clipboard.writeText(data.paymentLink);
-        toast({ title: "Link copiato", description: "Il link di pagamento è stato copiato negli appunti." });
-      }
-    },
-    onError: (error: any) => toast({ title: "Errore", description: error.message || "Errore nella generazione del link.", variant: "destructive" }),
-  });
-
-  const markPaidMutation = useMutation({
-    mutationFn: (transactionId: string) => apiRequest('PATCH', `/api/transactions/${transactionId}/status`, { status: 'manual_paid', paymentMethod: 'manual' }),
-    onSuccess: () => {
-      toast({ title: "Transazione segnata come pagata", description: "Il pagamento manuale è stato registrato." });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-    },
-    onError: (error: any) => toast({ title: "Errore", description: error.message || "Errore nel segnare come pagato.", variant: "destructive" }),
-  });
-
-  const handleDeleteTransaction = (id: string) => {
-    // The actual delete logic is handled directly in the button's onClick for simplicity and to include the token directly.
-    // If we wanted to use the mutation, we would call deleteTransactionMutation.mutate(id) here.
-    // For now, we stick to the inline fetch with token.
-  };
-
-  // Helper functions for status badges
-  const getStatusVariant = (status: string) => {
-    if (status === 'completed' || status === 'manual_paid') return 'default';
-    if (status === 'pending') return 'destructive';
-    if (status === 'failed') return 'destructive';
-    return 'secondary';
-  };
-
-  const getStatusColor = (status: string) => {
-    if (status === 'completed') return 'bg-green-100 text-green-800';
-    if (status === 'manual_paid') return 'bg-blue-100 text-blue-800';
-    if (status === 'pending') return ''; // default destructive color
-    if (status === 'failed') return ''; // default destructive color
-    return '';
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed': return 'Completato';
-      case 'manual_paid': return 'Pagato Manualmente';
-      case 'pending': return 'In Attesa';
-      case 'failed': return 'Fallito';
-      default: return status;
-    }
-  };
-
-  const generatePaymentLink = (id: string) => {
-    paymentLinkMutation.mutate(id);
-  };
-
-  const markAsPaid = (id: string) => {
-    markPaidMutation.mutate(id);
-  };
-
   // Filter clients based on selected company
   const filteredClients = selectedCompany === 'all'
     ? clients
@@ -609,43 +522,7 @@ export default function TransactionsPage() {
                                   <i className="fas fa-copy mr-1"></i>
                                 </Button>
                               )}
-                              {user?.role === 'superadmin' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={async () => {
-                                    if (confirm('Sei sicuro di voler eliminare questa transazione?')) {
-                                      try {
-                                        const token = localStorage.getItem('qlm_token');
-                                        const response = await fetch(`/api/transactions/${transaction.id}`, {
-                                          method: 'DELETE',
-                                          headers: {
-                                            'Authorization': `Bearer ${token}`,
-                                            'Content-Type': 'application/json'
-                                          }
-                                        });
-
-                                        if (response.ok) {
-                                          // Ricarica le transazioni
-                                          refetch();
-                                        } else {
-                                          const errorData = await response.json().catch(() => ({}));
-                                          console.error('Errore nell\'eliminazione della transazione:', errorData.message);
-                                          alert(`Errore: ${errorData.message || 'Impossibile eliminare la transazione'}`);
-                                        }
-                                      } catch (error) {
-                                        console.error('Errore nell\'eliminazione della transazione:', error);
-                                        alert('Errore nell\'eliminazione della transazione');
-                                      }
-                                    }
-                                  }}
-                                  className="text-red-600 hover:text-red-800"
-                                  title="Cancella transazione"
-                                  data-testid={`button-delete-${transaction.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
+                              
                             </div>
                           </TableCell>
                         </TableRow>
