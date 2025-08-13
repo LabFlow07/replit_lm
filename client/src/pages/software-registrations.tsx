@@ -104,8 +104,6 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
   // Filtra le aziende in base al termine di ricerca
   // Safe arrays
   const safeCompanies = Array.isArray(companies) ? companies : [];
-  const safeClients = Array.isArray(clients) ? clients : [];
-  const safeLicenses = Array.isArray(licenses) ? licenses : [];
 
   const filteredCompanies = safeCompanies.filter((company: Company) => {
     const searchLower = searchTerm.toLowerCase();
@@ -196,9 +194,12 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   const [isOpen, setIsOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
+  // Safe arrays to prevent errors
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+  
   // Funzione per ottenere il nome dell'azienda
   const getCompanyName = (companyId: string) => {
-    const safeCompanies = Array.isArray(companies) ? companies : [];
     const company = safeCompanies.find((c: Company) => c.id === companyId);
     return company ? company.name : 'N/A';
   };
@@ -443,6 +444,13 @@ export default function SoftwareRegistrations() {
     enabled: true
   });
 
+  // Safe arrays to prevent runtime errors
+  const safeRegistrations = Array.isArray(registrations) ? registrations : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+  const safeProducts = Array.isArray(products) ? products : [];
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+
   // Classify registration mutation
   const classifyMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -565,10 +573,26 @@ export default function SoftwareRegistrations() {
     }).format(amount);
   };
 
-  const filteredRegistrations = Array.isArray(registrations) ? registrations : [];
+  const filteredRegistrations = safeRegistrations.filter((registration: SoftwareRegistration) => {
+    if (statusFilter !== 'all' && registration.status !== statusFilter) return false;
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      return (
+        (registration.nomeSoftware || registration.softwareName || '').toLowerCase().includes(search) ||
+        (registration.ragioneSociale || registration.clientName || '').toLowerCase().includes(search) ||
+        (registration.partitaIva || '').toLowerCase().includes(search) ||
+        (registration.computerKey || '').toLowerCase().includes(search) ||
+        (registration.note || '').toLowerCase().includes(search) ||
+        (registration.prodottoAssegnato || '').toLowerCase().includes(search) ||
+        (registration.sistemaOperativo || '').toLowerCase().includes(search) ||
+        (registration.versione || registration.version || '').toLowerCase().includes(search)
+      );
+    }
+    return true;
+  });
 
   const handleClassify = (id: string) => {
-    const registrationToClassify = registrations.find((r: SoftwareRegistration) => r.id === id);
+    const registrationToClassify = safeRegistrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
 
     reset();
@@ -707,7 +731,7 @@ export default function SoftwareRegistrations() {
               </div>
               {searchTerm && (
                 <div className="mt-1 text-xs text-gray-500">
-                  Ricercando: "{searchTerm}" - Trovati: {registrations.length} risultati
+                  Ricercando: "{searchTerm}" - Trovati: {safeRegistrations.length} risultati
                 </div>
               )}
             </div>
