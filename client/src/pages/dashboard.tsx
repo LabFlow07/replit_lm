@@ -66,18 +66,22 @@ export default function Dashboard() {
     return null;
   }
 
-  // Calculate enhanced statistics
-  const activeCompanies = (companies as any[]).filter(c => c.status === 'active').length;
-  const validatedClients = (clients as any[]).filter(c => c.status === 'convalidato').length;
-  const pendingClients = (clients as any[]).filter(c => c.status === 'in_attesa').length;
-  const recentLicenses = (licenses as any[]).filter(l => {
+  // Calculate enhanced statistics with safe arrays
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+  
+  const activeCompanies = safeCompanies.filter(c => c.status === 'active').length;
+  const validatedClients = safeClients.filter(c => c.status === 'convalidato').length;
+  const pendingClients = safeClients.filter(c => c.status === 'in_attesa').length;
+  const recentLicenses = safeLicenses.filter(l => {
     const createdDate = new Date(l.createdAt || l.created_at);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return createdDate >= thirtyDaysAgo;
   }).length;
 
-  const expiringLicenses = (licenses as any[]).filter(l => {
+  const expiringLicenses = safeLicenses.filter(l => {
     if (!l.expiryDate && !l.expiry_date && !l.expires_at) return false;
     const expiryDate = new Date(l.expiryDate || l.expiry_date || l.expires_at);
     const thirtyDaysFromNow = new Date();
@@ -86,9 +90,9 @@ export default function Dashboard() {
   }).length;
 
   // Get actual counts from data
-  const totalLicenses = (licenses as any[]).length;
-  const activeLicenses = (licenses as any[]).filter(l => l.status === 'attiva').length;
-  const demoLicenses = (licenses as any[]).filter(l => l.status === 'demo' || l.license_type === 'trial').length;
+  const totalLicenses = safeLicenses.length;
+  const activeLicenses = safeLicenses.filter(l => l.status === 'attiva').length;
+  const demoLicenses = safeLicenses.filter(l => l.status === 'demo' || l.license_type === 'trial').length;
 
   return (
     <div className="min-h-screen flex bg-surface">

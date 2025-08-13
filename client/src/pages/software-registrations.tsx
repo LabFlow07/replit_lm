@@ -193,7 +193,8 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
   // Funzione per ottenere il nome dell'azienda
   const getCompanyName = (companyId: string) => {
-    const company = companies.find((c: Company) => c.id === companyId);
+    const safeCompanies = Array.isArray(companies) ? companies : [];
+    const company = safeCompanies.find((c: Company) => c.id === companyId);
     return company ? company.name : 'N/A';
   };
 
@@ -820,7 +821,8 @@ export default function SoftwareRegistrations() {
                             {registration.licenzaAssegnata && (() => {
                               const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
                               if (assignedLicense) {
-                                const clientCompany = companies.find(c => 
+                                const safeCompanies = Array.isArray(companies) ? companies : [];
+                                const clientCompany = safeCompanies.find(c => 
                                   c.id === assignedLicense.client?.company_id || 
                                   c.id === assignedLicense.client?.companyId
                                 );
@@ -1061,7 +1063,11 @@ export default function SoftwareRegistrations() {
                   <div>
                     <Label htmlFor="aziendaAssegnata">Azienda</Label>
                     <CompanySearchInput 
-                      companies={companies} 
+                      companies={Array.isArray(companies) ? companies.map(c => ({
+                        ...c,
+                        name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
+                        partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
+                      })) : []}
                       onCompanySelect={(companyId) => {
                         setValue('aziendaAssegnata', companyId || null);
                         // Reset dei campi dipendenti
@@ -1070,12 +1076,6 @@ export default function SoftwareRegistrations() {
                         setValue('prodottoAssegnato', null);
                       }}
                       placeholder="Cerca azienda per nome o P.IVA..."
-                      // Set initial value from selectedRegistration if available
-                      companies={companies.map(c => ({
-                        ...c,
-                        name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
-                        partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
-                      }))}
                     />
                   </div>
 
@@ -1083,7 +1083,7 @@ export default function SoftwareRegistrations() {
                     <Label htmlFor="clienteAssegnato">Cliente</Label>
                     <ClientSearchInput 
                       clients={clients}
-                      companies={companies}
+                      companies={Array.isArray(companies) ? companies : []}
                       companyId={watch('aziendaAssegnata')}
                       onClientSelect={(clientId) => {
                         setValue('clienteAssegnato', clientId || null);

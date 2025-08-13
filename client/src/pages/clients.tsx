@@ -114,15 +114,20 @@ export default function ClientsPage() {
     },
   });
 
+  // Safe array definitions
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+
   // Function to get company name by ID
   const getCompanyName = (companyId: string) => {
-    const company = companies.find((c: any) => c.id === companyId);
+    const company = safeCompanies.find((c: any) => c.id === companyId);
     return company ? company.name : 'N/A';
   };
 
   // Function to get client licenses count
   const getClientLicensesCount = (clientId: string) => {
-    const count = licenses.filter((license: any) => 
+    const count = safeLicenses.filter((license: any) => 
       license.clientId === clientId || 
       license.client_id === clientId || 
       license.client?.id === clientId
@@ -133,7 +138,7 @@ export default function ClientsPage() {
 
   // Function to get client's licensed products
   const getClientProducts = (clientId: string) => {
-    const clientLicenses = licenses.filter((license: any) => 
+    const clientLicenses = safeLicenses.filter((license: any) => 
       license.clientId === clientId || 
       license.client_id === clientId || 
       license.client?.id === clientId
@@ -148,18 +153,18 @@ export default function ClientsPage() {
 
     // Function to get accessible companies for admin (simulated hierarchy)
     const getAccessibleCompanies = () => {
-        if (!user?.companyId || !companies) return [];
+        if (!user?.companyId || !safeCompanies.length) return [];
 
         // Build company hierarchy - include user's company and all its subcompanies
         const hierarchy: any[] = [];
-        const userCompany = companies.find((c: any) => c.id === user.companyId);
+        const userCompany = safeCompanies.find((c: any) => c.id === user.companyId);
 
         if (userCompany) {
             hierarchy.push(userCompany);
 
             // Find all subcompanies recursively
             const findSubcompanies = (parentId: string) => {
-                const subcompanies = companies.filter((c: any) => 
+                const subcompanies = safeCompanies.filter((c: any) => 
                     (c.parent_id === parentId || c.parentId === parentId)
                 );
                 subcompanies.forEach((sub: any) => {
@@ -177,7 +182,7 @@ export default function ClientsPage() {
 
   // Filtered clients
   const filteredClients = useMemo(() => {
-    return clients.filter((client: any) => {
+    return safeClients.filter((client: any) => {
       const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            client.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || client.status === statusFilter;
@@ -270,7 +275,7 @@ export default function ClientsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tutte le aziende</SelectItem>
-                      {companies.map((company: any) => (
+                      {safeCompanies.map((company: any) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name}
                         </SelectItem>
@@ -547,7 +552,7 @@ export default function ClientsPage() {
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">Seleziona azienda</option>
-                    {companies.map((company: any) => (
+                    {safeCompanies.map((company: any) => (
                       <option key={company.id} value={company.id}>
                         {company.name}
                       </option>
@@ -695,7 +700,7 @@ export default function ClientsPage() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Seleziona azienda</option>
-                  {companies.map((company: any) => (
+                  {safeCompanies.map((company: any) => (
                     <option key={company.id} value={company.id}>
                       {company.name}
                     </option>

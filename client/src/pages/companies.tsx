@@ -110,6 +110,9 @@ export default function CompaniesPage() {
     }
   });
 
+  // Safe companies array
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+
   // Fetch clients
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
@@ -145,13 +148,15 @@ export default function CompaniesPage() {
 
   // Helper functions
   const getCompanyClientCount = (companyId: string) => {
-    return (clients as any[]).filter((client: any) => 
+    const safeClients = Array.isArray(clients) ? clients : [];
+    return safeClients.filter((client: any) => 
       (client.company_id || client.companyId) === companyId
     ).length;
   };
 
   const getCompanyAgentCount = (companyId: string) => {
-    return (agents as any[]).filter((agent: any) => agent.companyId === companyId).length;
+    const safeAgents = Array.isArray(agents) ? agents : [];
+    return safeAgents.filter((agent: any) => agent.companyId === companyId).length;
   };
 
   const getCompanyHierarchy = () => {
@@ -159,12 +164,12 @@ export default function CompaniesPage() {
     const rootCompanies: any[] = [];
 
     // Create company map
-    companies.forEach((company: any) => {
+    safeCompanies.forEach((company: any) => {
       companyMap.set(company.id, { ...company, children: [] });
     });
 
     // Build hierarchy
-    companies.forEach((company: any) => {
+    safeCompanies.forEach((company: any) => {
       const parentId = company.parent_id || company.parentId;
       // Check if parentId is null, undefined, 0, '0', or empty string
       const isRoot = !parentId || parentId === '0' || parentId === 0 || parentId === '';
@@ -195,12 +200,12 @@ export default function CompaniesPage() {
 
     console.log('User role:', user.role);
     console.log('User company ID:', user.companyId);
-    console.log('Companies array length:', companies.length);
+    console.log('Companies array length:', safeCompanies.length);
 
     // Superadmin vede tutto
     if (user.role === 'superadmin') {
       console.log('Superadmin: returning all companies');
-      return companies as any[];
+      return safeCompanies;
     }
 
     // Admin vede la sua azienda e le sue sotto-aziende
@@ -214,7 +219,7 @@ export default function CompaniesPage() {
       // Trova l'azienda dell'admin e tutte le sue sotto-aziende (ricorsivamente)
       const getCompanyHierarchy = (companyId: string): string[] => {
         const result = [companyId];
-        const children = (companies as any[]).filter((c: any) => 
+        const children = safeCompanies.filter((c: any) => 
           c.parent_id === companyId || c.parentId === companyId
         );
 
@@ -226,26 +231,26 @@ export default function CompaniesPage() {
       };
 
       const accessibleIds = getCompanyHierarchy(userCompanyId);
-      const filtered = (companies as any[]).filter((company: any) => 
+      const filtered = safeCompanies.filter((company: any) => 
         accessibleIds.includes(company.id)
       );
 
       console.log(`Admin: user company ${userCompanyId}, hierarchy IDs:`, accessibleIds);
-      console.log(`Admin: filtered ${filtered.length} companies from ${companies.length}`);
+      console.log(`Admin: filtered ${filtered.length} companies from ${safeCompanies.length}`);
       return filtered;
     }
 
     // Altri ruoli vedono tutte le aziende per ora
     console.log('Other role: returning all companies');
-    return companies as any[];
+    return safeCompanies;
   };
 
   // Filtered companies with permission check
   const filteredHierarchy = useMemo(() => {
     console.log('filteredHierarchy: User role:', user?.role);
-    console.log('filteredHierarchy: All companies count:', companies.length);
+    console.log('filteredHierarchy: All companies count:', safeCompanies.length);
 
-    if (!companies || companies.length === 0) {
+    if (!safeCompanies || safeCompanies.length === 0) {
       console.log('No companies available');
       return [];
     }
@@ -768,7 +773,7 @@ export default function CompaniesPage() {
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna azienda trovata</h3>
                   <p className="text-gray-500">
-                    {companies.length === 0 ? "Non ci sono aziende disponibili" : "Nessun risultato con i filtri selezionati"}
+                    {safeCompanies.length === 0 ? "Non ci sono aziende disponibili" : "Nessun risultato con i filtri selezionati"}
                   </p>
                 </CardContent>
               </Card>
