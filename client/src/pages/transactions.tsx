@@ -297,28 +297,7 @@ export default function TransactionsPage() {
   });
 
   const handleDeleteTransaction = (id: string) => {
-    if (confirm('Sei sicuro di voler eliminare questa transazione?')) {
-      deleteTransactionMutation.mutate(id);
-    }
-  };
-
-  const handleClearAllTransactions = () => {
-    if (confirm('Sei sicuro di voler eliminare TUTTE le transazioni? Questa azione non può essere annullata.')) {
-      clearAllTransactionsMutation.mutate();
-    }
-  };
-  });
-
-  const handleDeleteTransaction = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questa transazione?')) {
-      deleteTransactionMutation.mutate(id);
-    }
-  };
-
-  const handleClearAllTransactions = () => {
-    if (window.confirm('Sei sicuro di voler eliminare TUTTE le transazioni? Questa operazione non può essere annullata.')) {
-      clearAllTransactionsMutation.mutate();
-    }
+    deleteTransactionMutation.mutate(id);
   };
 
   // Filter clients based on selected company
@@ -350,17 +329,7 @@ export default function TransactionsPage() {
                 <i className="fas fa-download mr-2"></i>
                 Genera Report
               </Button>
-              {user.role === 'superadmin' && (
-                <Button 
-                  onClick={handleClearAllTransactions} 
-                  variant="destructive" 
-                  data-testid="button-clear-all-transactions"
-                  disabled={clearAllTransactionsMutation.isPending}
-                >
-                  <i className="fas fa-trash mr-2"></i>
-                  {clearAllTransactionsMutation.isPending ? 'Eliminando...' : 'Svuota Tabella'}
-                </Button>
-              )}
+
             </div>
           </div>
 
