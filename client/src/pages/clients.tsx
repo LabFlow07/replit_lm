@@ -628,6 +628,7 @@ export default function ClientsPage() {
               const updateData = {
                 name: formData.get('name') as string,
                 email: formData.get('email') as string,
+                companyId: formData.get('companyId') as string,
                 status: formData.get('status') as string,
                 isMultiSite: formData.get('multiSite') === 'on',
                 isMultiUser: formData.get('multiUser') === 'on',
@@ -678,6 +679,23 @@ export default function ClientsPage() {
                   placeholder="email@esempio.com"
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-company-select">Azienda *</Label>
+                <select 
+                  name="companyId" 
+                  required
+                  defaultValue={selectedClient?.company_id || selectedClient?.companyId || ''}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Seleziona azienda</option>
+                  {companies.map((company: any) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
