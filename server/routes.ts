@@ -935,7 +935,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       // Generate automatic transaction for license assignment
       if (clienteAssegnato) {
         try {
-          const baseAmount = license.basePrice || 100; // Default price if not set
+          const baseAmount = license.price || 100; // Use license price
           const discount = license.discount || 0;
           const finalAmount = Math.max(0, baseAmount - discount);
 
@@ -946,12 +946,12 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             amount: baseAmount,
             discount: discount,
             finalAmount: finalAmount,
-            status: finalAmount === 0 ? 'completed' : 'pending',
+            status: finalAmount === 0 ? 'completed' : 'in_sospeso',
             paymentDate: finalAmount === 0 ? new Date() : undefined,
-            notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}`
+            notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey} al cliente`
           });
 
-          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with amount ${finalAmount}`);
+          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato}, amount ${finalAmount}, date: ${transaction.paymentDate || 'pending'}`);
         } catch (transactionError) {
           console.error('Error creating transaction:', transactionError);
           // Continue with license assignment even if transaction creation fails

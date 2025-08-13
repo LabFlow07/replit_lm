@@ -916,9 +916,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
+    const fieldMapping: { [key: string]: string } = {
+      'maxUsers': 'max_users',
+      'maxDevices': 'max_devices',
+      'licenseType': 'license_type',
+      'activationKey': 'activation_key',
+      'computerKey': 'computer_key',
+      'activationDate': 'activation_date',
+      'expiryDate': 'expiry_date',
+      'activeModules': 'active_modules',
+      'assignedCompany': 'assigned_company',
+      'assignedAgent': 'assigned_agent'
+    };
+
     const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'createdAt');
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => updates[field as keyof License]);
+    const setClause = fields.map(field => {
+      const dbField = fieldMapping[field] || field;
+      return `${dbField} = ?`;
+    }).join(', ');
+    
+    const values = fields.map(field => {
+      let value = updates[field as keyof License];
+      // Convert activeModules to JSON string if needed
+      if (field === 'activeModules' && Array.isArray(value)) {
+        value = JSON.stringify(value);
+      }
+      return value;
+    });
 
     await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
   }
@@ -1005,6 +1029,16 @@ export class DatabaseStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
     const now = new Date();
+    
+    // Calculate final amount properly
+    const amount = insertTransaction.amount || 0;
+    const discount = insertTransaction.discount || 0;
+    const finalAmount = insertTransaction.finalAmount || Math.max(0, amount - discount);
+    
+    // Set payment date for completed transactions
+    const paymentDate = insertTransaction.paymentDate || 
+      (insertTransaction.status === 'completed' ? now : null);
+    
     await database.query(`
       INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1012,20 +1046,29 @@ export class DatabaseStorage implements IStorage {
       id, 
       insertTransaction.licenseId, 
       insertTransaction.clientId || null, 
-      insertTransaction.type || 'purchase', 
-      insertTransaction.amount || 0,
-      insertTransaction.discount || 0.00, 
-      insertTransaction.finalAmount || insertTransaction.amount || 0, 
+      insertTransaction.type || 'attivazione', 
+      amount,
+      discount, 
+      finalAmount, 
       insertTransaction.paymentMethod || null, 
       insertTransaction.status || 'pending', 
       insertTransaction.paymentLink || null, 
-      insertTransaction.paymentDate || null, 
+      paymentDate, 
       insertTransaction.notes || null, 
       now, 
       now
     ]);
 
-    return { ...insertTransaction, id, createdAt: now, updatedAt: now };
+    return { 
+      ...insertTransaction, 
+      id, 
+      amount, 
+      discount, 
+      finalAmount, 
+      paymentDate, 
+      createdAt: now, 
+      updatedAt: now 
+    };
   }
 
   async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
