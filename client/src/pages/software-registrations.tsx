@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -200,9 +199,9 @@ export default function SoftwareRegistrationsPage() {
       reg.nomeSoftware?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reg.partitaIva?.includes(searchTerm) ||
       reg.uidDispositivo?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || reg.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -389,7 +388,7 @@ function ClassificationModal({
       // Find client if already assigned
       const assignedClient = clients.find(c => c.id === registration.clientId);
       console.log('Found client:', assignedClient);
-      
+
       if (assignedClient) {
         const companyId = assignedClient.company_id || assignedClient.companyId;
         console.log('Company ID:', companyId || 'none');
@@ -399,7 +398,7 @@ function ClassificationModal({
         setSelectedCompanyId("");
         setSelectedClientId("");
       }
-      
+
       setSelectedLicenseId(registration.licenzaAssegnata || "");
       setNotes(registration.note || "");
       console.log('Computer Key:', registration.computerKey || 'empty');
@@ -414,31 +413,14 @@ function ClassificationModal({
       )
     : clients;
 
-  // Filter licenses based on selected client and available products
+  // Filter licenses based on selected client
   const availableLicenses = selectedClientId
     ? licenses.filter(license => {
-        console.log('Filtering licenses for client:', selectedClientId);
-        console.log('All licenses:', licenses);
-        
         const clientMatch = license.clientId === selectedClientId;
-        const productMatch = registration?.prodottoAssegnato 
-          ? license.productName === registration.prodottoAssegnato
-          : true; // If no product assigned to registration, show all licenses for the client
         const statusValid = ['attiva', 'in_attesa_convalida'].includes(license.status);
-        
-        console.log('License check:', {
-          licenseId: license.id,
-          clientMatch,
-          productMatch,
-          statusValid,
-          status: license.status
-        });
-        
-        return clientMatch && productMatch && statusValid;
+        return clientMatch && statusValid;
       })
     : [];
-
-  console.log('Available licenses after filtering:', availableLicenses.length);
 
   const handleSubmit = async () => {
     if (!registration || !selectedClientId) return;
@@ -473,51 +455,6 @@ function ClassificationModal({
     }
   };
 
-  const handleCreateLicenseFromRegistration = async () => {
-    if (!registration || !selectedClientId) return;
-
-    setIsSubmitting(true);
-    try {
-      const token = localStorage.getItem('qlm_token');
-      
-      // Find the product for this registration
-      const matchingProduct = products.find(p => p.name === registration.prodottoAssegnato);
-      if (!matchingProduct) {
-        console.error('Product not found for registration');
-        return;
-      }
-
-      const response = await fetch('/api/licenses/from-registration', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          registrationId: registration.id,
-          clientId: selectedClientId,
-          productId: matchingProduct.id,
-          licenseType: 'abbonamento',
-          maxUsers: 1,
-          maxDevices: 1,
-          price: 0
-        })
-      });
-
-      if (response.ok) {
-        const newLicense = await response.json();
-        setSelectedLicenseId(newLicense.id);
-        onRefresh();
-      } else {
-        console.error('Failed to create license from registration');
-      }
-    } catch (error) {
-      console.error('Error creating license from registration:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   if (!registration) return null;
 
   return (
@@ -526,7 +463,7 @@ function ClassificationModal({
         <DialogHeader>
           <DialogTitle>Classifica Registrazione Software</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Registration Info */}
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -579,25 +516,11 @@ function ClassificationModal({
 
           {/* License Selection */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label htmlFor="license">Licenza</Label>
-              {selectedClientId && availableLicenses.length === 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateLicenseFromRegistration}
-                  disabled={isSubmitting}
-                >
-                  <i className="fas fa-plus mr-1"></i>
-                  Crea Licenza
-                </Button>
-              )}
-            </div>
+            <Label htmlFor="license">Licenza</Label>
             <Select 
               value={selectedLicenseId} 
               onValueChange={setSelectedLicenseId}
-              disabled={!selectedClientId || availableLicenses.length === 0}
+              disabled={!selectedClientId}
             >
               <SelectTrigger>
                 <SelectValue placeholder={
