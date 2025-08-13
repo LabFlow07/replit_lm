@@ -22,10 +22,13 @@ interface Transaction {
   id: string;
   licenseId: string;
   clientId: string;
+  client_name?: string; // Added for clarity
+  client_email?: string; // Added for clarity
   type: string;
   amount: number;
   discount: number;
-  finalAmount: number;
+  finalAmount?: number; // Kept for backward compatibility
+  final_amount?: number; // Added for clarity
   paymentMethod?: string;
   status: string;
   paymentLink?: string;
@@ -67,14 +70,14 @@ export default function TransactionsPage() {
   }, [user, loading, setLocation]);
 
   // Fetch transactions with filters
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
     queryKey: ['/api/transactions', selectedCompany, selectedClient, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany);
       if (selectedClient !== 'all') params.append('clientId', selectedClient);
       if (statusFilter !== 'all') params.append('status', statusFilter);
-      
+
       const response = await fetch(`/api/transactions?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`,
@@ -90,7 +93,7 @@ export default function TransactionsPage() {
   });
 
   // Fetch companies for filtering
-  const { data: companies = [] } = useQuery({
+  const { data: companies = [] } = useQuery<Company[]>({
     queryKey: ['/api/companies'],
     queryFn: async () => {
       const response = await fetch('/api/companies', {
@@ -108,7 +111,7 @@ export default function TransactionsPage() {
   });
 
   // Fetch clients for filtering
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
     queryFn: async () => {
       const response = await fetch('/api/clients', {
@@ -173,7 +176,7 @@ export default function TransactionsPage() {
         description: "Link di pagamento generato con successo.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      
+
       // Copy link to clipboard
       if (data.paymentLink) {
         navigator.clipboard.writeText(data.paymentLink);
@@ -275,19 +278,74 @@ export default function TransactionsPage() {
     }
   });
 
+  // Placeholder mutations for new actions
+  const paymentLinkMutation = useMutation({
+    mutationFn: (transactionId: string) => apiRequest('POST', `/api/transactions/${transactionId}/payment-link`),
+    onSuccess: (data) => {
+      toast({ title: "Link generato", description: "Link di pagamento generato con successo." });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      if (data.paymentLink) {
+        navigator.clipboard.writeText(data.paymentLink);
+        toast({ title: "Link copiato", description: "Il link di pagamento è stato copiato negli appunti." });
+      }
+    },
+    onError: (error: any) => toast({ title: "Errore", description: error.message || "Errore nella generazione del link.", variant: "destructive" }),
+  });
 
+  const markPaidMutation = useMutation({
+    mutationFn: (transactionId: string) => apiRequest('PATCH', `/api/transactions/${transactionId}/status`, { status: 'manual_paid', paymentMethod: 'manual' }),
+    onSuccess: () => {
+      toast({ title: "Transazione segnata come pagata", description: "Il pagamento manuale è stato registrato." });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+    },
+    onError: (error: any) => toast({ title: "Errore", description: error.message || "Errore nel segnare come pagato.", variant: "destructive" }),
+  });
 
   const handleDeleteTransaction = (id: string) => {
     deleteTransactionMutation.mutate(id);
   };
 
+  // Helper functions for status badges
+  const getStatusVariant = (status: string) => {
+    if (status === 'completed' || status === 'manual_paid') return 'default';
+    if (status === 'pending') return 'destructive';
+    if (status === 'failed') return 'destructive';
+    return 'secondary';
+  };
+
+  const getStatusColor = (status: string) => {
+    if (status === 'completed') return 'bg-green-100 text-green-800';
+    if (status === 'manual_paid') return 'bg-blue-100 text-blue-800';
+    if (status === 'pending') return ''; // default destructive color
+    if (status === 'failed') return ''; // default destructive color
+    return '';
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed': return 'Completato';
+      case 'manual_paid': return 'Pagato Manualmente';
+      case 'pending': return 'In Attesa';
+      case 'failed': return 'Fallito';
+      default: return status;
+    }
+  };
+
+  const generatePaymentLink = (id: string) => {
+    paymentLinkMutation.mutate(id);
+  };
+
+  const markAsPaid = (id: string) => {
+    markPaidMutation.mutate(id);
+  };
+
   // Filter clients based on selected company
-  const filteredClients = selectedCompany === 'all' 
-    ? clients 
+  const filteredClients = selectedCompany === 'all'
+    ? clients
     : clients.filter((c: Client) => c.companyId === selectedCompany || c.company_id === selectedCompany);
 
   // Calculate statistics
-  const totalRevenue = transactions.reduce((sum: number, t: Transaction) => sum + Number(t.finalAmount || 0), 0);
+  const totalRevenue = transactions.reduce((sum: number, t: Transaction) => sum + Number(t.final_amount || t.finalAmount || ((t.amount || 0) - (t.discount || 0))), 0);
   const completedTransactions = transactions.filter((t: Transaction) => t.status === 'completed' || t.status === 'manual_paid');
   const pendingTransactions = transactions.filter((t: Transaction) => t.status === 'pending');
   const failedTransactions = transactions.filter((t: Transaction) => t.status === 'failed');
@@ -373,7 +431,7 @@ export default function TransactionsPage() {
 
                 <div className="space-y-2">
                   <Label>&nbsp;</Label>
-                  <Button 
+                  <Button
                     onClick={() => {
                       setSelectedCompany('all');
                       setSelectedClient('all');
@@ -484,6 +542,9 @@ export default function TransactionsPage() {
                           </TableCell>
                           <TableCell data-testid={`text-client-${transaction.id}`}>
                             {client?.name || 'N/A'}
+                            {client?.email && (
+                              <div className="text-xs text-gray-500">{client.email}</div>
+                            )}
                           </TableCell>
                           <TableCell data-testid={`badge-type-${transaction.id}`}>
                             {getTypeBadge(transaction.type)}
@@ -496,7 +557,7 @@ export default function TransactionsPage() {
                           </TableCell>
                           <TableCell data-testid={`text-final-amount-${transaction.id}`}>
                             <span className="font-medium">
-                              €{Number(transaction.finalAmount).toFixed(2)}
+                              €{Number(transaction.final_amount || transaction.finalAmount || ((transaction.amount || 0) - (transaction.discount || 0))).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell data-testid={`badge-status-${transaction.id}`}>
@@ -504,7 +565,7 @@ export default function TransactionsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              {transaction.status === 'pending' && (user.role === 'superadmin' || user.role === 'admin') && (
+                              {user?.role === 'superadmin' && transaction.status === 'pending' && (
                                 <>
                                   <Button
                                     size="sm"
@@ -543,7 +604,7 @@ export default function TransactionsPage() {
                                   <i className="fas fa-copy mr-1"></i>
                                 </Button>
                               )}
-                              {user.role === 'superadmin' && (
+                              {user?.role === 'superadmin' && (
                                 <Button
                                   variant="ghost"
                                   size="sm"

@@ -947,11 +947,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             discount: discount,
             finalAmount: finalAmount,
             status: finalAmount === 0 ? 'completed' : 'in_sospeso',
-            paymentDate: finalAmount === 0 ? new Date() : undefined,
+            paymentDate: finalAmount === 0 ? new Date() : null,
             notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey} al cliente`
           });
 
-          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato}, amount ${finalAmount}, date: ${transaction.paymentDate || 'pending'}`);
+          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato}, amount ${baseAmount}, discount ${discount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
         } catch (transactionError) {
           console.error('Error creating transaction:', transactionError);
           // Continue with license assignment even if transaction creation fails

@@ -1033,11 +1033,26 @@ export class DatabaseStorage implements IStorage {
     // Calculate final amount properly
     const amount = insertTransaction.amount || 0;
     const discount = insertTransaction.discount || 0;
-    const finalAmount = insertTransaction.finalAmount || Math.max(0, amount - discount);
+    const finalAmount = insertTransaction.finalAmount !== undefined ? insertTransaction.finalAmount : Math.max(0, amount - discount);
     
     // Set payment date for completed transactions
     const paymentDate = insertTransaction.paymentDate || 
       (insertTransaction.status === 'completed' ? now : null);
+    
+    // Ensure clientId is properly set
+    let clientId = insertTransaction.clientId;
+    
+    // If no clientId provided but we have a licenseId, get client from license
+    if (!clientId && insertTransaction.licenseId) {
+      try {
+        const license = await this.getLicense(insertTransaction.licenseId);
+        if (license && license.client) {
+          clientId = license.client.id;
+        }
+      } catch (error) {
+        console.error('Error fetching license for client ID:', error);
+      }
+    }
     
     await database.query(`
       INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
@@ -1045,13 +1060,13 @@ export class DatabaseStorage implements IStorage {
     `, [
       id, 
       insertTransaction.licenseId, 
-      insertTransaction.clientId || null, 
+      clientId, 
       insertTransaction.type || 'attivazione', 
       amount,
       discount, 
       finalAmount, 
       insertTransaction.paymentMethod || null, 
-      insertTransaction.status || 'pending', 
+      insertTransaction.status || 'in_sospeso', 
       insertTransaction.paymentLink || null, 
       paymentDate, 
       insertTransaction.notes || null, 
@@ -1062,6 +1077,7 @@ export class DatabaseStorage implements IStorage {
     return { 
       ...insertTransaction, 
       id, 
+      clientId,
       amount, 
       discount, 
       finalAmount, 
@@ -1080,10 +1096,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
-    const rows = await database.query(
-      'SELECT * FROM transactions ORDER BY created_at DESC'
-    );
-    return rows;
+    const rows = await database.query(`
+      SELECT 
+        t.*,
+        c.name as client_name,
+        c.email as client_email,
+        l.activation_key as license_key
+      FROM transactions t
+      LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN licenses l ON t.license_id = l.id
+      ORDER BY t.created_at DESC
+    `);
+    return rows.map(row => ({
+      ...row,
+      client_name: row.client_name,
+      client_email: row.client_email,
+      license_key: row.license_key
+    }));
   }
 
   async getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]> {
