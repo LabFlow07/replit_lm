@@ -344,16 +344,16 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                       <Input
                         type="number"
                         step="0.01"
-                        value={editedLicense.price || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, price: parseFloat(e.target.value) || 0})}
+                        value={editedLicense.price || license.price || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                         className="h-8 text-sm"
                         placeholder="0.00"
                       />
                       <Input
                         type="number"
                         step="0.01"
-                        value={editedLicense.discount || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, discount: parseFloat(e.target.value) || 0})}
+                        value={editedLicense.discount || license.discount || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                         className="h-8 text-sm w-20"
                         placeholder="% sconto"
                         max="100"
@@ -362,10 +362,10 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     </div>
                   ) : (
                     <p className="text-sm text-gray-900 font-semibold">
-                      €{parseFloat(license.price?.toString() || '0').toFixed(2)}
-                      {license.discount && parseFloat(license.discount.toString()) > 0 && (
+                      €{parseFloat((license.price || 0).toString()).toFixed(2)}
+                      {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
                         <span className="text-green-600 ml-1 text-xs">
-                          (-{license.discount}%)
+                          (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
                         </span>
                       )}
                     </p>
