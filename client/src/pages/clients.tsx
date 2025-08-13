@@ -346,7 +346,7 @@ export default function ClientsPage() {
                                       onClick={() => setLocation('/products')}
                                       className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200 transition-colors"
                                     >
-                                      {product}
+                                      {String(product)}
                                     </button>
                                   ))}
                                   {clientProducts.length > 2 && (
@@ -617,7 +617,7 @@ export default function ClientsPage() {
 
         {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Modifica Cliente</DialogTitle>
             </DialogHeader>
