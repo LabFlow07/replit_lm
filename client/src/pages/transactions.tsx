@@ -275,26 +275,7 @@ export default function TransactionsPage() {
     }
   });
 
-  // Clear all transactions mutation
-  const clearAllTransactionsMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('DELETE', '/api/transactions/clear-all');
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Tabella svuotata",
-        description: `Tutte le ${data.deletedCount} transazioni sono state eliminate.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante lo svuotamento della tabella.",
-        variant: "destructive",
-      });
-    }
-  });
+
 
   const handleDeleteTransaction = (id: string) => {
     deleteTransactionMutation.mutate(id);
