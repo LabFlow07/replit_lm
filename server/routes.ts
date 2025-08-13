@@ -972,6 +972,26 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
       // Handle device authorization
       if (authorizeDevice && !currentDevice?.computerKey) {
+        // Check device limit before authorizing new device
+        if (licenzaAssegnata) {
+          const license = await storage.getLicense(licenzaAssegnata);
+          if (license) {
+            // Count currently authorized devices for this license
+            const authorizedDevicesCount = await storage.countAuthorizedDevicesForLicense(licenzaAssegnata);
+            
+            console.log(`License ${licenzaAssegnata} allows ${license.maxDevices} devices, currently authorized: ${authorizedDevicesCount}`);
+            
+            if (authorizedDevicesCount >= license.maxDevices) {
+              return res.status(400).json({ 
+                message: `Limite dispositivi raggiunto. La licenza consente massimo ${license.maxDevices} dispositivo${license.maxDevices > 1 ? 'i' : ''}. Attualmente sono autorizzati ${authorizedDevicesCount} dispositivi. Rimuovi prima l'autorizzazione da un altro dispositivo.`,
+                code: 'DEVICE_LIMIT_EXCEEDED',
+                maxDevices: license.maxDevices,
+                currentDevices: authorizedDevicesCount
+              });
+            }
+          }
+        }
+
         // Generate new computer key if device should be authorized and doesn't have one
         const computerKey = `COMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         deviceUpdates.computerKey = computerKey;

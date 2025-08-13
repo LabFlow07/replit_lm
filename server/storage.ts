@@ -969,6 +969,30 @@ export class DatabaseStorage implements IStorage {
     return license;
   }
 
+  async countAuthorizedDevicesForLicense(licenseId: string): Promise<number> {
+    try {
+      // Count devices with computer keys assigned to this license through software registrations
+      const query = `
+        SELECT COUNT(*) as count
+        FROM Dett_Reg_Azienda d
+        INNER JOIN Testa_Reg_Azienda t ON d.partita_iva = t.partita_iva
+        WHERE t.id_licenza = ? 
+        AND d.computer_key IS NOT NULL 
+        AND d.computer_key != ''
+      `;
+
+      const result = await database.query(query, [licenseId]);
+      const count = result[0]?.count || 0;
+      
+      console.log(`License ${licenseId} has ${count} authorized devices through software registrations`);
+      
+      return count;
+    } catch (error) {
+      console.error('Error counting authorized devices for license:', error);
+      return 0;
+    }
+  }
+
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
     const now = new Date();

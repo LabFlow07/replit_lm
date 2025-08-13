@@ -481,6 +481,16 @@ export default function SoftwareRegistrations() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle device limit exceeded error specifically
+        if (errorData.code === 'DEVICE_LIMIT_EXCEEDED') {
+          const error = new Error(errorData.message);
+          (error as any).code = 'DEVICE_LIMIT_EXCEEDED';
+          (error as any).maxDevices = errorData.maxDevices;
+          (error as any).currentDevices = errorData.currentDevices;
+          throw error;
+        }
+        
         throw new Error(errorData.message || 'Failed to classify registration');
       }
 
@@ -495,8 +505,28 @@ export default function SoftwareRegistrations() {
       setSelectedRegistration(null);
       reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Classification error:', error);
+      
+      // Handle device limit exceeded error with a custom dialog
+      if (error.code === 'DEVICE_LIMIT_EXCEEDED') {
+        const message = `⚠️ Limite Dispositivi Raggiunto\n\n` +
+          `La licenza selezionata consente massimo ${error.maxDevices} dispositivo${error.maxDevices > 1 ? 'i' : ''}.\n` +
+          `Attualmente sono già autorizzati ${error.currentDevices} dispositivi.\n\n` +
+          `Per autorizzare questo nuovo dispositivo, devi prima rimuovere l'autorizzazione da un altro dispositivo esistente.\n\n` +
+          `Vuoi procedere comunque senza autorizzare il dispositivo?`;
+          
+        if (confirm(message)) {
+          // Retry without device authorization
+          const currentFormData = watch();
+          classifyMutation.mutate({
+            ...currentFormData,
+            authorizeDevice: false
+          });
+        }
+        return;
+      }
+      
       alert(`Errore nella classificazione: ${error.message}`);
     }
   });
