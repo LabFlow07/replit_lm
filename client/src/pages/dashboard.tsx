@@ -69,6 +69,7 @@ export default function Dashboard() {
   // Calculate enhanced statistics with safe arrays
   const safeCompanies = Array.isArray(companies) ? companies : [];
   const safeClients = Array.isArray(clients) ? clients : [];
+  const safeProducts = Array.isArray(products) ? products : [];
   const safeLicenses = Array.isArray(licenses) ? licenses : [];
   
   const activeCompanies = safeCompanies.filter(c => c.status === 'active').length;
@@ -197,7 +198,7 @@ export default function Dashboard() {
                 <div className="mt-4 flex items-center text-sm">
                   <i className="fas fa-store text-blue-500 mr-1"></i>
                   <span className="text-blue-600 font-medium">
-                    {(companies as any[]).filter(c => c.type === 'rivenditore').length}
+                    {safeCompanies.filter(c => c.type === 'rivenditore').length}
                   </span>
                   <span className="text-gray-500 ml-1">rivenditori</span>
                 </div>
@@ -218,11 +219,11 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {[
-                    { status: 'attiva', label: 'Attive', color: 'bg-green-500', count: (licenses as any[]).filter(l => l.status === 'attiva').length },
-                    { status: 'demo', label: 'Demo/Trial', color: 'bg-blue-500', count: (licenses as any[]).filter(l => l.status === 'demo').length },
-                    { status: 'scaduta', label: 'Scadute', color: 'bg-red-500', count: (licenses as any[]).filter(l => l.status === 'scaduta').length },
-                    { status: 'in_attesa_convalida', label: 'In Attesa', color: 'bg-yellow-500', count: (licenses as any[]).filter(l => l.status === 'in_attesa_convalida').length },
-                    { status: 'sospesa', label: 'Sospese', color: 'bg-gray-500', count: (licenses as any[]).filter(l => l.status === 'sospesa').length }
+                    { status: 'attiva', label: 'Attive', color: 'bg-green-500', count: safeLicenses.filter(l => l.status === 'attiva').length },
+                    { status: 'demo', label: 'Demo/Trial', color: 'bg-blue-500', count: safeLicenses.filter(l => l.status === 'demo').length },
+                    { status: 'scaduta', label: 'Scadute', color: 'bg-red-500', count: safeLicenses.filter(l => l.status === 'scaduta').length },
+                    { status: 'in_attesa_convalida', label: 'In Attesa', color: 'bg-yellow-500', count: safeLicenses.filter(l => l.status === 'in_attesa_convalida').length },
+                    { status: 'sospesa', label: 'Sospese', color: 'bg-gray-500', count: safeLicenses.filter(l => l.status === 'sospesa').length }
                   ].map(item => (
                     <div key={item.status} className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -257,10 +258,10 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {[
-                    { type: 'rivenditore', label: 'Rivenditori', icon: 'fa-store', count: (companies as any[]).filter(c => c.type === 'rivenditore').length },
-                    { type: 'sottoazienda', label: 'Sotto-aziende', icon: 'fa-sitemap', count: (companies as any[]).filter(c => c.type === 'sottoazienda').length },
-                    { type: 'agente', label: 'Agenti', icon: 'fa-user-tie', count: (companies as any[]).filter(c => c.type === 'agente').length },
-                    { type: 'cliente', label: 'Clienti Corporate', icon: 'fa-user', count: (companies as any[]).filter(c => c.type === 'cliente').length }
+                    { type: 'rivenditore', label: 'Rivenditori', icon: 'fa-store', count: safeCompanies.filter(c => c.type === 'rivenditore').length },
+                    { type: 'sottoazienda', label: 'Sotto-aziende', icon: 'fa-sitemap', count: safeCompanies.filter(c => c.type === 'sottoazienda').length },
+                    { type: 'agente', label: 'Agenti', icon: 'fa-user-tie', count: safeCompanies.filter(c => c.type === 'agente').length },
+                    { type: 'cliente', label: 'Clienti Corporate', icon: 'fa-user', count: safeCompanies.filter(c => c.type === 'cliente').length }
                   ].map(item => (
                     <div key={item.type} className="flex items-center justify-between">
                       <div className="flex items-center">
