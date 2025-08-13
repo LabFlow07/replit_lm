@@ -564,11 +564,11 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="new-client-company">Nome Azienda Cliente</Label>
+                  <Label htmlFor="new-client-company">Persona di riferimento e annotazioni</Label>
                   <Input
                     id="new-client-company"
                     name="company"
-                    placeholder="Nome dell'azienda del cliente"
+                    placeholder="Persona di riferimento e annotazioni"
                   />
                 </div>
 
