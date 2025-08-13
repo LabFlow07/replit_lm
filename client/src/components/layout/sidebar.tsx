@@ -16,7 +16,6 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
     { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
     { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
     { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
-    { id: 'payments', label: 'Pagamenti', icon: 'fas fa-credit-card', route: '/payments' },
   ];
 
   // User management with role-based permissions
