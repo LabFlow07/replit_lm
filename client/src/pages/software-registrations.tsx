@@ -102,7 +102,12 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   // Filtra le aziende in base al termine di ricerca
-  const filteredCompanies = companies.filter((company: Company) => {
+  // Safe arrays
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+
+  const filteredCompanies = safeCompanies.filter((company: Company) => {
     const searchLower = searchTerm.toLowerCase();
     return company.name?.toLowerCase().includes(searchLower) ||
            company.partitaIva?.toLowerCase().includes(searchLower);
@@ -199,7 +204,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   };
 
   // Filtra i clienti SOLO per l'azienda selezionata
-  const filteredClients = clients.filter((client: Client) => {
+  const filteredClients = safeClients.filter((client: Client) => {
     // Filtra RIGOROSAMENTE per azienda - deve corrispondere esattamente
     const clientCompanyId = client.companyId || client.company_id;
     if (!companyId || clientCompanyId !== companyId) {
@@ -446,7 +451,7 @@ export default function SoftwareRegistrations() {
       if (data.clienteAssegnato && data.clienteAssegnato !== 'none' &&
           data.prodottoAssegnato && data.prodottoAssegnato !== 'none') {
 
-        const clientLicenses = licenses.filter((license: License) =>
+        const clientLicenses = safeLicenses.filter((license: License) =>
           license.client?.id === data.clienteAssegnato &&
           (license.product?.id === data.prodottoAssegnato ||
            license.product?.name === data.prodottoAssegnato) &&
@@ -569,7 +574,7 @@ export default function SoftwareRegistrations() {
     reset();
 
     if (registrationToClassify) {
-      const client = clients.find(c => c.id === registrationToClassify.clienteAssegnato);
+      const client = safeClients.find(c => c.id === registrationToClassify.clienteAssegnato);
       const companyId = client?.company_id || client?.companyId || null; // Use null if not found
 
       // Set values using setValue with a slight delay to ensure state updates
@@ -585,7 +590,7 @@ export default function SoftwareRegistrations() {
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
 
-    const client = clients.find(c => c.id === registration.clienteAssegnato);
+    const client = safeClients.find(c => c.id === registration.clienteAssegnato);
     const companyId = client?.company_id || client?.companyId || null; // Use null if not found
 
     console.log('Edit registration:', registration);
@@ -819,7 +824,7 @@ export default function SoftwareRegistrations() {
                               {registration.ragioneSociale || 'Non specificato'}
                             </div>
                             {registration.licenzaAssegnata && (() => {
-                              const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+                              const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
                               if (assignedLicense) {
                                 const safeCompanies = Array.isArray(companies) ? companies : [];
                                 const clientCompany = safeCompanies.find(c => 
@@ -847,7 +852,7 @@ export default function SoftwareRegistrations() {
                               {registration.nomeSoftware || registration.softwareName || 'Non specificato'}
                             </div>
                             {registration.licenzaAssegnata && (() => {
-                              const assignedLicense = licenses.find(l => l.id === registration.licenzaAssegnata);
+                              const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
                               if (assignedLicense && assignedLicense.product) {
                                 return (
                                   <div className="text-xs text-muted-foreground">
@@ -1119,7 +1124,7 @@ export default function SoftwareRegistrations() {
                     }
 
                     // Filter licenses for the selected client from the selected company
-                    const clientLicenses = licenses.filter((license: License) => {
+                    const clientLicenses = safeLicenses.filter((license: License) => {
                       // Check if license belongs to the selected client
                       const licenseClientId = license.client?.id || license.clientId;
                       if (licenseClientId !== selectedClientId) {
@@ -1154,7 +1159,7 @@ export default function SoftwareRegistrations() {
                         <Select value={selectedLicenseId || 'none'} onValueChange={(value) => {
                           setValue('licenzaAssegnata', value === 'none' ? null : value);
                           if (value !== 'none') {
-                            const selectedLicense = licenses.find(l => l.id === value);
+                            const selectedLicense = safeLicenses.find(l => l.id === value);
                             if (selectedLicense && selectedLicense.product) {
                               setValue('prodottoAssegnato', selectedLicense.product.id);
                             }
@@ -1181,7 +1186,7 @@ export default function SoftwareRegistrations() {
                         </Select>
 
                         {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
-                          const selectedLicense = licenses.find((license: License) => license.id === selectedLicenseId);
+                          const selectedLicense = safeLicenses.find((license: License) => license.id === selectedLicenseId);
 
                           if (!selectedLicense || !selectedLicense.product) {
                             return (
@@ -1222,7 +1227,7 @@ export default function SoftwareRegistrations() {
             )}
 
             {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (() => {
-              const selectedLicense = licenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
+              const selectedLicense = safeLicenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
               if (!selectedLicense) return null;
 
               return (

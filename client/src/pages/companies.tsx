@@ -73,6 +73,7 @@ export default function CompaniesPage() {
   const { data: companies = [], isLoading, error } = useQuery({
     queryKey: ['/api/companies'],
     enabled: !!user,
+    select: (data) => Array.isArray(data) ? data : [], // Ensure always array
     queryFn: async () => {
       const token = localStorage.getItem('qlm_token');
       if (!token) {
