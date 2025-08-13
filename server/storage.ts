@@ -84,6 +84,7 @@ export interface IStorage {
   getTransactionsByClient(clientId: string): Promise<Transaction[]>;
   getTransactionsByCompanyAndClient(companyId?: string, clientId?: string): Promise<Transaction[]>;
   deleteTransaction(id: string): Promise<void>;
+  deleteTransactionsByLicense(licenseId: string): Promise<void>;
   clearAllTransactions(): Promise<number>;
 
   // Logging methods
@@ -1224,6 +1225,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTransaction(id: string): Promise<void> {
     await database.query('DELETE FROM transactions WHERE id = ?', [id]);
+  }
+
+  async deleteTransactionsByLicense(licenseId: string): Promise<void> {
+    await database.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
   }
 
   async clearAllTransactions(): Promise<number> {

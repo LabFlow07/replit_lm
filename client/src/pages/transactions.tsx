@@ -70,7 +70,7 @@ export default function TransactionsPage() {
   }, [user, loading, setLocation]);
 
   // Fetch transactions with filters
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
+  const { data: transactions = [], isLoading: transactionsLoading, refetch } = useQuery<Transaction[]>({
     queryKey: ['/api/transactions', selectedCompany, selectedClient, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -260,7 +260,10 @@ export default function TransactionsPage() {
   // Delete transaction mutation
   const deleteTransactionMutation = useMutation({
     mutationFn: async (transactionId: string) => {
-      return apiRequest('DELETE', `/api/transactions/${transactionId}`);
+      // The actual fetch call with token is handled inline in the button's onClick
+      // This mutationFn is just a placeholder if we wanted to reuse the mutation logic elsewhere.
+      // For now, we directly handle the fetch with token in the button's onClick for clarity.
+      return Promise.resolve(); // Placeholder, actual logic is in the button
     },
     onSuccess: () => {
       toast({
@@ -302,7 +305,9 @@ export default function TransactionsPage() {
   });
 
   const handleDeleteTransaction = (id: string) => {
-    deleteTransactionMutation.mutate(id);
+    // The actual delete logic is handled directly in the button's onClick for simplicity and to include the token directly.
+    // If we wanted to use the mutation, we would call deleteTransactionMutation.mutate(id) here.
+    // For now, we stick to the inline fetch with token.
   };
 
   // Helper functions for status badges
@@ -608,7 +613,32 @@ export default function TransactionsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteTransaction(transaction.id)}
+                                  onClick={async () => {
+                                    if (confirm('Sei sicuro di voler eliminare questa transazione?')) {
+                                      try {
+                                        const token = localStorage.getItem('qlm_token');
+                                        const response = await fetch(`/api/transactions/${transaction.id}`, {
+                                          method: 'DELETE',
+                                          headers: {
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json'
+                                          }
+                                        });
+
+                                        if (response.ok) {
+                                          // Ricarica le transazioni
+                                          refetch();
+                                        } else {
+                                          const errorData = await response.json().catch(() => ({}));
+                                          console.error('Errore nell\'eliminazione della transazione:', errorData.message);
+                                          alert(`Errore: ${errorData.message || 'Impossibile eliminare la transazione'}`);
+                                        }
+                                      } catch (error) {
+                                        console.error('Errore nell\'eliminazione della transazione:', error);
+                                        alert('Errore nell\'eliminazione della transazione');
+                                      }
+                                    }
+                                  }}
                                   className="text-red-600 hover:text-red-800"
                                   title="Cancella transazione"
                                   data-testid={`button-delete-${transaction.id}`}

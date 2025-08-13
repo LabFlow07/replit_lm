@@ -1010,9 +1010,9 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           if (license) {
             // Count currently authorized devices for this license
             const authorizedDevicesCount = await storage.countAuthorizedDevicesForLicense(licenzaAssegnata);
-            
+
             console.log(`License ${licenzaAssegnata} allows ${license.maxDevices} devices, currently authorized: ${authorizedDevicesCount}`);
-            
+
             if (authorizedDevicesCount >= license.maxDevices) {
               return res.status(400).json({ 
                 message: `Limite dispositivi raggiunto. La licenza consente massimo ${license.maxDevices} dispositivo${license.maxDevices > 1 ? 'i' : ''}. Attualmente sono autorizzati ${authorizedDevicesCount} dispositivi. Rimuovi prima l'autorizzazione da un altro dispositivo.`,
@@ -1291,7 +1291,7 @@ router.patch("/api/clients/:id", authenticateToken, async (req: Request, res: Re
         return res.status(403).json({ message: "Not authorized to assign client to this company" });
       }
     }
-    
+
     // Update the client
     const updatedClient = await storage.updateClient(clientId, updateData);
     console.log('Client updated successfully:', updatedClient.name);
@@ -1477,6 +1477,10 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
         return res.status(403).json({ message: "Only superadmin can delete licenses" });
       }
     }
+
+    // Delete associated transactions first
+    await storage.deleteTransactionsByLicense(licenseId);
+    console.log(`Deleted transactions for license: ${licenseId}`);
 
     await storage.deleteLicense(licenseId);
     res.json({ message: "License deleted successfully" });
@@ -1784,7 +1788,7 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
     console.log(`Deleting transaction: ${transactionId}`);
     await storage.deleteTransaction(transactionId);
     console.log(`Transaction ${transactionId} deleted successfully`);
-    
+
     res.json({ message: "Transaction deleted successfully" });
   } catch (error) {
     console.error('Delete transaction error:', error);
@@ -1807,7 +1811,7 @@ router.delete("/api/transactions/clear-all", authenticateToken, async (req: Requ
     console.log('Clearing all transactions...');
     const deletedCount = await storage.clearAllTransactions();
     console.log(`Cleared ${deletedCount} transactions`);
-    
+
     res.json({ 
       message: "All transactions cleared successfully", 
       deletedCount 
@@ -2120,8 +2124,6 @@ router.post("/api/software/register", async (req: Request, res: Response) => {
     });
   }
 });
-
-// Transaction and Payment Management Routes
 
 // Get all transactions with filtering
 router.get("/api/transactions", authenticateToken, async (req: Request, res: Response) => {
