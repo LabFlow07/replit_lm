@@ -75,6 +75,10 @@ export interface IStorage {
   getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]>;
   getTransactionsByCompany(companyId: string): Promise<Transaction[]>;
   getTransactionById(id: string): Promise<Transaction | null>;
+  updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction>;
+  updateTransactionStatus(id: string, status: string, paymentDate?: Date): Promise<void>;
+  getTransactionsByClient(clientId: string): Promise<Transaction[]>;
+  getTransactionsByCompanyAndClient(companyId?: string, clientId?: string): Promise<Transaction[]>;
   deleteTransaction(id: string): Promise<void>;
 
   // Logging methods
@@ -997,12 +1001,13 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
     await database.query(`
-      INSERT INTO transactions (id, license_id, type, amount, payment_method, status, notes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, insertTransaction.licenseId, insertTransaction.type, insertTransaction.amount,
-        insertTransaction.paymentMethod, insertTransaction.status, insertTransaction.notes, now]);
+      INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id, insertTransaction.licenseId, insertTransaction.clientId, insertTransaction.type, insertTransaction.amount,
+        insertTransaction.discount || '0.00', insertTransaction.finalAmount, insertTransaction.paymentMethod, 
+        insertTransaction.status, insertTransaction.paymentLink, insertTransaction.paymentDate, insertTransaction.notes, now, now]);
 
-    return { ...insertTransaction, id, createdAt: now };
+    return { ...insertTransaction, id, createdAt: now, updatedAt: now };
   }
 
   async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
@@ -1054,6 +1059,78 @@ export class DatabaseStorage implements IStorage {
   }
 
 
+
+  async updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction> {
+    const updateFields = [];
+    const updateValues = [];
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key !== 'id' && key !== 'createdAt') {
+        updateFields.push(`${key.replace(/([A-Z])/g, '_$1').toLowerCase()} = ?`);
+        updateValues.push(value);
+      }
+    }
+    
+    updateFields.push('updated_at = ?');
+    updateValues.push(new Date());
+    updateValues.push(id);
+
+    await database.query(
+      `UPDATE transactions SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
+    );
+
+    const transaction = await this.getTransactionById(id);
+    if (!transaction) {
+      throw new Error('Transaction not found after update');
+    }
+    return transaction;
+  }
+
+  async updateTransactionStatus(id: string, status: string, paymentDate?: Date): Promise<void> {
+    const updates: any = { status, updatedAt: new Date() };
+    if (paymentDate) {
+      updates.paymentDate = paymentDate;
+    }
+    await this.updateTransaction(id, updates);
+  }
+
+  async getTransactionsByClient(clientId: string): Promise<Transaction[]> {
+    const rows = await database.query(
+      'SELECT * FROM transactions WHERE client_id = ? ORDER BY created_at DESC',
+      [clientId]
+    );
+    return rows;
+  }
+
+  async getTransactionsByCompanyAndClient(companyId?: string, clientId?: string): Promise<Transaction[]> {
+    let query = 'SELECT t.* FROM transactions t';
+    let whereConditions = [];
+    let queryParams = [];
+
+    if (companyId || clientId) {
+      query += ' JOIN licenses l ON t.license_id = l.id JOIN clients c ON l.client_id = c.id';
+      
+      if (companyId) {
+        whereConditions.push('c.company_id = ?');
+        queryParams.push(companyId);
+      }
+      
+      if (clientId) {
+        whereConditions.push('c.id = ?');
+        queryParams.push(clientId);
+      }
+    }
+
+    if (whereConditions.length > 0) {
+      query += ' WHERE ' + whereConditions.join(' AND ');
+    }
+
+    query += ' ORDER BY t.created_at DESC';
+
+    const rows = await database.query(query, queryParams);
+    return rows;
+  }
 
   async deleteTransaction(id: string): Promise<void> {
     await database.query('DELETE FROM transactions WHERE id = ?', [id]);

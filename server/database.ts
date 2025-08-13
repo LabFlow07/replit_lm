@@ -155,14 +155,40 @@ class Database {
         CREATE TABLE IF NOT EXISTS transactions (
           id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
           license_id VARCHAR(36) NOT NULL,
+          client_id VARCHAR(36),
           type VARCHAR(50) NOT NULL,
           amount DECIMAL(10,2) NOT NULL,
+          discount DECIMAL(10,2) DEFAULT 0.00,
+          final_amount DECIMAL(10,2) NOT NULL,
           payment_method VARCHAR(100),
           status VARCHAR(50) DEFAULT 'pending',
+          payment_link TEXT,
+          payment_date TIMESTAMP NULL,
           notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
       `);
+
+      // Add new columns to existing transactions table if they don't exist
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN client_id VARCHAR(36)`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN discount DECIMAL(10,2) DEFAULT 0.00`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN final_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN payment_link TEXT`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN payment_date TIMESTAMP NULL`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
+      } catch (e) { /* Column already exists */ }
 
       await this.query(`
         CREATE TABLE IF NOT EXISTS activation_logs (

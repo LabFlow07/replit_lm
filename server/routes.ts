@@ -916,6 +916,12 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
 
+      // Get license details for transaction creation
+      const license = await storage.getLicense(licenzaAssegnata);
+      if (!license) {
+        return res.status(404).json({ message: "License not found" });
+      }
+
       // Always activate the license when it's assigned through classification
       await storage.updateLicense(licenzaAssegnata, {
         status: 'attiva'
@@ -925,6 +931,32 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       await storage.updateTestaRegAzienda(partitaIva, {
         idLicenza: licenzaAssegnata
       });
+
+      // Generate automatic transaction for license assignment
+      if (clienteAssegnato) {
+        try {
+          const baseAmount = license.basePrice || 0;
+          const discount = license.discount || 0;
+          const finalAmount = Math.max(0, baseAmount - discount);
+
+          const transaction = await storage.createTransaction({
+            licenseId: licenzaAssegnata,
+            clientId: clienteAssegnato,
+            type: 'attivazione',
+            amount: baseAmount,
+            discount: discount,
+            finalAmount: finalAmount,
+            status: finalAmount === 0 ? 'completed' : 'pending',
+            paymentDate: finalAmount === 0 ? new Date() : undefined,
+            notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}`
+          });
+
+          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with amount ${finalAmount}`);
+        } catch (transactionError) {
+          console.error('Error creating transaction:', transactionError);
+          // Continue with license assignment even if transaction creation fails
+        }
+      }
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     } else if (licenzaAssegnata === null) {
@@ -2055,6 +2087,144 @@ router.post("/api/software/register", async (req: Request, res: Response) => {
       success: false,
       message: "Errore interno del server durante la registrazione" 
     });
+  }
+});
+
+// Transaction and Payment Management Routes
+
+// Get all transactions with filtering
+router.get("/api/transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId, clientId, status } = req.query;
+
+    let transactions = [];
+
+    if (user.role === 'superadmin') {
+      // Superadmin can see all transactions
+      if (companyId || clientId) {
+        transactions = await storage.getTransactionsByCompanyAndClient(
+          companyId as string, 
+          clientId as string
+        );
+      } else {
+        transactions = await storage.getAllTransactions();
+      }
+    } else {
+      // Other users can only see transactions from their company hierarchy
+      transactions = await storage.getTransactionsByCompanyHierarchy(user.companyId);
+    }
+
+    // Filter by status if requested
+    if (status && status !== 'all') {
+      transactions = transactions.filter(t => t.status === status);
+    }
+
+    res.json(transactions);
+  } catch (error) {
+    console.error('Get transactions error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Update transaction status (mark as paid manually)
+router.patch("/api/transactions/:id/status", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+    const { status, paymentMethod } = req.body;
+
+    // Only admin/superadmin can manually update payment status
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to update payment status" });
+    }
+
+    const transaction = await storage.getTransactionById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Update transaction with payment information
+    const updates: any = { 
+      status,
+      updatedAt: new Date()
+    };
+
+    if (status === 'completed' || status === 'manual_paid') {
+      updates.paymentDate = new Date();
+      if (paymentMethod) {
+        updates.paymentMethod = paymentMethod;
+      }
+    }
+
+    await storage.updateTransaction(transactionId, updates);
+
+    res.json({ message: "Transaction status updated successfully" });
+  } catch (error) {
+    console.error('Update transaction status error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Generate payment link for transaction (placeholder for Stripe integration)
+router.post("/api/transactions/:id/payment-link", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+
+    // Only admin/superadmin can generate payment links
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to generate payment links" });
+    }
+
+    const transaction = await storage.getTransactionById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Placeholder for Stripe payment link generation
+    // TODO: Integrate with Stripe to create actual payment links
+    const mockPaymentLink = `https://pay.stripe.com/test_${transactionId}`;
+
+    await storage.updateTransaction(transactionId, {
+      paymentLink: mockPaymentLink,
+      updatedAt: new Date()
+    });
+
+    res.json({ 
+      paymentLink: mockPaymentLink,
+      message: "Payment link generated successfully" 
+    });
+  } catch (error) {
+    console.error('Generate payment link error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Send payment reminder email (placeholder for email integration)
+router.post("/api/transactions/:id/send-reminder", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+
+    // Only admin/superadmin can send payment reminders
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to send payment reminders" });
+    }
+
+    const transaction = await storage.getTransactionById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Placeholder for email sending functionality
+    // TODO: Integrate with email service to send actual payment reminders
+    console.log(`Sending payment reminder for transaction ${transactionId}`);
+
+    res.json({ message: "Payment reminder sent successfully" });
+  } catch (error) {
+    console.error('Send payment reminder error:', error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 

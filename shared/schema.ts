@@ -96,12 +96,18 @@ export const licenses = pgTable("licenses", {
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   licenseId: varchar("license_id").notNull(),
+  clientId: varchar("client_id"), // client who needs to pay
   type: text("type").notNull(), // attivazione, rinnovo, posticipato
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
+  finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(), // amount - discount
   paymentMethod: text("payment_method"),
-  status: text("status").default('pending'), // completed, pending, failed
+  status: text("status").default('pending'), // completed, pending, failed, manual_paid
+  paymentLink: text("payment_link"), // Stripe payment link
+  paymentDate: timestamp("payment_date"), // when payment was completed
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Activation logs

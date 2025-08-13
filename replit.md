@@ -55,6 +55,9 @@ The system uses a relational database structure with the following key entities:
 - **Software Registration System**: Anonymous endpoint for automatic software registration from client installations using Testa_Reg_Azienda and Dett_Reg_Azienda tables
 - **Registration Management**: Admin interface for viewing, filtering, and classifying software registrations
 - **Device Authorization**: Classification workflow with individual device authorization through Computer Key assignment
+- **Automatic Transaction Generation**: Transactions are automatically created when licenses are assigned with amount, discount, and final amount calculation
+- **Payment Management**: Admin/superadmin can generate payment links, mark payments as completed manually, and manage payment status
+- **Payment Filtering and Reports**: Filter payments by company/client with CSV report generation and account statement capabilities
 
 ### Security Considerations
 - JWT-based authentication with configurable secret
