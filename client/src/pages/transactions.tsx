@@ -254,9 +254,58 @@ export default function TransactionsPage() {
     });
   };
 
+  // Delete transaction mutation
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      return apiRequest('DELETE', `/api/transactions/${transactionId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transazione eliminata",
+        description: "La transazione è stata eliminata con successo.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione della transazione.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Clear all transactions mutation
+  const clearAllTransactionsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', '/api/transactions/clear-all');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Tabella svuotata",
+        description: "Tutte le transazioni sono state eliminate.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante lo svuotamento della tabella.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleDeleteTransaction = (id: string) => {
-    console.log(`Deleting transaction: ${id}`);
-    // TODO: Implementare cancellazione transazione se necessario
+    if (window.confirm('Sei sicuro di voler eliminare questa transazione?')) {
+      deleteTransactionMutation.mutate(id);
+    }
+  };
+
+  const handleClearAllTransactions = () => {
+    if (window.confirm('Sei sicuro di voler eliminare TUTTE le transazioni? Questa operazione non può essere annullata.')) {
+      clearAllTransactionsMutation.mutate();
+    }
   };
 
   // Filter clients based on selected company
@@ -288,6 +337,17 @@ export default function TransactionsPage() {
                 <i className="fas fa-download mr-2"></i>
                 Genera Report
               </Button>
+              {user.role === 'superadmin' && (
+                <Button 
+                  onClick={handleClearAllTransactions} 
+                  variant="destructive" 
+                  data-testid="button-clear-all-transactions"
+                  disabled={clearAllTransactionsMutation.isPending}
+                >
+                  <i className="fas fa-trash mr-2"></i>
+                  {clearAllTransactionsMutation.isPending ? 'Eliminando...' : 'Svuota Tabella'}
+                </Button>
+              )}
             </div>
           </div>
 

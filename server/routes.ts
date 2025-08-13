@@ -1769,6 +1769,8 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
     const user = (req as any).user;
     const transactionId = req.params.id;
 
+    console.log(`Delete transaction request for ID: ${transactionId} by user: ${user.username} (${user.role})`);
+
     // Only superadmin can delete transactions
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Only superadmin can delete transactions" });
@@ -1779,10 +1781,39 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
       return res.status(404).json({ message: "Transaction not found" });
     }
 
+    console.log(`Deleting transaction: ${transactionId}`);
     await storage.deleteTransaction(transactionId);
+    console.log(`Transaction ${transactionId} deleted successfully`);
+    
     res.json({ message: "Transaction deleted successfully" });
   } catch (error) {
     console.error('Delete transaction error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Clear all transactions endpoint for testing purposes
+router.delete("/api/transactions/clear-all", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    console.log(`Clear all transactions request by user: ${user.username} (${user.role})`);
+
+    // Only superadmin can clear all transactions
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can clear all transactions" });
+    }
+
+    console.log('Clearing all transactions...');
+    const deletedCount = await storage.clearAllTransactions();
+    console.log(`Cleared ${deletedCount} transactions`);
+    
+    res.json({ 
+      message: "All transactions cleared successfully", 
+      deletedCount 
+    });
+  } catch (error) {
+    console.error('Clear all transactions error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
