@@ -62,6 +62,117 @@ interface LicenseWithDetails extends License {
   product: Product;
 }
 
+// Componente per la ricerca clienti con autocompletamento
+interface ClientSearchInputProps {
+  clients: Client[];
+  companies: any[];
+  onClientSelect: (clientId: string) => void;
+}
+
+function ClientSearchInput({ clients, companies, onClientSelect }: ClientSearchInputProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  // Funzione per ottenere il nome dell'azienda
+  const getCompanyName = (companyId: string) => {
+    const company = companies.find((c: any) => c.id === companyId);
+    return company ? company.name : 'N/A';
+  };
+
+  // Filtra i clienti in base al termine di ricerca
+  const filteredClients = clients.filter((client: Client) => {
+    const searchLower = searchTerm.toLowerCase();
+    const clientMatch = client.name?.toLowerCase().includes(searchLower) || 
+                       client.email?.toLowerCase().includes(searchLower);
+    const companyName = getCompanyName(client.companyId || client.company_id || '');
+    const companyMatch = companyName.toLowerCase().includes(searchLower);
+    
+    return clientMatch || companyMatch;
+  }).sort((a, b) => {
+    // Ordina prima per azienda, poi per nome cliente
+    const companyA = getCompanyName(a.companyId || a.company_id || '');
+    const companyB = getCompanyName(b.companyId || b.company_id || '');
+    
+    if (companyA !== companyB) {
+      return companyA.localeCompare(companyB);
+    }
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const handleClientSelect = (client: Client) => {
+    setSelectedClient(client);
+    setSearchTerm(`${client.name} - ${getCompanyName(client.companyId || client.company_id || '')}`);
+    setIsOpen(false);
+    onClientSelect(client.id);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setIsOpen(true);
+    if (!e.target.value) {
+      setSelectedClient(null);
+      onClientSelect('');
+    }
+  };
+
+  return (
+    <div className="relative client-search-container">
+      <Input
+        type="text"
+        value={searchTerm}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        placeholder="Cerca cliente o azienda..."
+        className="w-full"
+        autoComplete="off"
+      />
+      
+      {isOpen && searchTerm && filteredClients.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
+          {filteredClients.slice(0, 20).map((client: Client) => {
+            const companyName = getCompanyName(client.companyId || client.company_id || '');
+            return (
+              <div
+                key={client.id}
+                onClick={() => handleClientSelect(client)}
+                className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="flex flex-col">
+                  <div className="font-medium text-sm text-gray-900">
+                    {client.name}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {client.email}
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium">
+                    <i className="fas fa-building mr-1"></i>
+                    {companyName}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          
+          {filteredClients.length > 20 && (
+            <div className="px-3 py-2 text-xs text-gray-500 text-center bg-gray-50">
+              Visualizzati primi 20 risultati. Affina la ricerca per vedere di più.
+            </div>
+          )}
+        </div>
+      )}
+      
+      {isOpen && searchTerm && filteredClients.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
+          <div className="px-3 py-2 text-sm text-gray-500 text-center">
+            Nessun cliente trovato
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function LicensesPage() {
   const { user, loading } = useAuth();
@@ -78,6 +189,23 @@ export default function LicensesPage() {
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
+
+  // Gestisce il click esterno per chiudere i dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.client-search-container')) {
+        // Chiudi tutti i dropdown aperti
+        const dropdowns = document.querySelectorAll('.client-search-dropdown');
+        dropdowns.forEach(dropdown => {
+          (dropdown as HTMLElement).style.display = 'none';
+        });
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // New client form state
   const [newClient, setNewClient] = useState({
@@ -638,18 +766,15 @@ export default function LicensesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <Label htmlFor="clientId" className="text-sm font-medium">Cliente *</Label>
-                  <Select name="clientId" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client: Client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name} ({client.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ClientSearchInput 
+                    clients={clients} 
+                    companies={companies}
+                    onClientSelect={(clientId) => {
+                      const hiddenInput = document.querySelector('input[name="clientId"]') as HTMLInputElement;
+                      if (hiddenInput) hiddenInput.value = clientId;
+                    }}
+                  />
+                  <input type="hidden" name="clientId" required />
                 </div>
 
                 <div>
