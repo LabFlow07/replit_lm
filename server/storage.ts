@@ -975,10 +975,10 @@ export class DatabaseStorage implements IStorage {
       const query = `
         SELECT COUNT(*) as count
         FROM Dett_Reg_Azienda d
-        INNER JOIN Testa_Reg_Azienda t ON d.partita_iva = t.partita_iva
-        WHERE t.id_licenza = ? 
-        AND d.computer_key IS NOT NULL 
-        AND d.computer_key != ''
+        INNER JOIN Testa_Reg_Azienda t ON d.PartitaIva = t.PartitaIva
+        WHERE t.ID_Licenza = ? 
+        AND d.Computer_Key IS NOT NULL 
+        AND d.Computer_Key != ''
       `;
 
       const result = await database.query(query, [licenseId]);
