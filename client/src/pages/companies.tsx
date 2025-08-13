@@ -658,59 +658,7 @@ export default function CompaniesPage() {
               </div>
             </div>
 
-            {/* Company Details - shown when expanded */}
-            {isExpanded && (clientCount > 0 || agentCount > 0) && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {clientCount > 0 && (
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Clienti ({clientCount})</h4>
-                      <div className="space-y-1">
-                        {(clients as any[]).filter((client: any) => 
-                          (client.company_id || client.companyId) === company.id
-                        ).slice(0, 3).map((client: any) => (
-                          <div key={client.id} className="flex items-center text-sm text-gray-600">
-                            <i className="fas fa-user text-green-500 mr-2"></i>
-                            <span>{client.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {client.status}
-                            </Badge>
-                          </div>
-                        ))}
-                        {clientCount > 3 && (
-                          <div className="text-sm text-gray-500">
-                            ...e altri {clientCount - 3} clienti
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {agentCount > 0 && (
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Agenti ({agentCount})</h4>
-                      <div className="space-y-1">
-                        {(agents as any[])
-                          .filter((agent: any) => agent.companyId === company.id)
-                          .slice(0, 3)
-                          .map((agent: any) => (
-                            <div key={agent.id} className="flex items-center text-sm text-gray-600">
-                              <i className="fas fa-user-tie text-blue-500 mr-2"></i>
-                              <span>{agent.name}</span>
-                              <span className="ml-2 text-xs text-gray-400">({agent.role})</span>
-                            </div>
-                          ))}
-                        {agentCount > 3 && (
-                          <div className="text-sm text-gray-500">
-                            ...e altri {agentCount - 3} agenti
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            
           </CardContent>
         </Card>
 
