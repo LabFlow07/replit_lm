@@ -966,6 +966,14 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       if (company && company.idLicenza) {
         console.log(`Removing license assignment ${company.idLicenza} from registration ${registrationId}`);
 
+        // Delete associated transactions when removing license assignment
+        try {
+          await storage.deleteTransactionsByLicense(company.idLicenza);
+          console.log(`Deleted transactions for license ${company.idLicenza}`);
+        } catch (error) {
+          console.error('Error deleting transactions:', error);
+        }
+
         // Suspend the license instead of deactivating it completely
         await storage.updateLicense(company.idLicenza, {
           status: 'sospesa'
@@ -987,7 +995,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           }
         }
 
-        console.log(`License assignment and all computer keys removed from company ${partitaIva}`);
+        console.log(`License assignment, transactions, and all computer keys removed from company ${partitaIva}`);
       }
     }
 
