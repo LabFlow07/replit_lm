@@ -935,9 +935,19 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       // Generate automatic transaction for license assignment
       if (clienteAssegnato) {
         try {
+          console.log(`Creating transaction for license assignment - License data:`, {
+            id: license.id,
+            activationKey: license.activationKey,
+            basePrice: license.basePrice,
+            discount: license.discount,
+            clientId: clienteAssegnato
+          });
+
           const baseAmount = license.basePrice || 0;
           const discount = license.discount || 0;
           const finalAmount = Math.max(0, baseAmount - discount);
+
+          console.log(`Transaction amounts calculated - baseAmount: ${baseAmount}, discount: ${discount}, finalAmount: ${finalAmount}`);
 
           const transaction = await storage.createTransaction({
             licenseId: licenzaAssegnata,
@@ -951,11 +961,14 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}`
           });
 
-          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with amount ${finalAmount}`);
+          console.log(`Transaction ${transaction.id} created successfully for license ${licenzaAssegnata} with amount ${finalAmount}`);
         } catch (transactionError) {
           console.error('Error creating transaction:', transactionError);
+          console.error('Transaction error details:', transactionError.message);
           // Continue with license assignment even if transaction creation fails
         }
+      } else {
+        console.log('No clienteAssegnato provided - skipping transaction creation');
       }
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
