@@ -1008,9 +1008,22 @@ export class DatabaseStorage implements IStorage {
     await database.query(`
       INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, insertTransaction.licenseId, insertTransaction.clientId, insertTransaction.type, insertTransaction.amount,
-        insertTransaction.discount || '0.00', insertTransaction.finalAmount, insertTransaction.paymentMethod, 
-        insertTransaction.status, insertTransaction.paymentLink, insertTransaction.paymentDate, insertTransaction.notes, now, now]);
+    `, [
+      id, 
+      insertTransaction.licenseId, 
+      insertTransaction.clientId || null, 
+      insertTransaction.type || 'purchase', 
+      insertTransaction.amount || 0,
+      insertTransaction.discount || 0.00, 
+      insertTransaction.finalAmount || insertTransaction.amount || 0, 
+      insertTransaction.paymentMethod || null, 
+      insertTransaction.status || 'pending', 
+      insertTransaction.paymentLink || null, 
+      insertTransaction.paymentDate || null, 
+      insertTransaction.notes || null, 
+      now, 
+      now
+    ]);
 
     return { ...insertTransaction, id, createdAt: now, updatedAt: now };
   }
