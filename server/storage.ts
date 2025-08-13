@@ -569,10 +569,6 @@ export class DatabaseStorage implements IStorage {
       updateFields.push('email = ?');
       updateValues.push(updates.email);
     }
-    if (updates.company_id !== undefined) {
-      updateFields.push('company_id = ?');
-      updateValues.push(updates.company_id);
-    }
     if (updates.status !== undefined) {
       updateFields.push('status = ?');
       updateValues.push(updates.status);
