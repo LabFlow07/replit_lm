@@ -174,7 +174,7 @@ class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
     console.log('getUserByUsername: Looking up user:', username);
 
-    const rows = await this.db.query(`
+    const rows = await database.query(`
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
       LEFT JOIN companies c ON u.company_id = c.id

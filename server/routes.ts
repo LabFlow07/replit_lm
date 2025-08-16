@@ -2206,6 +2206,47 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
   }
 });
 
+// Debug endpoint to check users
+router.get("/api/debug-users", async (req: Request, res: Response) => {
+  try {
+    const users = await database.query('SELECT id, username, role, is_active FROM users');
+    res.json({ count: users.length, users });
+  } catch (error) {
+    console.error('Debug users error:', error);
+    res.status(500).json({ message: "Error fetching users", error: error.message });
+  }
+});
+
+// Initialize admin user if not exists
+router.post("/api/init-admin", async (req: Request, res: Response) => {
+  try {
+    // Delete all admin users first
+    await database.query('DELETE FROM users WHERE username = ? OR role = ?', ['admin', 'superadmin']);
+    
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const adminId = nanoid();
+    
+    // Create fresh admin
+    await database.query(`
+      INSERT INTO users (id, username, password, role, company_id, name, email, is_active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, NOW())
+    `, [adminId, 'admin', hashedPassword, 'superadmin', null, 'Administrator', 'admin@example.com']);
+    
+    // Verify user was created
+    const verification = await database.query('SELECT username, role FROM users WHERE id = ?', [adminId]);
+    console.log('Admin user recreated successfully:', verification[0]);
+    
+    res.json({ 
+      message: "Admin user created successfully", 
+      id: adminId,
+      verification: verification[0]
+    });
+  } catch (error) {
+    console.error('Init admin error:', error);
+    res.status(500).json({ message: "Error creating admin user", error: error.message });
+  }
+});
+
 // Generate payment link for transaction (placeholder for Stripe integration)
 router.post("/api/transactions/:id/payment-link", authenticateToken, async (req: Request, res: Response) => {
   try {
