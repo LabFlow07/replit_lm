@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from "@/components/ui/label";
 import ExpiringLicensesList from "@/components/license/expiring-licenses-list";
 import LicenseModal from "@/components/license/license-modal";
-import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings } from "lucide-react";
+import { Search, Key, Plus, Filter, Calendar, CheckCircle, AlertTriangle, Clock, Settings, Edit2, Eye, X, RefreshCw, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -411,13 +411,63 @@ export default function LicensesPage() {
               <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Gestione Licenze</h1>
               <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
-            <Button 
-              className="bg-primary hover:bg-blue-700 w-full sm:w-auto"
-              onClick={() => setIsNewLicenseModalOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nuova Licenza
-            </Button>
+            <div className="flex gap-2">
+              {user?.role === 'superadmin' && (
+                <>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const token = localStorage.getItem('qlm_token');
+                      try {
+                        const response = await fetch('/api/licenses/update-expiry-dates', {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (response.ok) {
+                          queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                          alert('Date di scadenza aggiornate con successo!');
+                        }
+                      } catch (error) {
+                        console.error('Error updating expiry dates:', error);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Aggiorna Scadenze
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const token = localStorage.getItem('qlm_token');
+                      try {
+                        const response = await fetch('/api/licenses/process-renewals', {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (response.ok) {
+                          queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                          alert('Rinnovi automatici processati con successo!');
+                        }
+                      } catch (error) {
+                        console.error('Error processing renewals:', error);
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Processa Rinnovi
+                  </Button>
+                </>
+              )}
+              <Button 
+                className="bg-primary hover:bg-blue-700"
+                onClick={() => setIsNewLicenseModalOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuova Licenza
+              </Button>
+            </div>
           </div>
 
           {/* Main Content Grid */}
@@ -623,6 +673,35 @@ export default function LicensesPage() {
                                 format(new Date(license.activationDate), 'dd/MM/yyyy', { locale: it }) : 
                                 '-'
                               }
+                            </td>
+
+                            <td className="p-2 border-r text-xs">
+                              {license.expiryDate ? (
+                                <div className={`${
+                                  isExpired(license.expiryDate) ? 'text-red-600 font-bold' :
+                                  isExpiringSoon(license.expiryDate) ? 'text-orange-600 font-medium' :
+                                  'text-green-600'
+                                }`}>
+                                  {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
+                                  <div className="text-xs text-muted-foreground">
+                                    {(() => {
+                                      const expiry = new Date(license.expiryDate);
+                                      const today = new Date();
+                                      const diffTime = expiry.getTime() - today.getTime();
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                      
+                                      if (diffDays < 0) return `Scaduta da ${Math.abs(diffDays)} giorni`;
+                                      if (diffDays === 0) return 'Scade oggi';
+                                      if (diffDays <= 30) return `Scade in ${diffDays} giorni`;
+                                      return `${diffDays} giorni rimanenti`;
+                                    })()}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">
+                                  Permanente
+                                </Badge>
+                              )}
                             </td>
 
                             <td className="p-2 border-r text-xs">

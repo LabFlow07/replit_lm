@@ -80,6 +80,7 @@ export const licenses = pgTable("licenses", {
   productId: varchar("product_id").notNull(),
   activationKey: text("activation_key").notNull().unique(),
   expiryDate: timestamp("expiry_date"),
+  activationDate: timestamp("activation_date"), // when license was activated
   licenseType: text("license_type").notNull(), // permanente, trial, abbonamento_mensile, abbonamento_annuale
   status: text("status").default('pending'), // attiva, scaduta, sospesa, demo, in_attesa_convalida
   maxUsers: integer("max_users").default(1),
@@ -89,6 +90,10 @@ export const licenses = pgTable("licenses", {
   activeModules: json("active_modules"),
   assignedCompany: varchar("assigned_company"),
   assignedAgent: varchar("assigned_agent"),
+  renewalEnabled: boolean("renewal_enabled").default(false), // automatic renewal enabled
+  renewalPeriod: text("renewal_period"), // monthly, yearly - for subscriptions
+  trialDays: integer("trial_days").default(30), // trial period in days
+  notes: text("notes"), // additional notes
   createdAt: timestamp("created_at").defaultNow(),
 });
 

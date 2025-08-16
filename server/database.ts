@@ -147,6 +147,10 @@ class Database {
           active_modules JSON,
           assigned_company VARCHAR(36),
           assigned_agent VARCHAR(36),
+          renewal_enabled BOOLEAN DEFAULT FALSE,
+          renewal_period VARCHAR(20),
+          trial_days INT DEFAULT 30,
+          notes TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -195,6 +199,20 @@ class Database {
       } catch (e) { /* Column already exists */ }
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN modified_by VARCHAR(36)`);
+      } catch (e) { /* Column already exists */ }
+
+      // Add new columns to existing licenses table if they don't exist
+      try {
+        await this.query(`ALTER TABLE licenses ADD COLUMN renewal_enabled BOOLEAN DEFAULT FALSE`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE licenses ADD COLUMN renewal_period VARCHAR(20)`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE licenses ADD COLUMN trial_days INT DEFAULT 30`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE licenses ADD COLUMN notes TEXT`);
       } catch (e) { /* Column already exists */ }
 
       await this.query(`

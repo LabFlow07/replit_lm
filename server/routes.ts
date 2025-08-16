@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { database } from "./database";
 import { storage } from "./storage";
+import { calculateExpiryDate, generateRenewalTransaction, processAutomaticRenewals, updateMissingExpiryDates } from "./license-utils";
 
 const router = express.Router();
 
@@ -916,16 +917,47 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     if (licenzaAssegnata) {
       console.log(`Activating license ${licenzaAssegnata} for registration ${registrationId}`);
 
-      // Get license details for transaction creation
+      // Get license details for transaction creation and activation
       const license = await storage.getLicense(licenzaAssegnata);
       if (!license) {
         return res.status(404).json({ message: "License not found" });
       }
 
       // Always activate the license when it's assigned through classification
-      await storage.updateLicense(licenzaAssegnata, {
-        status: 'attiva'
-      });
+      // Calculate expiry date based on license type
+      const updateData: any = { status: 'attiva' };
+      
+      if (license && !license.expiryDate) {
+        const now = new Date();
+        let expiryDate: Date | null = null;
+        
+        switch (license.licenseType) {
+          case 'trial':
+            expiryDate = new Date(now);
+            expiryDate.setDate(expiryDate.getDate() + (license.trialDays || 30));
+            break;
+          case 'abbonamento_mensile':
+            expiryDate = new Date(now);
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+            break;
+          case 'abbonamento_annuale':
+            expiryDate = new Date(now);
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+            break;
+          case 'permanente':
+            expiryDate = null; // No expiry for permanent licenses
+            break;
+        }
+        
+        if (expiryDate) {
+          updateData.expiryDate = expiryDate;
+          updateData.activationDate = now;
+        }
+        
+        console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);
+      }
+      
+      await storage.updateLicense(licenzaAssegnata, updateData);
 
       // Update company record with license assignment
       await storage.updateTestaRegAzienda(partitaIva, {
@@ -2305,6 +2337,93 @@ router.post("/api/transactions/:id/send-reminder", authenticateToken, async (req
     res.json({ message: "Payment reminder sent successfully" });
   } catch (error) {
     console.error('Send payment reminder error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// License expiry management endpoints
+router.post("/api/licenses/update-expiry-dates", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can trigger expiry date updates
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can update expiry dates" });
+    }
+    
+    await updateMissingExpiryDates(storage as any);
+    res.json({ message: "Expiry dates updated successfully" });
+    
+  } catch (error) {
+    console.error('Update expiry dates error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/api/licenses/process-renewals", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can process renewals
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can process renewals" });
+    }
+    
+    await processAutomaticRenewals(storage as any);
+    res.json({ message: "Automatic renewals processed successfully" });
+    
+  } catch (error) {
+    console.error('Process renewals error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// License assignment with automatic expiry calculation
+router.patch("/api/licenses/:id/assign", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const licenseId = req.params.id;
+    const { status, activateNow = false } = req.body;
+    
+    // Get the existing license
+    const license = await storage.getLicense(licenseId);
+    if (!license) {
+      return res.status(404).json({ message: "License not found" });
+    }
+    
+    // Update license status
+    const updateData: any = { status };
+    
+    // Calculate and set expiry date when activating
+    if (activateNow && status === 'attiva') {
+      const expiryDate = calculateExpiryDate(
+        license.licenseType,
+        license.trialDays || 30,
+        new Date()
+      );
+      
+      if (expiryDate) {
+        updateData.expiryDate = expiryDate;
+        updateData.activationDate = new Date();
+      }
+      
+      // Generate activation transaction if needed
+      if (parseFloat(license.price?.toString() || '0') > 0) {
+        await generateRenewalTransaction(storage as any, license, 'attivazione');
+      }
+    }
+    
+    const updatedLicense = await storage.updateLicense(licenseId, updateData);
+    
+    res.json({
+      ...updatedLicense,
+      message: `License ${activateNow ? 'activated' : 'updated'} successfully${
+        updateData.expiryDate ? ` with expiry date: ${updateData.expiryDate.toLocaleDateString('it-IT')}` : ''
+      }`
+    });
+    
+  } catch (error) {
+    console.error('Assign license error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
