@@ -475,8 +475,11 @@ export function TransactionsPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTransactions.map((transaction) => {
+                        // If final_amount exists, use it; otherwise calculate from amount and discount
+                        const amount = parseFloat(transaction.amount || '0');
+                        const discount = parseFloat(transaction.discount || '0');
                         const finalAmount = parseFloat(transaction.final_amount || transaction.finalAmount || '0') || 
-                                          (parseFloat(transaction.amount || '0') - parseFloat(transaction.discount || '0'));
+                                          Math.max(0, amount - discount);
                         
                         return (
                           <TableRow key={transaction.id}>

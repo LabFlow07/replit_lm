@@ -934,29 +934,31 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
       // Generate automatic transaction for license assignment - ALWAYS create transaction
       try {
-        // Get client info for companyId
-        const client = clienteAssegnato ? await storage.getClientById(clienteAssegnato) : null;
+        // Ottieni informazioni del client per la transazione
+        const client = await storage.getClientById(clienteAssegnato);
         const clientCompanyId = client?.companyId || client?.company_id;
-        
-        const baseAmount = parseFloat(license.price?.toString() || '0');
-        const discount = parseFloat(license.discount?.toString() || '0');
-        const finalAmount = Math.max(0, baseAmount - discount);
+
+        // Crea SEMPRE una transazione (anche per prezzo 0)
+        const transactionAmount = parseFloat(license.price?.toString() || '0');
+        const discountPercent = parseFloat(license.discount?.toString() || '0');
+        const discountAmount = transactionAmount * (discountPercent / 100);
+        const finalAmount = Math.max(0, transactionAmount - discountAmount);
 
         const transaction = await storage.createTransaction({
           licenseId: licenzaAssegnata,
           clientId: clienteAssegnato || null,
           companyId: clientCompanyId || null,
           type: 'attivazione',
-          amount: baseAmount,
-          discount: discount,
+          amount: transactionAmount,
+          discount: discountAmount, // Store the calculated discount amount
           finalAmount: finalAmount,
-          paymentMethod: finalAmount > 0 ? 'manuale' : 'gratis',
-          status: finalAmount === 0 ? 'gratis' : 'in_attesa',
+          paymentMethod: finalAmount === 0 ? 'gratis' : 'manuale', // Default to manual if not specified and amount > 0
+          status: finalAmount === 0 ? 'completed' : 'in_attesa', // Default to completed if free, otherwise in_attesa
           paymentDate: finalAmount === 0 ? new Date() : null,
-          notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}${clienteAssegnato ? ` al cliente` : ''}`
+          notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}${clienteAssegnato ? ` al cliente ${client?.name}` : ''}`
         });
 
-        console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato || 'N/A'}, company ${clientCompanyId || 'N/A'}, amount ${baseAmount}, discount ${discount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
+        console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato || 'N/A'}, company ${clientCompanyId || 'N/A'}, amount ${transactionAmount}, discount ${discountAmount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
       } catch (transactionError) {
         console.error('Error creating transaction:', transactionError);
         // Continue with license assignment even if transaction creation fails
@@ -1759,10 +1761,10 @@ router.post("/api/transactions/:id/payment-link", authenticateToken, async (req:
 
     // Generate a simple payment link (in a real implementation, this would integrate with a payment provider)
     const paymentLink = `https://payment.example.com/pay/${transactionId}?amount=${transaction.final_amount}&currency=EUR`;
-    
+
     // Update transaction with payment link
     const updatedTransaction = await storage.updateTransactionPaymentLink(transactionId, paymentLink);
-    
+
     console.log('Payment link generated for transaction:', transactionId, 'link:', paymentLink);
     res.json({ paymentLink, transaction: updatedTransaction });
   } catch (error) {

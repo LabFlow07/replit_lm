@@ -1046,6 +1046,7 @@ export class DatabaseStorage implements IStorage {
     // Ensure proper numeric calculation
     const amount = parseFloat(transactionData.amount || '0');
     const discount = parseFloat(transactionData.discount || '0');
+    // If finalAmount is provided, use it; otherwise calculate it
     const finalAmount = parseFloat(transactionData.finalAmount || '0') || Math.max(0, amount - discount);
 
     const query = `
