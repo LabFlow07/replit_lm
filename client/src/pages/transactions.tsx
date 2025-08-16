@@ -95,19 +95,28 @@ export function TransactionsPage() {
   // Always call all hooks before any conditional returns
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useQuery({
     queryKey: ['/api/transactions'],
-    queryFn: () => apiRequest('GET', '/api/transactions'),
-    enabled: !!user,
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/transactions');
+      return response.json();
+    },
+    enabled: !!user
   });
 
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
-    queryFn: () => apiRequest('GET', '/api/companies'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/companies');
+      return response.json();
+    },
     enabled: !!user,
   });
 
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
-    queryFn: () => apiRequest('GET', '/api/clients'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/clients');
+      return response.json();
+    },
     enabled: !!user,
   });
 
@@ -174,10 +183,10 @@ export function TransactionsPage() {
     console.error('Error loading transactions:', transactionsError);
   }
 
-  // Debug logging
-  console.log('Transactions data:', transactionsData);
-  console.log('Transactions loading:', transactionsLoading);
-  console.log('Transactions error:', transactionsError);
+  // Debug logging (minimal)
+  if (transactionsError) {
+    console.log('Transactions error:', transactionsError);
+  }
 
   // Helper functions
   const getStatusBadge = (status: string) => {
@@ -443,6 +452,17 @@ export function TransactionsPage() {
                 <div className="flex justify-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
+              ) : transactionsError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500">Errore nel caricamento delle transazioni: {transactionsError.message}</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/transactions'] })}
+                    className="mt-2"
+                  >
+                    Riprova
+                  </Button>
+                </div>
               ) : filteredTransactions.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500">Nessuna transazione trovata con i filtri selezionati</p>
@@ -464,8 +484,8 @@ export function TransactionsPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTransactions.map((transaction) => {
-                        const finalAmount = transaction.final_amount || transaction.finalAmount || 
-                                          ((transaction.amount || 0) - (transaction.discount || 0));
+                        const finalAmount = parseFloat(transaction.final_amount || transaction.finalAmount || '0') || 
+                                          (parseFloat(transaction.amount || '0') - parseFloat(transaction.discount || '0'));
                         
                         return (
                           <TableRow key={transaction.id}>
@@ -476,8 +496,8 @@ export function TransactionsPage() {
                               </div>
                             </TableCell>
                             <TableCell className="capitalize">{transaction.type}</TableCell>
-                            <TableCell>€{transaction.amount?.toFixed(2) || '0.00'}</TableCell>
-                            <TableCell>€{transaction.discount?.toFixed(2) || '0.00'}</TableCell>
+                            <TableCell>€{parseFloat(transaction.amount || '0').toFixed(2)}</TableCell>
+                            <TableCell>€{parseFloat(transaction.discount || '0').toFixed(2)}</TableCell>
                             <TableCell className="font-medium">€{Number(finalAmount).toFixed(2)}</TableCell>
                             <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                             <TableCell>{new Date(transaction.createdAt).toLocaleDateString('it-IT')}</TableCell>
