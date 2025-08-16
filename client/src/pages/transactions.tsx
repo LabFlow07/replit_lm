@@ -599,11 +599,9 @@ export function TransactionsPage() {
                             <Select
                               value={selectedTransaction.status}
                               onValueChange={(value) => {
-                                console.log('Updating payment status to:', value);
-                                updateStatusMutation.mutate({
-                                  id: selectedTransaction.id,
-                                  status: value,
-                                  paymentMethod: selectedTransaction.paymentMethod
+                                setSelectedTransaction({
+                                  ...selectedTransaction,
+                                  status: value
                                 });
                               }}
                             >
@@ -628,10 +626,8 @@ export function TransactionsPage() {
                             <Select
                               value={selectedTransaction.paymentMethod || ''}
                               onValueChange={(value) => {
-                                console.log('Updating payment method to:', value);
-                                updateStatusMutation.mutate({
-                                  id: selectedTransaction.id,
-                                  status: selectedTransaction.status,
+                                setSelectedTransaction({
+                                  ...selectedTransaction,
                                   paymentMethod: value
                                 });
                               }}
@@ -651,6 +647,24 @@ export function TransactionsPage() {
                               </SelectContent>
                             </Select>
                           </div>
+                        </div>
+
+                        {/* Save Button */}
+                        <div className="flex justify-start">
+                          <Button
+                            onClick={() => {
+                              console.log('Saving payment status:', selectedTransaction.status, 'method:', selectedTransaction.paymentMethod);
+                              updateStatusMutation.mutate({
+                                id: selectedTransaction.id,
+                                status: selectedTransaction.status,
+                                paymentMethod: selectedTransaction.paymentMethod
+                              });
+                            }}
+                            disabled={updateStatusMutation.isPending}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            {updateStatusMutation.isPending ? 'Salvando...' : 'Salva Modifiche'}
+                          </Button>
                         </div>
 
                         {/* Quick Actions */}
