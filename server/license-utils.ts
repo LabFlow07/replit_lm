@@ -144,34 +144,48 @@ export async function updateMissingExpiryDates(storage: DatabaseStorage): Promis
     console.log('Aggiornamento date scadenza mancanti...');
     
     const licenses = await storage.getLicenses();
-    const licensesToUpdate = licenses.filter(license => 
-      !license.expiryDate && license.licenseType !== 'permanente'
-    );
+    let updatedCount = 0;
     
-    console.log(`Trovate ${licensesToUpdate.length} licenze senza data di scadenza`);
+    console.log(`Controllando ${licenses.length} licenze...`);
     
-    for (const license of licensesToUpdate) {
+    for (const license of licenses) {
       try {
-        const expiryDate = calculateExpiryDate(
-          license.licenseType,
-          license.trialDays || 30,
-          license.activationDate || license.createdAt || new Date()
-        );
+        const updates: any = {};
+        let needsUpdate = false;
         
-        if (expiryDate) {
-          await storage.updateLicense(license.id, {
-            expiryDate: expiryDate
-          });
+        // Aggiorna data di attivazione se mancante per licenze attive
+        if (!license.activationDate && license.status === 'attiva') {
+          updates.activationDate = new Date();
+          needsUpdate = true;
+          console.log(`Aggiornando data attivazione per licenza ${license.activationKey}`);
+        }
+        
+        // Aggiorna data di scadenza se mancante per licenze non permanenti
+        if (!license.expiryDate && license.licenseType !== 'permanente') {
+          const expiryDate = calculateExpiryDate(
+            license.licenseType,
+            license.trialDays || 30,
+            license.activationDate || license.createdAt || new Date()
+          );
           
-          console.log(`Aggiornata scadenza licenza ${license.activationKey}: ${expiryDate.toLocaleDateString('it-IT')}`);
+          if (expiryDate) {
+            updates.expiryDate = expiryDate;
+            needsUpdate = true;
+            console.log(`Aggiornando scadenza licenza ${license.activationKey}: ${expiryDate.toLocaleDateString('it-IT')}`);
+          }
+        }
+        
+        if (needsUpdate) {
+          await storage.updateLicense(license.id, updates);
+          updatedCount++;
         }
         
       } catch (error) {
-        console.error(`Errore nell'aggiornamento scadenza licenza ${license.id}:`, error);
+        console.error(`Errore nell'aggiornamento licenza ${license.id}:`, error);
       }
     }
     
-    console.log('Aggiornamento date scadenza completato');
+    console.log(`Aggiornamento completato: ${updatedCount} licenze aggiornate`);
     
   } catch (error) {
     console.error('Errore nell\'aggiornamento date scadenza:', error);

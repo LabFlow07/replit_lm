@@ -925,42 +925,44 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
       // Always activate the license when it's assigned through classification
       // Calculate expiry date based on license type
-      const updateData: any = { status: 'attiva' };
+      const activationDate = new Date().toISOString();
+      const updateData: any = { 
+        status: 'attiva',
+        activationDate: activationDate
+      };
       
-      if (license && !license.expiryDate) {
-        const now = new Date();
-        let expiryDate: Date | null = null;
-        
-        switch (license.licenseType) {
-          case 'trial':
-            expiryDate = new Date(now);
-            expiryDate.setDate(expiryDate.getDate() + (license.trialDays || 30));
-            break;
-          case 'abbonamento_mensile':
-            expiryDate = new Date(now);
-            expiryDate.setMonth(expiryDate.getMonth() + 1);
-            break;
-          case 'abbonamento_annuale':
-            expiryDate = new Date(now);
-            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-            break;
-          case 'permanente':
-            expiryDate = null; // No expiry for permanent licenses
-            break;
-          default:
-            // For any other license types, treat as monthly
-            expiryDate = new Date(now);
-            expiryDate.setMonth(expiryDate.getMonth() + 1);
-            break;
-        }
-        
-        if (expiryDate) {
-          updateData.expiryDate = expiryDate;
-          updateData.activationDate = now;
-        }
-        
-        console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);
+      // Calculate expiry date ALWAYS when activating a license, regardless of current status
+      const now = new Date();
+      let expiryDate: Date | null = null;
+      
+      switch (license.licenseType) {
+        case 'trial':
+          expiryDate = new Date(now);
+          expiryDate.setDate(expiryDate.getDate() + (license.trialDays || 30));
+          break;
+        case 'abbonamento_mensile':
+          expiryDate = new Date(now);
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+          break;
+        case 'abbonamento_annuale':
+          expiryDate = new Date(now);
+          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          break;
+        case 'permanente':
+          expiryDate = null; // No expiry for permanent licenses
+          break;
+        default:
+          // For any other license types, treat as monthly
+          expiryDate = new Date(now);
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+          break;
       }
+      
+      if (expiryDate) {
+        updateData.expiryDate = expiryDate.toISOString();
+      }
+      
+      console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);
       
       await storage.updateLicense(licenzaAssegnata, updateData);
 
