@@ -564,6 +564,7 @@ export function TransactionsPage() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Dettagli Transazione</DialogTitle>
+                <p className="text-sm text-muted-foreground">Visualizza e modifica i dettagli della transazione selezionata</p>
               </DialogHeader>
               <div className="space-y-4">
                 {selectedTransaction && (
@@ -624,11 +625,11 @@ export function TransactionsPage() {
                           <div className="space-y-2">
                             <Label htmlFor="payment-method">Metodo Pagamento (Opzionale)</Label>
                             <Select
-                              value={selectedTransaction.paymentMethod || ''}
+                              value={selectedTransaction.paymentMethod || 'nessuno'}
                               onValueChange={(value) => {
                                 setSelectedTransaction({
                                   ...selectedTransaction,
-                                  paymentMethod: value
+                                  paymentMethod: value === 'nessuno' ? null : value
                                 });
                               }}
                             >
@@ -636,7 +637,7 @@ export function TransactionsPage() {
                                 <SelectValue placeholder="Seleziona metodo" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Nessuno</SelectItem>
+                                <SelectItem value="nessuno">Nessuno</SelectItem>
                                 <SelectItem value="contanti">Contanti</SelectItem>
                                 <SelectItem value="bonifico">Bonifico Bancario</SelectItem>
                                 <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
