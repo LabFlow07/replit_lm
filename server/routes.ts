@@ -925,7 +925,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
       // Always activate the license when it's assigned through classification
       // Calculate expiry date based on license type
-      const activationDate = new Date().toISOString();
+      const activationDate = new Date();
       const updateData: any = { 
         status: 'attiva',
         activationDate: activationDate
@@ -959,7 +959,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       }
       
       if (expiryDate) {
-        updateData.expiryDate = expiryDate.toISOString();
+        updateData.expiryDate = expiryDate;
       }
       
       console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);

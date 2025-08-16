@@ -938,6 +938,15 @@ class DatabaseStorage implements IStorage {
       if (field === 'activeModules' && Array.isArray(value)) {
         value = JSON.stringify(value);
       }
+      // Convert Date objects or ISO strings to MySQL datetime format
+      if (field === 'activationDate' || field === 'expiryDate') {
+        if (value instanceof Date) {
+          value = value.toISOString().slice(0, 19).replace('T', ' ');
+        } else if (typeof value === 'string' && value.includes('T')) {
+          // Convert ISO string to MySQL datetime format
+          value = value.slice(0, 19).replace('T', ' ');
+        }
+      }
       return value;
     });
 

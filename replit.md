@@ -18,9 +18,14 @@ Preferred communication style: Simple, everyday language.
 - Added license activation workflow with automatic expiry calculation during software registration classification
 - Created web interface with color-coded expiry display (red=expired, orange=expiring soon, green=ok)
 - Implemented admin control buttons: "Aggiorna Scadenze" and "Processa Rinnovi" for manual system management
-- Successfully tested with pippo2's monthly license - now shows correct 30-day expiry date instead of "Permanente"
+- **RESOLVED: Fixed MySQL datetime format compatibility issue**
+  - Problem: Database rejected ISO datetime strings (2025-08-16T17:45:05.948Z format)
+  - Solution: Added automatic conversion to MySQL format (2025-08-16 17:45:05) in updateLicense function
+  - Both activation dates and expiry dates now correctly stored and displayed
+- Successfully tested with pippo2's monthly license - now shows correct activation and 30-day expiry dates
+- License classification workflow fully functional with automatic date assignment
 - Automatic renewal processing system active and functional (processes licenses expiring within 7 days)
-- Status: Complete expiry management system operational with real-time date calculations
+- Status: Complete expiry management system operational with real-time date calculations and proper database storage
 
 **August 16, 2025 - Database Authentication Fix**
 - Fixed critical authentication issue where login worked but data retrieval failed
