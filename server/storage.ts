@@ -130,16 +130,10 @@ export interface IStorage {
 }
 
 class DatabaseStorage implements IStorage {
-  // Mocking the database query method for demonstration purposes
-  private db = {
-    query: async (sql: string, params: any[] = []): Promise<any[]> => {
-      // In a real scenario, this would interact with a database.
-      // For this example, we'll return empty arrays or mock data if needed.
-      console.log(`Executing query: ${sql}`);
-      console.log(`With params: ${JSON.stringify(params)}`);
-      return [];
-    }
-  };
+  // Use the real database connection
+  private get db() {
+    return database;
+  }
 
   async getUser(id: string): Promise<User | undefined> {
     const rows = await this.db.query(
@@ -1967,6 +1961,8 @@ class DatabaseStorage implements IStorage {
 
   // User management methods
   async getUsers(companyId?: string, includingInactive?: boolean): Promise<UserWithCompany[]> {
+    console.log(`getUsers: companyId=${companyId}, includingInactive=${includingInactive}`);
+    
     let sql = `
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
@@ -1977,7 +1973,9 @@ class DatabaseStorage implements IStorage {
 
     // Only filter out inactive users if not explicitly including them
     if (!includingInactive) {
-      conditions.push('u.is_active = TRUE');
+      // In MySQL, boolean TRUE is stored as 1
+      conditions.push('u.is_active = 1');
+      console.log('getUsers: Adding is_active = 1 condition');
     }
 
     if (companyId) {

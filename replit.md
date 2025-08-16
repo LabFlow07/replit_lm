@@ -10,6 +10,16 @@ The platform features a React-based frontend with a clean dashboard interface an
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**August 16, 2025 - Database Authentication Fix**
+- Fixed critical authentication issue where login worked but data retrieval failed
+- Problem: `DatabaseStorage` class was using mock database instead of real MariaDB connection
+- Solution: Corrected database references to use actual database connection
+- Fixed MySQL boolean compatibility (`is_active = TRUE` → `is_active = 1`)
+- Status: All data retrieval now working correctly (users, companies, clients, products, licenses)
+- Default login credentials confirmed working: admin/admin123
+
 ## System Architecture
 
 ### Frontend Architecture
