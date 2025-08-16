@@ -228,17 +228,7 @@ export function TransactionsPage() {
     document.body.removeChild(link);
   };
 
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('');
-
-  const handleUpdatePaymentStatus = (transaction: Transaction) => {
-    if (!selectedPaymentStatus) return;
-    
-    updateStatusMutation.mutate({
-      id: transaction.id,
-      status: selectedPaymentStatus,
-      paymentMethod: selectedPaymentStatus === 'gratis' ? 'gratis' : selectedPaymentStatus
-    });
-  };
+  // Simplified payment status update - no extra state needed
 
   // Ensure all data is always arrays - handle case where API returns empty object due to auth issues
   const transactions = Array.isArray(transactionsData) ? transactionsData : [];
@@ -543,58 +533,35 @@ export function TransactionsPage() {
             </CardContent>
           </Card>
 
-          {/* Update Payment Status Dialog */}
-          <Dialog open={!!selectedTransaction} onOpenChange={() => {
-            setSelectedTransaction(null);
-            setSelectedPaymentStatus('');
-          }}>
+          {/* Transaction Details Dialog */}
+          <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Aggiorna Stato Pagamento</DialogTitle>
+                <DialogTitle>Dettagli Transazione</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 {selectedTransaction && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                     <div><strong>Cliente:</strong> {selectedTransaction.client_name || 'N/A'}</div>
+                    <div><strong>Email:</strong> {selectedTransaction.client_email || 'N/A'}</div>
                     <div><strong>Azienda:</strong> {selectedTransaction.company_name || 'N/A'}</div>
-                    <div><strong>Importo:</strong> €{Number(selectedTransaction.final_amount || selectedTransaction.finalAmount || 0).toFixed(2)}</div>
+                    <div><strong>Licenza:</strong> {selectedTransaction.license_key || 'N/A'}</div>
+                    <div><strong>Importo:</strong> €{parseFloat(selectedTransaction.amount || '0').toFixed(2)}</div>
+                    <div><strong>Sconto:</strong> €{parseFloat(selectedTransaction.discount || '0').toFixed(2)}</div>
+                    <div><strong>Importo Finale:</strong> €{parseFloat(selectedTransaction.final_amount || '0').toFixed(2)}</div>
                     <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
-                    <div><strong>Stato Attuale:</strong> {getStatusBadge(selectedTransaction.status)}</div>
+                    <div><strong>Metodo Pagamento:</strong> {selectedTransaction.payment_method || 'N/A'}</div>
+                    <div><strong>Stato:</strong> {getStatusBadge(selectedTransaction.status)}</div>
+                    <div><strong>Data Creazione:</strong> {new Date(selectedTransaction.created_at).toLocaleString('it-IT')}</div>
+                    {selectedTransaction.notes && (
+                      <div><strong>Note:</strong> {selectedTransaction.notes}</div>
+                    )}
                   </div>
                 )}
                 
-                <div className="space-y-2">
-                  <Label htmlFor="payment-status">Nuovo Stato Pagamento</Label>
-                  <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
-                    <SelectTrigger data-testid="select-payment-status">
-                      <SelectValue placeholder="Seleziona stato pagamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="contanti">Contanti</SelectItem>
-                      <SelectItem value="bonifico">Bonifico</SelectItem>
-                      <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
-                      <SelectItem value="dall_agente">Dall'Agente</SelectItem>
-                      <SelectItem value="dal_rivenditore">Dal Rivenditore</SelectItem>
-                      <SelectItem value="gratis">Gratis</SelectItem>
-                      <SelectItem value="altro">Altro</SelectItem>
-                      <SelectItem value="in_attesa">In Attesa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => {
-                    setSelectedTransaction(null);
-                    setSelectedPaymentStatus('');
-                  }}>
-                    Annulla
-                  </Button>
-                  <Button
-                    onClick={() => selectedTransaction && handleUpdatePaymentStatus(selectedTransaction)}
-                    disabled={updateStatusMutation.isPending || !selectedPaymentStatus}
-                    data-testid="button-confirm-payment-status"
-                  >
-                    {updateStatusMutation.isPending ? 'Salvando...' : 'Aggiorna Stato'}
+                <div className="flex justify-end">
+                  <Button onClick={() => setSelectedTransaction(null)}>
+                    Chiudi
                   </Button>
                 </div>
               </div>
