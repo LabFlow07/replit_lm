@@ -947,6 +947,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           case 'permanente':
             expiryDate = null; // No expiry for permanent licenses
             break;
+          default:
+            // For any other license types, treat as monthly
+            expiryDate = new Date(now);
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+            break;
         }
         
         if (expiryDate) {
