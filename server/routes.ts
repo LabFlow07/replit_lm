@@ -1733,8 +1733,8 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
       return res.status(403).json({ message: "Not authorized to update transaction status" });
     }
 
-    const transaction = await storage.updateTransactionStatus(transactionId, status, paymentMethod);
-    console.log('Transaction status updated:', transactionId, 'new status:', status);
+    const transaction = await storage.updateTransactionStatus(transactionId, status, paymentMethod, user.id);
+    console.log('Transaction status updated:', transactionId, 'new status:', status, 'by user:', user.username);
     res.json(transaction);
   } catch (error) {
     console.error('Update transaction status error:', error);

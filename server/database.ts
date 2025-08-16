@@ -193,6 +193,9 @@ class Database {
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
       } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN modified_by VARCHAR(36)`);
+      } catch (e) { /* Column already exists */ }
 
       await this.query(`
         CREATE TABLE IF NOT EXISTS activation_logs (

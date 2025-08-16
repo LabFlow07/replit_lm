@@ -107,6 +107,7 @@ export const transactions = pgTable("transactions", {
   paymentLink: text("payment_link"), // Stripe payment link
   paymentDate: timestamp("payment_date"), // when payment was completed
   notes: text("notes"),
+  modifiedBy: varchar("modified_by"), // user who last modified the record
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

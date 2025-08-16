@@ -61,6 +61,7 @@ interface Transaction {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  modifiedBy?: string; // ID dell'utente che ha modificato il record
 }
 
 interface Company {
@@ -480,7 +481,9 @@ export function TransactionsPage() {
                         <TableHead>Sconto</TableHead>
                         <TableHead>Totale</TableHead>
                         <TableHead>Stato</TableHead>
+                        <TableHead>Data Pagamento</TableHead>
                         <TableHead>Data Creazione</TableHead>
+                        <TableHead>Data Modifica</TableHead>
                         <TableHead>Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -516,7 +519,39 @@ export function TransactionsPage() {
                             <TableCell>€{discount.toFixed(2)}</TableCell>
                             <TableCell className="font-medium">€{finalAmount.toFixed(2)}</TableCell>
                             <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                            <TableCell>{new Date(transaction.createdAt).toLocaleDateString('it-IT')}</TableCell>
+                            <TableCell>
+                              {transaction.paymentDate ? (
+                                <div className="text-sm">
+                                  {new Date(transaction.paymentDate).toLocaleDateString('it-IT')}
+                                  <br />
+                                  <span className="text-gray-500">{new Date(transaction.paymentDate).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {transaction.createdAt ? (
+                                <div className="text-sm">
+                                  {new Date(transaction.createdAt).toLocaleDateString('it-IT')}
+                                  <br />
+                                  <span className="text-gray-500">{new Date(transaction.createdAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {transaction.updatedAt ? (
+                                <div className="text-sm">
+                                  {new Date(transaction.updatedAt).toLocaleDateString('it-IT')}
+                                  <br />
+                                  <span className="text-gray-500">{new Date(transaction.updatedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
                                 {(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
@@ -598,9 +633,13 @@ export function TransactionsPage() {
                       <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
                       <div><strong>Metodo Pagamento:</strong> {selectedTransaction.paymentMethod || 'N/A'}</div>
                       <div><strong>Stato Attuale:</strong> {getStatusBadge(selectedTransaction.status)}</div>
-                      <div><strong>Data Creazione:</strong> {new Date(selectedTransaction.createdAt).toLocaleString('it-IT')}</div>
+                      <div><strong>Data Creazione:</strong> {selectedTransaction.createdAt ? new Date(selectedTransaction.createdAt).toLocaleString('it-IT') : 'Non disponibile'}</div>
                       {selectedTransaction.paymentDate && (
                         <div><strong>Data Pagamento:</strong> {new Date(selectedTransaction.paymentDate).toLocaleString('it-IT')}</div>
+                      )}
+                      <div><strong>Ultima Modifica:</strong> {selectedTransaction.updatedAt ? new Date(selectedTransaction.updatedAt).toLocaleString('it-IT') : 'Non disponibile'}</div>
+                      {selectedTransaction.modifiedBy && (
+                        <div><strong>Modificato da:</strong> {selectedTransaction.modifiedBy}</div>
                       )}
                       {selectedTransaction.notes && (
                         <div><strong>Note:</strong> {selectedTransaction.notes}</div>

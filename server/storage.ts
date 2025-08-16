@@ -129,9 +129,20 @@ export interface IStorage {
   deleteDettRegAzienda(id: number): Promise<void>;
 }
 
-export class DatabaseStorage implements IStorage {
+class DatabaseStorage implements IStorage {
+  // Mocking the database query method for demonstration purposes
+  private db = {
+    query: async (sql: string, params: any[] = []): Promise<any[]> => {
+      // In a real scenario, this would interact with a database.
+      // For this example, we'll return empty arrays or mock data if needed.
+      console.log(`Executing query: ${sql}`);
+      console.log(`With params: ${JSON.stringify(params)}`);
+      return [];
+    }
+  };
+
   async getUser(id: string): Promise<User | undefined> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM users WHERE id = ? AND is_active = TRUE',
       [id]
     );
@@ -139,7 +150,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM users WHERE id = ? AND is_active = TRUE',
       [id]
     );
@@ -163,7 +174,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
     console.log('getUserByUsername: Looking up user:', username);
 
-    const rows = await database.query(`
+    const rows = await this.db.query(`
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
       LEFT JOIN companies c ON u.company_id = c.id
@@ -204,7 +215,7 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
 
-    await database.query(`
+    await this.db.query(`
       INSERT INTO users (id, username, password, role, company_id, name, email, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
     `, [id, insertUser.username, hashedPassword, insertUser.role, insertUser.companyId, insertUser.name, insertUser.email]);
@@ -213,18 +224,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCompany(id: string): Promise<Company | undefined> {
-    const rows = await database.query('SELECT * FROM companies WHERE id = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM companies WHERE id = ?', [id]);
     return rows[0];
   }
 
   async getCompaniesByType(type: string): Promise<Company[]> {
-    const rows = await database.query('SELECT * FROM companies WHERE type = ? AND status = "active"', [type]);
+    const rows = await this.db.query('SELECT * FROM companies WHERE type = ? AND status = "active"', [type]);
     return rows;
   }
 
   async getCompanies(): Promise<Company[]> {
     try {
-      const rows = await database.query('SELECT * FROM companies ORDER BY name ASC');
+      const rows = await this.db.query('SELECT * FROM companies ORDER BY name ASC');
       console.log(`getCompanies: Found ${rows.length} companies in database`);
 
       const mapped = rows.map((row: any) => ({
@@ -247,7 +258,7 @@ export class DatabaseStorage implements IStorage {
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO companies (id, name, type, parent_id, status, contact_info)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId || null, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo || {})]);
@@ -296,7 +307,7 @@ export class DatabaseStorage implements IStorage {
     console.log('Executing update query:', `UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?`);
     console.log('With values:', updateValues);
 
-    await database.query(`
+    await this.db.query(`
       UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?
     `, updateValues);
 
@@ -319,7 +330,7 @@ export class DatabaseStorage implements IStorage {
     console.log(`deleteCompany: Starting deletion for company ID: ${id}`);
 
     // First check if company has clients
-    const clients = await database.query('SELECT COUNT(*) as count FROM clients WHERE company_id = ?', [id]);
+    const clients = await this.db.query('SELECT COUNT(*) as count FROM clients WHERE company_id = ?', [id]);
     console.log(`deleteCompany: Found ${clients[0].count} clients for company ${id}`);
 
     if (clients[0].count > 0) {
@@ -327,7 +338,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get the company to find its parent
-    const company = await database.query('SELECT parent_id, name FROM companies WHERE id = ?', [id]);
+    const company = await this.db.query('SELECT parent_id, name FROM companies WHERE id = ?', [id]);
     if (company.length === 0) {
       throw new Error('Company not found');
     }
@@ -337,14 +348,14 @@ export class DatabaseStorage implements IStorage {
     console.log(`deleteCompany: Company ${companyName} has parent_id: ${parentId}`);
 
     // Check for subcompanies
-    const subcompanies = await database.query('SELECT id, name FROM companies WHERE parent_id = ?', [id]);
+    const subcompanies = await this.db.query('SELECT id, name FROM companies WHERE parent_id = ?', [id]);
     console.log(`deleteCompany: Found ${subcompanies.length} subcompanies for company ${id}`);
 
     if (subcompanies.length > 0) {
       console.log(`deleteCompany: Moving ${subcompanies.length} subcompanies to parent ${parentId || 'root'}`);
 
       // Move subcompanies to the parent company (or make them root if no parent)
-      const result = await database.query(
+      const result = await this.db.query(
         'UPDATE companies SET parent_id = ? WHERE parent_id = ?', 
         [parentId, id]
       );
@@ -353,7 +364,7 @@ export class DatabaseStorage implements IStorage {
 
     // Now delete the company
     console.log(`deleteCompany: Deleting company ${companyName} (${id})`);
-    const deleteResult = await database.query('DELETE FROM companies WHERE id = ?', [id]);
+    const deleteResult = await this.db.query('DELETE FROM companies WHERE id = ?', [id]);
     console.log(`deleteCompany: Delete result - affected rows: ${deleteResult.affectedRows || 'unknown'}`);
 
     if (deleteResult.affectedRows === 0) {
@@ -364,7 +375,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProducts(): Promise<Product[]> {
-    const rows = await database.query('SELECT * FROM products ORDER BY name');
+    const rows = await this.db.query('SELECT * FROM products ORDER BY name');
     return rows.map(row => ({
       ...row,
       supportedLicenseTypes: JSON.parse(row.supported_license_types || '[]')
@@ -380,7 +391,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllClients(): Promise<Client[]> {
-    const rows = await database.query('SELECT * FROM clients ORDER BY name');
+    const rows = await this.db.query('SELECT * FROM clients ORDER BY name');
     return rows.map(row => ({
       ...row,
       contactInfo: JSON.parse(row.contact_info || '{}')
@@ -415,7 +426,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProduct(id: string): Promise<Product | undefined> {
-    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM products WHERE id = ?', [id]);
     if (rows[0]) {
       return {
         ...rows[0],
@@ -427,7 +438,7 @@ export class DatabaseStorage implements IStorage {
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO products (id, name, version, description, supported_license_types)
       VALUES (?, ?, ?, ?, ?)
     `, [id, insertProduct.name, insertProduct.version, insertProduct.description, JSON.stringify(insertProduct.supportedLicenseTypes)]);
@@ -436,13 +447,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getModulesByProduct(productId: string): Promise<Module[]> {
-    const rows = await database.query('SELECT * FROM modules WHERE product_id = ?', [productId]);
+    const rows = await this.db.query('SELECT * FROM modules WHERE product_id = ?', [productId]);
     return rows;
   }
 
   async createModule(insertModule: InsertModule): Promise<Module> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO modules (id, product_id, name, description, base_price)
       VALUES (?, ?, ?, ?, ?)
     `, [id, insertModule.productId, insertModule.name, insertModule.description, insertModule.basePrice]);
@@ -459,7 +470,7 @@ export class DatabaseStorage implements IStorage {
       params = [companyId];
     }
 
-    const rows = await database.query(query, params);
+    const rows = await this.db.query(query, params);
     return rows.map(row => ({
       ...row,
       contactInfo: JSON.parse(row.contact_info || '{}')
@@ -467,7 +478,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByCompany(companyId: string): Promise<Client[]> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM clients WHERE company_id = ? ORDER BY created_at DESC',
       [companyId]
     );
@@ -491,7 +502,7 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`getClientsByCompanyHierarchy: Executing query:`, query);
     console.log(`getClientsByCompanyHierarchy: With company IDs:`, companyIds);
-    const rows = await database.query(query, companyIds);
+    const rows = await this.db.query(query, companyIds);
     console.log(`getClientsByCompanyHierarchy: Found ${rows.length} clients`);
 
     const mappedClients = rows.map(row => ({
@@ -511,7 +522,7 @@ export class DatabaseStorage implements IStorage {
 
   async createClient(insertClient: InsertClient): Promise<Client> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
@@ -542,7 +553,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClient(id: string): Promise<Client | undefined> {
-    const rows = await database.query('SELECT * FROM clients WHERE id = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM clients WHERE id = ?', [id]);
     if (rows[0]) {
       return {
         ...rows[0],
@@ -555,18 +566,6 @@ export class DatabaseStorage implements IStorage {
   async getClientById(id: string): Promise<Client | undefined> {
     return this.getClient(id);
   }
-
-  // createClient is defined twice. Keeping the last one.
-  // async createClient(insertClient: InsertClient): Promise<Client> {
-  //   const id = randomUUID();
-  //   await database.query(`
-  //     INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
-  //     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  //   `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
-  //       JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
-
-  //   return { ...insertClient, id, createdAt: new Date() };
-  // }
 
   async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
     const updateFields: string[] = [];
@@ -607,7 +606,7 @@ export class DatabaseStorage implements IStorage {
 
     updateValues.push(id);
 
-    await database.query(`
+    await this.db.query(`
       UPDATE clients 
       SET ${updateFields.join(', ')}
       WHERE id = ?
@@ -622,20 +621,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateClientStatus(id: string, status: string): Promise<void> {
-    await database.query('UPDATE clients SET status = ? WHERE id = ?', [status, id]);
+    await this.db.query('UPDATE clients SET status = ? WHERE id = ?', [status, id]);
   }
 
   async deleteClient(id: string): Promise<void> {
-    await database.query('DELETE FROM clients WHERE id = ?', [id]);
+    await this.db.query('DELETE FROM clients WHERE id = ?', [id]);
   }
 
   async getProductById(id: string): Promise<any> {
-    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM products WHERE id = ?', [id]);
     return rows.length > 0 ? rows[0] : null;
   }
 
   async getLicensesByProduct(productId: string): Promise<any[]> {
-    const rows = await database.query('SELECT * FROM licenses WHERE product_id = ?', [productId]);
+    const rows = await this.db.query('SELECT * FROM licenses WHERE product_id = ?', [productId]);
     return rows;
   }
 
@@ -662,7 +661,7 @@ export class DatabaseStorage implements IStorage {
 
     updateValues.push(id);
 
-    await database.query(`
+    await this.db.query(`
       UPDATE products SET ${updateFields.join(', ')} WHERE id = ?
     `, updateValues);
 
@@ -674,7 +673,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    await database.query('DELETE FROM products WHERE id = ?', [id]);
+    await this.db.query('DELETE FROM products WHERE id = ?', [id]);
   }
 
   async getLicenses(filters?: any): Promise<LicenseWithDetails[]> {
@@ -691,7 +690,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY l.expiry_date ASC, l.created_at DESC
     `;
 
-    const rows = await database.query(query);
+    const rows = await this.db.query(query);
     return rows.map(row => ({
       id: row.id,
       clientId: row.client_id,
@@ -769,7 +768,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY l.created_at DESC
     `;
 
-    const rows = await database.query(query);
+    const rows = await this.db.query(query);
     console.log(`getAllLicenses: Query returned ${rows.length} raw rows`);
     return this.mapLicenseRows(rows);
   }
@@ -802,12 +801,12 @@ export class DatabaseStorage implements IStorage {
     console.log(`getLicensesByCompanyHierarchy: Executing query with placeholders: ${placeholders}`);
     console.log(`getLicensesByCompanyHierarchy: Query parameters: [${companyIds.join(', ')}]`);
 
-    const rows = await database.query(query, companyIds);
+    const rows = await this.db.query(query, companyIds);
     console.log(`getLicensesByCompanyHierarchy: Query returned ${rows.length} raw rows`);
 
     // Debug: let's check what clients exist in these companies
     const debugClientsQuery = `SELECT id, name, email, company_id FROM clients WHERE company_id IN (${placeholders})`;
-    const debugClients = await database.query(debugClientsQuery, companyIds);
+    const debugClients = await this.db.query(debugClientsQuery, companyIds);
     console.log(`getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy companies:`, debugClients.map(c => ({ name: c.name, email: c.email, company_id: c.company_id })));
 
     // Debug: let's check all licenses and their client company_ids
@@ -817,7 +816,7 @@ export class DatabaseStorage implements IStorage {
       JOIN clients c ON l.client_id = c.id
       ORDER BY l.created_at DESC
     `;
-    const debugLicenses = await database.query(debugLicensesQuery);
+    const debugLicenses = await this.db.query(debugLicensesQuery);
     console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses.map(l => ({ 
       id: l.id.substring(0, 8), 
       activation_key: l.activation_key, 
@@ -861,7 +860,7 @@ export class DatabaseStorage implements IStorage {
     const finalStatus = shouldActivate ? 'attiva' : (insertLicense.status || 'in_attesa_convalida');
     const activationDate = shouldActivate ? new Date() : (insertLicense.activationDate || null);
 
-    await database.query(`
+    await this.db.query(`
       INSERT INTO licenses (
         id, client_id, product_id, activation_key, computer_key, activation_date,
         expiry_date, license_type, status, max_users, max_devices, price, discount,
@@ -948,17 +947,17 @@ export class DatabaseStorage implements IStorage {
       return value;
     });
 
-    await database.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
+    await this.db.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
   }
 
   async deleteLicense(licenseId: string): Promise<void> {
     try {
       // First delete any associated transactions
-      await this.database.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
+      await this.db.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
 
       // Then delete the license
       const query = 'DELETE FROM licenses WHERE id = ?';
-      await this.database.query(query, [licenseId]);
+      await this.db.query(query, [licenseId]);
     } catch (error) {
       console.error('Database query error:', error);
       throw error;
@@ -1028,7 +1027,7 @@ export class DatabaseStorage implements IStorage {
         AND d.Computer_Key != ''
       `;
 
-      const result = await database.query(query, [licenseId]);
+      const result = await this.db.query(query, [licenseId]);
       const count = result[0]?.count || 0;
 
       console.log(`License ${licenseId} has ${count} authorized devices through software registrations`);
@@ -1059,7 +1058,7 @@ export class DatabaseStorage implements IStorage {
 
     const now = new Date(); // Use Date object for better handling of date/time
 
-    await database.query(query, [
+    await this.db.query(query, [
       id,
       transactionData.licenseId,
       transactionData.clientId,
@@ -1089,52 +1088,114 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM transactions WHERE license_id = ? ORDER BY created_at DESC',
       [licenseId]
     );
     return rows;
   }
 
-  async getAllTransactions(): Promise<Transaction[]> {
-    const rows = await database.query(`
-      SELECT 
-        t.*,
-        c.name as client_name,
-        c.email as client_email,
-        comp.name as company_name,
-        l.activation_key as license_key
-      FROM transactions t
-      LEFT JOIN clients c ON t.client_id = c.id
-      LEFT JOIN companies comp ON t.company_id = comp.id OR c.company_id = comp.id
-      LEFT JOIN licenses l ON t.license_id = l.id
-      ORDER BY t.created_at DESC
-    `);
-    return rows.map(row => ({
-      ...row,
-      client_name: row.client_name,
-      client_email: row.client_email,
-      company_name: row.company_name,
-      license_key: row.license_key
-    }));
+  async getAllTransactions(): Promise<any[]> {
+    try {
+      const query = `
+        SELECT 
+          t.*,
+          c.name as client_name,
+          c.email as client_email,
+          comp.name as company_name,
+          l.activation_key as license_key,
+          u.username as modified_by_username
+        FROM transactions t
+        LEFT JOIN clients c ON t.client_id = c.id
+        LEFT JOIN companies comp ON t.company_id = comp.id
+        LEFT JOIN licenses l ON t.license_id = l.id
+        LEFT JOIN users u ON t.modified_by = u.id
+        ORDER BY COALESCE(t.created_at, t.updated_at) DESC
+      `;
+
+      const rows = await this.db.query(query);
+      return rows.map((row: any) => ({
+        id: row.id,
+        licenseId: row.license_id,
+        clientId: row.client_id,
+        companyId: row.company_id,
+        client_name: row.client_name,
+        client_email: row.client_email,
+        company_name: row.company_name,
+        license_key: row.license_key,
+        type: row.type,
+        amount: row.amount,
+        discount: row.discount,
+        final_amount: row.final_amount,
+        paymentMethod: row.payment_method,
+        status: row.status,
+        paymentLink: row.payment_link,
+        paymentDate: row.payment_date,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        modifiedBy: row.modified_by_username
+      }));
+    } catch (error) {
+      console.error('Error getting all transactions:', error);
+      throw error;
+    }
   }
 
-  async getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]> {
-    const companyIds = await this.getCompanyHierarchy(companyId);
-    const placeholders = companyIds.map(() => '?').join(',');
+  async getTransactionsByCompanyHierarchy(companyId: string): Promise<any[]> {
+    try {
+      // Get all companies in the hierarchy
+      const companyIds = await this.getCompanyHierarchy(companyId);
+      const placeholders = companyIds.map(() => '?').join(',');
 
-    const rows = await database.query(`
-      SELECT t.* FROM transactions t
-      JOIN licenses l ON t.license_id = l.id
-      JOIN clients c ON l.client_id = c.id
-      WHERE c.company_id IN (${placeholders})
-      ORDER BY t.created_at DESC
-    `, companyIds);
-    return rows;
+      const query = `
+        SELECT 
+          t.*,
+          c.name as client_name,
+          c.email as client_email,
+          comp.name as company_name,
+          l.activation_key as license_key,
+          u.username as modified_by_username
+        FROM transactions t
+        LEFT JOIN clients c ON t.client_id = c.id
+        LEFT JOIN companies comp ON t.company_id = comp.id
+        LEFT JOIN licenses l ON t.license_id = l.id
+        LEFT JOIN users u ON t.modified_by = u.id
+        WHERE t.company_id IN (${placeholders})
+        ORDER BY COALESCE(t.created_at, t.updated_at) DESC
+      `;
+
+      const rows = await this.db.query(query, companyIds);
+      return rows.map((row: any) => ({
+        id: row.id,
+        licenseId: row.license_id,
+        clientId: row.client_id,
+        companyId: row.company_id,
+        client_name: row.client_name,
+        client_email: row.client_email,
+        company_name: row.company_name,
+        license_key: row.license_key,
+        type: row.type,
+        amount: row.amount,
+        discount: row.discount,
+        final_amount: row.final_amount,
+        paymentMethod: row.payment_method,
+        status: row.status,
+        paymentLink: row.payment_link,
+        paymentDate: row.payment_date,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        modifiedBy: row.modified_by_username
+      }));
+    } catch (error) {
+      console.error('Error getting transactions by company hierarchy:', error);
+      throw error;
+    }
   }
 
   async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
-    const rows = await database.query(`
+    const rows = await this.db.query(`
       SELECT t.* FROM transactions t
       JOIN licenses l ON t.license_id = l.id
       JOIN clients c ON l.client_id = c.id
@@ -1145,7 +1206,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTransactionById(id: string): Promise<Transaction | null> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM transactions WHERE id = ?',
       [id]
     );
@@ -1169,7 +1230,7 @@ export class DatabaseStorage implements IStorage {
     updateValues.push(new Date());
     updateValues.push(id);
 
-    await database.query(
+    await this.db.query(
       `UPDATE transactions SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
     );
@@ -1181,26 +1242,46 @@ export class DatabaseStorage implements IStorage {
     return transaction;
   }
 
-  async updateTransactionStatus(id: string, status: string, paymentMethod?: string): Promise<Transaction> {
-    const updates: any = { 
-      status, 
-      updatedAt: new Date() 
-    };
+  async updateTransactionStatus(transactionId: string, status: string, paymentMethod?: string, modifiedBy?: string): Promise<any> {
+    try {
+      const updates: any = {
+        status,
+        updated_at: new Date().toISOString(),
+        modified_by: modifiedBy
+      };
 
-    if (paymentMethod) {
-      updates.paymentMethod = paymentMethod;
+      if (status === 'completed' || status === 'manual_paid' || status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito') {
+        updates.payment_date = new Date().toISOString();
+      }
+
+      if (paymentMethod) {
+        updates.payment_method = paymentMethod;
+      }
+
+      const result = await this.db.query(
+        `UPDATE transactions SET 
+         status = ?, 
+         payment_method = COALESCE(?, payment_method),
+         payment_date = COALESCE(?, payment_date),
+         updated_at = ?,
+         modified_by = ?
+         WHERE id = ?`,
+        [status, paymentMethod || null, updates.payment_date || null, updates.updated_at, modifiedBy || null, transactionId]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error('Transaction not found');
+      }
+
+      return await this.getTransactionById(transactionId);
+    } catch (error) {
+      console.error('Error updating transaction status:', error);
+      throw error;
     }
-
-    // Set payment date for completed transactions
-    if (status === 'completed' || status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito') {
-      updates.paymentDate = new Date();
-    }
-
-    return await this.updateTransaction(id, updates);
   }
 
   async getTransaction(id: string): Promise<Transaction | undefined> {
-    const rows = await database.query(`
+    const rows = await this.db.query(`
       SELECT 
         t.*,
         c.name as client_name,
@@ -1250,7 +1331,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByClient(clientId: string): Promise<Transaction[]> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM transactions WHERE client_id = ? ORDER BY created_at DESC',
       [clientId]
     );
@@ -1282,26 +1363,26 @@ export class DatabaseStorage implements IStorage {
 
     query += ' ORDER BY t.created_at DESC';
 
-    const rows = await database.query(query, queryParams);
+    const rows = await this.db.query(query, queryParams);
     return rows;
   }
 
   async deleteTransaction(id: string): Promise<void> {
-    await database.query('DELETE FROM transactions WHERE id = ?', [id]);
+    await this.db.query('DELETE FROM transactions WHERE id = ?', [id]);
   }
 
   async deleteTransactionsByLicense(licenseId: string): Promise<void> {
-    await database.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
+    await this.db.query('DELETE FROM transactions WHERE license_id = ?', [licenseId]);
   }
 
   async clearAllTransactions(): Promise<number> {
-    const result = await database.query('DELETE FROM transactions');
+    const result = await this.db.query('DELETE FROM transactions');
     return result.affectedRows || 0;
   }
 
   async logActivation(log: InsertActivationLog): Promise<void> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO activation_logs (id, license_id, key_type, device_info, ip_address, user_agent, result, error_message)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, log.licenseId, log.keyType, JSON.stringify(log.deviceInfo), log.ipAddress, log.userAgent, log.result, log.errorMessage]);
@@ -1309,7 +1390,7 @@ export class DatabaseStorage implements IStorage {
 
   async logAccess(log: InsertAccessLog): Promise<void> {
     const id = randomUUID();
-    await database.query(`
+    await this.db.query(`
       INSERT INTO access_logs (id, user_id, action, resource, ip_address, user_agent)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [id, log.userId, log.action, log.resource, log.ipAddress, log.userAgent]);
@@ -1331,7 +1412,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY l.expiry_date ASC
     `
 
-    const rows = await database.query(query);
+    const rows = await this.db.query(query);
     return this.mapLicenseRows(rows);
   }
 
@@ -1355,7 +1436,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY l.expiry_date ASC
     `
 
-    const rows = await database.query(query, companyIds);
+    const rows = await this.db.query(query, companyIds);
     return this.mapLicenseRows(rows);
   }
 
@@ -1415,14 +1496,14 @@ export class DatabaseStorage implements IStorage {
       const companyIds = await this.getCompanyHierarchy(userCompanyId);
       const placeholders = companyIds.map(() => '?').join(',');
 
-      const [activeLicenses] = await database.query(
+      const [activeLicenses] = await this.db.query(
         `SELECT COUNT(*) as count FROM licenses l 
          JOIN clients c ON l.client_id = c.id 
          WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
         companyIds
       );
 
-      const [demoLicenses] = await database.query(
+      const [demoLicenses] = await this.db.query(
         `SELECT COUNT(*) as count FROM licenses l 
          JOIN clients c ON l.client_id = c.id 
          WHERE l.license_type = "trial" AND l.status IN ("attiva", "demo") 
@@ -1430,13 +1511,13 @@ export class DatabaseStorage implements IStorage {
         companyIds
       );
 
-      const [totalClients] = await database.query(
+      const [totalClients] = await this.db.query(
         `SELECT COUNT(*) as count FROM clients 
          WHERE status = "convalidato" AND company_id IN (${placeholders})`,
         companyIds
       );
 
-      const [monthlyRevenue] = await database.query(`
+      const [monthlyRevenue] = await this.db.query(`
         SELECT COALESCE(SUM(t.amount), 0) as total 
         FROM transactions t
         JOIN licenses l ON t.license_id = l.id
@@ -1447,7 +1528,7 @@ export class DatabaseStorage implements IStorage {
         AND c.company_id IN (${placeholders})
       `, companyIds);
 
-      const [todayActivations] = await database.query(`
+      const [todayActivations] = await this.db.query(`
         SELECT COUNT(*) as count 
         FROM licenses l
         JOIN clients c ON l.client_id = c.id
@@ -1468,19 +1549,19 @@ export class DatabaseStorage implements IStorage {
     }
 
     // For superadmin, get all stats
-    const [activeLicenses] = await database.query(
+    const [activeLicenses] = await this.db.query(
       'SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"'
     );
 
-    const [demoLicenses] = await database.query(
+    const [demoLicenses] = await this.db.query(
       'SELECT COUNT(*) as count FROM licenses WHERE license_type = "trial" AND status IN ("attiva", "demo")'
     );
 
-    const [totalClients] = await database.query(
+    const [totalClients] = await this.db.query(
       'SELECT COUNT(*) as count FROM clients WHERE status = "convalidato"'
     );
 
-    const [monthlyRevenue] = await database.query(`
+    const [monthlyRevenue] = await this.db.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM transactions 
       WHERE status = "completed" 
@@ -1488,7 +1569,7 @@ export class DatabaseStorage implements IStorage {
       AND YEAR(created_at) = YEAR(CURRENT_DATE())
     `);
 
-    const [todayActivations] = await database.query(`
+    const [todayActivations] = await this.db.query(`
       SELECT COUNT(*) as count 
       FROM licenses 
       WHERE DATE(activation_date) = CURDATE()
@@ -1553,7 +1634,7 @@ export class DatabaseStorage implements IStorage {
 
     sql += ' ORDER BY sr.prima_registrazione DESC';
 
-    const rows = await database.query(sql, params);
+    const rows = await this.db.query(sql, params);
     return rows.map((row: any) => ({
       ...row,
       totaleVenduto: parseFloat(row.totale_venduto || '0'),
@@ -1583,7 +1664,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSoftwareRegistration(id: string): Promise<SoftwareRegistration | undefined> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM software_registrations WHERE id = ?',
       [id]
     );
@@ -1602,7 +1683,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSoftwareRegistrationByComputerKey(computerKey: string): Promise<SoftwareRegistration | undefined> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       'SELECT * FROM software_registrations WHERE computer_key = ?',
       [computerKey]
     );
@@ -1624,7 +1705,7 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
 
-    await database.query(`
+    await this.db.query(`
       INSERT INTO software_registrations (
         id, nome_software, versione, ragione_sociale, partita_iva,
         totale_ordini, totale_venduto, sistema_operativo, indirizzo_ip,
@@ -1689,7 +1770,7 @@ export class DatabaseStorage implements IStorage {
       params.push(new Date());
       params.push(id);
 
-      await database.query(
+      await this.db.query(
         `UPDATE software_registrations SET ${setClauses.join(', ')} WHERE id = ?`,
         params
       );
@@ -1700,12 +1781,12 @@ export class DatabaseStorage implements IStorage {
 
   // Additional methods for licenses count and company hierarchy
   async getProduct(id: string): Promise<any> {
-    const rows = await database.query('SELECT * FROM products WHERE id = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM products WHERE id = ?', [id]);
     return rows.length > 0 ? rows[0] : null;
   }
 
   async getActiveLicensesCount(): Promise<number> {
-    const rows = await database.query('SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"');
+    const rows = await this.db.query('SELECT COUNT(*) as count FROM licenses WHERE status = "attiva"');
     return rows[0]?.count || 0;
   }
 
@@ -1713,7 +1794,7 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
-    const rows = await database.query(
+    const rows = await this.db.query(
       `SELECT COUNT(*) as count FROM licenses l 
        JOIN clients c ON l.client_id = c.id 
        WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
@@ -1723,7 +1804,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveLicensesCountByCompany(companyId: string): Promise<number> {
-    const rows = await database.query(
+    const rows = await this.db.query(
       `SELECT COUNT(*) as count FROM licenses l 
        JOIN clients c ON l.client_id = c.id 
        WHERE l.status = "attiva" AND c.company_id = ?`,
@@ -1738,7 +1819,7 @@ export class DatabaseStorage implements IStorage {
     const hierarchy = [companyId];
 
     // Get all companies to build the tree
-    const allCompanies = await database.query('SELECT id, name, parent_id FROM companies WHERE status = "active"');
+    const allCompanies = await this.db.query('SELECT id, name, parent_id FROM companies WHERE status = "active"');
     console.log('getCompanyHierarchy: All companies:', allCompanies);
 
     // Helper function to find all children of a company
@@ -1777,7 +1858,7 @@ export class DatabaseStorage implements IStorage {
     console.log('getLicensesByCompanyHierarchy: Executing query with placeholders:', placeholders);
     console.log('getLicensesByCompanyHierarchy: Query parameters:', companyIds);
 
-    const rows = await database.query(`
+    const rows = await this.db.query(`
       SELECT 
         l.*,
         c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
@@ -1794,10 +1875,10 @@ export class DatabaseStorage implements IStorage {
     console.log(`getLicensesByCompanyHierarchy: Query returned ${rows.length} raw rows`);
 
     // Debug information about company filtering
-    const allClients = await database.query('SELECT name, email, company_id FROM clients WHERE company_id IN (' + placeholders + ')', companyIds);
+    const allClients = await this.db.query('SELECT name, email, company_id FROM clients WHERE company_id IN (' + placeholders + ')', companyIds);
     console.log('getLicensesByCompanyHierarchy: DEBUG - Clients in hierarchy companies:', allClients);
 
-    const allLicensesWithClients = await database.query(`
+    const allLicensesWithClients = await this.db.query(`
       SELECT l.id, l.activation_key, c.name as client_name, c.company_id as client_company_id
       FROM licenses l
       LEFT JOIN clients c ON l.client_id = c.id
@@ -1862,7 +1943,7 @@ export class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
-    const rows = await database.query(
+    const rows = await this.db.query(
       `SELECT * FROM clients WHERE company_id IN (${placeholders}) ORDER BY name`,
       companyIds
     );
@@ -1921,7 +2002,7 @@ export class DatabaseStorage implements IStorage {
 
     sql += ' ORDER BY u.created_at DESC';
 
-    const rows = await database.query(sql, params);
+    const rows = await this.db.query(sql, params);
 
     return rows.map((user: any) => ({
       id: user.id,
@@ -1981,7 +2062,7 @@ export class DatabaseStorage implements IStorage {
 
     params.push(id);
 
-    await database.query(
+    await this.db.query(
       `UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`,
       params
     );
@@ -1995,12 +2076,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await database.query('DELETE FROM users WHERE id = ?', [id]);
+    await this.db.query('DELETE FROM users WHERE id = ?', [id]);
   }
 
   // Device Registration methods - New tables implementation
   async getTestaRegAzienda(): Promise<TestaRegAzienda[]> {
-    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
+    const rows = await this.db.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
 
     return rows.map((row: any) => ({
       partitaIva: row.PartitaIva,
@@ -2019,7 +2100,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTestaRegAziendaByPartitaIva(partitaIva: string): Promise<TestaRegAzienda | undefined> {
-    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
+    const rows = await this.db.query('SELECT * FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
 
     if (rows.length === 0) return undefined;
 
@@ -2043,7 +2124,7 @@ export class DatabaseStorage implements IStorage {
   async createTestaRegAzienda(registration: InsertTestaRegAzienda): Promise<TestaRegAzienda> {
     const now = new Date();
 
-    await database.query(`
+    await this.db.query(`
       INSERT INTO Testa_Reg_Azienda (
         PartitaIva, NomeAzienda, Prodotto, Versione, Modulo,
         Utenti, TotDispositivi, ID_Licenza, TotOrdini, TotVendite,
@@ -2068,7 +2149,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTestaRegAzienda(): Promise<TestaRegAzienda[]> {
-    const rows = await database.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
+    const rows = await this.db.query('SELECT * FROM Testa_Reg_Azienda ORDER BY created_at DESC');
 
     return rows.map((row: any) => ({
       partitaIva: row.PartitaIva,
@@ -2114,7 +2195,7 @@ export class DatabaseStorage implements IStorage {
       params.push(new Date());
       params.push(partitaIva);
 
-      await database.query(
+      await this.db.query(
         `UPDATE Testa_Reg_Azienda SET ${setClauses.join(', ')} WHERE PartitaIva = ?`,
         params
       );
@@ -2124,7 +2205,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDettRegAziendaByPartitaIva(partitaIva: string): Promise<DettRegAzienda[]> {
-    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE PartitaIva = ? ORDER BY created_at DESC', [partitaIva]);
+    const rows = await this.db.query('SELECT * FROM Dett_Reg_Azienda WHERE PartitaIva = ? ORDER BY created_at DESC', [partitaIva]);
 
     return rows.map((row: any) => ({
       id: row.ID,
@@ -2153,7 +2234,7 @@ export class DatabaseStorage implements IStorage {
 
     query += ' ORDER BY created_at DESC';
 
-    const rows = await database.query(query, params);
+    const rows = await this.db.query(query, params);
 
     return rows.map((row: any) => ({
       id: row.ID,
@@ -2172,7 +2253,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDettRegAziendaById(id: number): Promise<DettRegAzienda | undefined> {
-    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
+    const rows = await this.db.query('SELECT * FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
 
     if (rows.length === 0) return undefined;
 
@@ -2203,7 +2284,7 @@ export class DatabaseStorage implements IStorage {
       dataUltimoAccesso = dataUltimoAccesso.replace('T', ' ').replace('Z', '').split('.')[0];
     }
 
-    const result = await database.query(`
+    const result = await this.db.query(`
       INSERT INTO Dett_Reg_Azienda (
         PartitaIva, UID_Dispositivo, SistemaOperativo, Note,
         DataAttivazione, DataUltimoAccesso, Ordini, Vendite, Computer_Key,
@@ -2255,7 +2336,7 @@ export class DatabaseStorage implements IStorage {
       params.push(new Date());
       params.push(id);
 
-      await database.query(
+      await this.db.query(
         `UPDATE Dett_Reg_Azienda SET ${setClauses.join(', ')} WHERE ID = ?`,
         params
       );
@@ -2265,7 +2346,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDettRegAziendaByComputerKey(computerKey: string): Promise<DettRegAzienda | undefined> {
-    const rows = await database.query('SELECT * FROM Dett_Reg_Azienda WHERE Computer_Key = ?', [computerKey]);
+    const rows = await this.db.query('SELECT * FROM Dett_Reg_Azienda WHERE Computer_Key = ?', [computerKey]);
 
     if (rows.length === 0) return undefined;
 
@@ -2287,11 +2368,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTestaRegAzienda(partitaIva: string): Promise<void> {
-    await database.query('DELETE FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
+    await this.db.query('DELETE FROM Testa_Reg_Azienda WHERE PartitaIva = ?', [partitaIva]);
   }
 
   async deleteDettRegAzienda(id: number): Promise<void> {
-    await database.query('DELETE FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
+    await this.db.query('DELETE FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
   }
 }
 
