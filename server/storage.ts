@@ -14,6 +14,7 @@ import type {
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
+import { nanoid } from "nanoid";
 
 export interface IStorage {
   // User methods
@@ -888,12 +889,12 @@ export class DatabaseStorage implements IStorage {
     // Ottieni informazioni del client per la transazione
     const client = await this.getClientById(insertLicense.clientId);
     const clientCompanyId = client?.companyId || client?.company_id;
-    
+
     // Crea SEMPRE una transazione (anche per prezzo 0)
     const transactionAmount = parseFloat(insertLicense.price?.toString() || '0');
     const discountAmount = parseFloat(insertLicense.discount?.toString() || '0');
     const finalAmount = transactionAmount - discountAmount;
-    
+
     await this.createTransaction({
       licenseId: id,
       clientId: insertLicense.clientId,
@@ -1039,64 +1040,48 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const id = randomUUID();
-    const now = new Date();
+  async createTransaction(transactionData: InsertTransaction): Promise<Transaction> {
+    const id = nanoid();
 
-    // Calculate final amount properly
-    const amount = insertTransaction.amount || 0;
-    const discount = insertTransaction.discount || 0;
-    const finalAmount = insertTransaction.finalAmount !== undefined ? insertTransaction.finalAmount : Math.max(0, amount - discount);
+    // Ensure proper numeric calculation
+    const amount = parseFloat(transactionData.amount || '0');
+    const discount = parseFloat(transactionData.discount || '0');
+    const finalAmount = parseFloat(transactionData.finalAmount || '0') || Math.max(0, amount - discount);
 
-    // Set payment date for completed transactions
-    const paymentDate = insertTransaction.paymentDate || 
-      (insertTransaction.status === 'completed' ? now : null);
+    const query = `
+      INSERT INTO transactions (
+        id, license_id, client_id, company_id, type, amount, discount, 
+        final_amount, payment_method, status, payment_link, payment_date, 
+        notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-    // Ensure clientId is properly set
-    let clientId = insertTransaction.clientId;
+    const now = new Date(); // Use Date object for better handling of date/time
 
-    // If no clientId provided but we have a licenseId, get client from license
-    if (!clientId && insertTransaction.licenseId) {
-      try {
-        const license = await this.getLicense(insertTransaction.licenseId);
-        if (license && license.client) {
-          clientId = license.client.id;
-        }
-      } catch (error) {
-        console.error('Error fetching license for client ID:', error);
-      }
-    }
-
-    await database.query(`
-      INSERT INTO transactions (id, license_id, client_id, company_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id, 
-      insertTransaction.licenseId, 
-      clientId, 
-      insertTransaction.companyId || null,
-      insertTransaction.type || 'attivazione', 
+    await database.query(query, [
+      id,
+      transactionData.licenseId,
+      transactionData.clientId,
+      transactionData.companyId || null,
+      transactionData.type || 'attivazione',
       amount,
-      discount, 
-      finalAmount, 
-      insertTransaction.paymentMethod || null, 
-      insertTransaction.status || 'in_attesa', 
-      insertTransaction.paymentLink || null, 
-      paymentDate, 
-      insertTransaction.notes || null, 
-      now, 
+      discount,
+      finalAmount,
+      transactionData.paymentMethod || null,
+      transactionData.status || 'in_attesa',
+      transactionData.paymentLink || null,
+      transactionData.paymentDate || null,
+      transactionData.notes || null,
+      now,
       now
     ]);
 
     return { 
-      ...insertTransaction, 
       id, 
-      clientId,
-      companyId: insertTransaction.companyId || null,
+      ...transactionData, 
       amount, 
       discount, 
       finalAmount, 
-      paymentDate, 
       createdAt: now, 
       updatedAt: now 
     };
@@ -1200,16 +1185,16 @@ export class DatabaseStorage implements IStorage {
       status, 
       updatedAt: new Date() 
     };
-    
+
     if (paymentMethod) {
       updates.paymentMethod = paymentMethod;
     }
-    
+
     // Set payment date for completed transactions
     if (status === 'completed' || status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito') {
       updates.paymentDate = new Date();
     }
-    
+
     return await this.updateTransaction(id, updates);
   }
 
