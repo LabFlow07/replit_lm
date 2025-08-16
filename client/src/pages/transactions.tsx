@@ -561,31 +561,154 @@ export function TransactionsPage() {
 
           {/* Transaction Details Dialog */}
           <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Dettagli Transazione</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 {selectedTransaction && (
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                    <div><strong>Cliente:</strong> {selectedTransaction.client_name || 'N/A'}</div>
-                    <div><strong>Email:</strong> {selectedTransaction.client_email || 'N/A'}</div>
-                    <div><strong>Azienda:</strong> {selectedTransaction.company_name || 'N/A'}</div>
-                    <div><strong>Licenza:</strong> {selectedTransaction.license_key || 'N/A'}</div>
-                    <div><strong>Importo:</strong> €{parseFloat(selectedTransaction.amount || '0').toFixed(2)}</div>
-                    <div><strong>Sconto:</strong> €{parseFloat(selectedTransaction.discount || '0').toFixed(2)}</div>
-                    <div><strong>Importo Finale:</strong> €{parseFloat(selectedTransaction.final_amount || selectedTransaction.finalAmount || '0').toFixed(2)}</div>
-                    <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
-                    <div><strong>Metodo Pagamento:</strong> {selectedTransaction.payment_method || 'N/A'}</div>
-                    <div><strong>Stato:</strong> {getStatusBadge(selectedTransaction.status)}</div>
-                    <div><strong>Data Creazione:</strong> {new Date(selectedTransaction.created_at).toLocaleString('it-IT')}</div>
-                    {selectedTransaction.notes && (
-                      <div><strong>Note:</strong> {selectedTransaction.notes}</div>
+                  <>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                      <div><strong>Cliente:</strong> {selectedTransaction.client_name || 'N/A'}</div>
+                      <div><strong>Email:</strong> {selectedTransaction.client_email || 'N/A'}</div>
+                      <div><strong>Azienda:</strong> {selectedTransaction.company_name || 'N/A'}</div>
+                      <div><strong>Licenza:</strong> {selectedTransaction.license_key || 'N/A'}</div>
+                      <div><strong>Importo:</strong> €{parseFloat(selectedTransaction.amount || '0').toFixed(2)}</div>
+                      <div><strong>Sconto:</strong> €{parseFloat(selectedTransaction.discount || '0').toFixed(2)}</div>
+                      <div><strong>Importo Finale:</strong> €{parseFloat(selectedTransaction.final_amount || selectedTransaction.finalAmount || '0').toFixed(2)}</div>
+                      <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
+                      <div><strong>Metodo Pagamento:</strong> {selectedTransaction.paymentMethod || 'N/A'}</div>
+                      <div><strong>Stato Attuale:</strong> {getStatusBadge(selectedTransaction.status)}</div>
+                      <div><strong>Data Creazione:</strong> {new Date(selectedTransaction.createdAt).toLocaleString('it-IT')}</div>
+                      {selectedTransaction.paymentDate && (
+                        <div><strong>Data Pagamento:</strong> {new Date(selectedTransaction.paymentDate).toLocaleString('it-IT')}</div>
+                      )}
+                      {selectedTransaction.notes && (
+                        <div><strong>Note:</strong> {selectedTransaction.notes}</div>
+                      )}
+                    </div>
+
+                    {/* Payment Status Update Section */}
+                    {(user?.role === 'superadmin' || user?.role === 'admin') && (
+                      <div className="border-t pt-4 space-y-4">
+                        <h4 className="font-medium text-lg">Aggiorna Stato Pagamento</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="payment-status">Nuovo Stato</Label>
+                            <Select
+                              value={selectedTransaction.status}
+                              onValueChange={(value) => {
+                                console.log('Updating payment status to:', value);
+                                updateStatusMutation.mutate({
+                                  id: selectedTransaction.id,
+                                  status: value,
+                                  paymentMethod: selectedTransaction.paymentMethod
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="in_attesa">In Attesa</SelectItem>
+                                <SelectItem value="contanti">Contanti</SelectItem>
+                                <SelectItem value="bonifico">Bonifico</SelectItem>
+                                <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
+                                <SelectItem value="dall_agente">Dall'Agente</SelectItem>
+                                <SelectItem value="dal_rivenditore">Dal Rivenditore</SelectItem>
+                                <SelectItem value="gratis">Gratis</SelectItem>
+                                <SelectItem value="altro">Altro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="payment-method">Metodo Pagamento (Opzionale)</Label>
+                            <Select
+                              value={selectedTransaction.paymentMethod || ''}
+                              onValueChange={(value) => {
+                                console.log('Updating payment method to:', value);
+                                updateStatusMutation.mutate({
+                                  id: selectedTransaction.id,
+                                  status: selectedTransaction.status,
+                                  paymentMethod: value
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona metodo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Nessuno</SelectItem>
+                                <SelectItem value="contanti">Contanti</SelectItem>
+                                <SelectItem value="bonifico">Bonifico Bancario</SelectItem>
+                                <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
+                                <SelectItem value="paypal">PayPal</SelectItem>
+                                <SelectItem value="stripe">Stripe</SelectItem>
+                                <SelectItem value="assegno">Assegno</SelectItem>
+                                <SelectItem value="altro">Altro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({
+                              id: selectedTransaction.id,
+                              status: 'contanti',
+                              paymentMethod: 'contanti'
+                            })}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            Segna come Pagato (Contanti)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({
+                              id: selectedTransaction.id,
+                              status: 'bonifico',
+                              paymentMethod: 'bonifico'
+                            })}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            Segna come Pagato (Bonifico)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({
+                              id: selectedTransaction.id,
+                              status: 'gratis',
+                              paymentMethod: 'gratis'
+                            })}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            Segna come Gratis
+                          </Button>
+                        </div>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
                 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  {selectedTransaction && !selectedTransaction.paymentLink && 
+                   (selectedTransaction.status === 'in_attesa' || selectedTransaction.status === 'pending') && 
+                   (user?.role === 'superadmin' || user?.role === 'admin') && (
+                    <Button
+                      variant="outline"
+                      onClick={() => generateLinkMutation.mutate(selectedTransaction.id)}
+                      disabled={generateLinkMutation.isPending}
+                    >
+                      Genera Link Pagamento
+                    </Button>
+                  )}
                   <Button onClick={() => setSelectedTransaction(null)}>
                     Chiudi
                   </Button>
