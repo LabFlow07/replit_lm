@@ -932,30 +932,34 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         idLicenza: licenzaAssegnata
       });
 
-      // Generate automatic transaction for license assignment
-      if (clienteAssegnato) {
-        try {
-          const baseAmount = license.price || 100; // Use license price
-          const discount = license.discount || 0;
-          const finalAmount = Math.max(0, baseAmount - discount);
+      // Generate automatic transaction for license assignment - ALWAYS create transaction
+      try {
+        // Get client info for companyId
+        const client = clienteAssegnato ? await storage.getClientById(clienteAssegnato) : null;
+        const clientCompanyId = client?.companyId || client?.company_id;
+        
+        const baseAmount = parseFloat(license.price?.toString() || '0');
+        const discount = parseFloat(license.discount?.toString() || '0');
+        const finalAmount = Math.max(0, baseAmount - discount);
 
-          const transaction = await storage.createTransaction({
-            licenseId: licenzaAssegnata,
-            clientId: clienteAssegnato,
-            type: 'attivazione',
-            amount: baseAmount,
-            discount: discount,
-            finalAmount: finalAmount,
-            status: finalAmount === 0 ? 'completed' : 'in_sospeso',
-            paymentDate: finalAmount === 0 ? new Date() : null,
-            notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey} al cliente`
-          });
+        const transaction = await storage.createTransaction({
+          licenseId: licenzaAssegnata,
+          clientId: clienteAssegnato || null,
+          companyId: clientCompanyId || null,
+          type: 'attivazione',
+          amount: baseAmount.toString(),
+          discount: discount.toString(),
+          finalAmount: finalAmount.toString(),
+          paymentMethod: baseAmount > 0 ? 'manuale' : 'gratis',
+          status: finalAmount === 0 ? 'gratis' : 'in_attesa',
+          paymentDate: finalAmount === 0 ? new Date() : null,
+          notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}${clienteAssegnato ? ` al cliente` : ''}`
+        });
 
-          console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato}, amount ${baseAmount}, discount ${discount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
-        } catch (transactionError) {
-          console.error('Error creating transaction:', transactionError);
-          // Continue with license assignment even if transaction creation fails
-        }
+        console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato || 'N/A'}, company ${clientCompanyId || 'N/A'}, amount ${baseAmount}, discount ${discount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
+      } catch (transactionError) {
+        console.error('Error creating transaction:', transactionError);
+        // Continue with license assignment even if transaction creation fails
       }
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);

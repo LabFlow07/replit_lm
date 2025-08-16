@@ -44,8 +44,10 @@ interface Transaction {
   id: string;
   licenseId: string;
   clientId: string;
+  companyId?: string;
   client_name?: string;
   client_email?: string;
+  company_name?: string;
   license_key?: string;
   type: string;
   amount: number;
@@ -53,7 +55,7 @@ interface Transaction {
   finalAmount?: number;
   final_amount?: number;
   paymentMethod?: string;
-  status: string;
+  status: string; // in_attesa, contanti, bonifico, carta_di_credito, dall_agente, dal_rivenditore, gratis, altro
   paymentLink?: string;
   paymentDate?: string;
   notes?: string;
@@ -175,6 +177,15 @@ export function TransactionsPage() {
   // Helper functions
   const getStatusBadge = (status: string) => {
     const statusConfig: { [key: string]: { variant: any; label: string } } = {
+      'in_attesa': { variant: 'secondary', label: 'In Attesa' },
+      'contanti': { variant: 'default', label: 'Contanti' },
+      'bonifico': { variant: 'default', label: 'Bonifico' },
+      'carta_di_credito': { variant: 'default', label: 'Carta di Credito' },
+      'dall_agente': { variant: 'default', label: 'Dall\'Agente' },
+      'dal_rivenditore': { variant: 'default', label: 'Dal Rivenditore' },
+      'gratis': { variant: 'outline', label: 'Gratis' },
+      'altro': { variant: 'secondary', label: 'Altro' },
+      // Legacy statuses for backwards compatibility
       'completed': { variant: 'default', label: 'Completato' },
       'manual_paid': { variant: 'default', label: 'Pagato Manualmente' },
       'pending': { variant: 'secondary', label: 'In Attesa' },
@@ -203,11 +214,15 @@ export function TransactionsPage() {
     document.body.removeChild(link);
   };
 
-  const handleMarkAsPaid = (transaction: Transaction) => {
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('');
+
+  const handleUpdatePaymentStatus = (transaction: Transaction) => {
+    if (!selectedPaymentStatus) return;
+    
     updateStatusMutation.mutate({
       id: transaction.id,
-      status: 'manual_paid',
-      paymentMethod: 'manual'
+      status: selectedPaymentStatus,
+      paymentMethod: selectedPaymentStatus === 'gratis' ? 'gratis' : selectedPaymentStatus
     });
   };
 
@@ -379,10 +394,14 @@ export function TransactionsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tutti gli stati</SelectItem>
-                      <SelectItem value="completed">Completato</SelectItem>
-                      <SelectItem value="manual_paid">Pagato Manualmente</SelectItem>
-                      <SelectItem value="pending">In Attesa</SelectItem>
-                      <SelectItem value="in_sospeso">In Sospeso</SelectItem>
+                      <SelectItem value="in_attesa">In Attesa</SelectItem>
+                      <SelectItem value="contanti">Contanti</SelectItem>
+                      <SelectItem value="bonifico">Bonifico</SelectItem>
+                      <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
+                      <SelectItem value="dall_agente">Dall'Agente</SelectItem>
+                      <SelectItem value="dal_rivenditore">Dal Rivenditore</SelectItem>
+                      <SelectItem value="gratis">Gratis</SelectItem>
+                      <SelectItem value="altro">Altro</SelectItem>
                       <SelectItem value="failed">Fallito</SelectItem>
                     </SelectContent>
                   </Select>
@@ -459,13 +478,13 @@ export function TransactionsPage() {
                             <TableCell>{new Date(transaction.createdAt).toLocaleDateString('it-IT')}</TableCell>
                             <TableCell>
                               <div className="flex gap-2">
-                                {(transaction.status === 'pending' || transaction.status === 'in_sospeso') && (
+                                {(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
                                   <Button
                                     size="sm"
                                     onClick={() => setSelectedTransaction(transaction)}
-                                    data-testid={`button-mark-paid-${transaction.id}`}
+                                    data-testid={`button-update-status-${transaction.id}`}
                                   >
-                                    Marca come Pagato
+                                    Aggiorna Stato
                                   </Button>
                                 )}
                                 {transaction.paymentLink && (
@@ -499,33 +518,58 @@ export function TransactionsPage() {
             </CardContent>
           </Card>
 
-          {/* Mark as Paid Dialog */}
-          <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
+          {/* Update Payment Status Dialog */}
+          <Dialog open={!!selectedTransaction} onOpenChange={() => {
+            setSelectedTransaction(null);
+            setSelectedPaymentStatus('');
+          }}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Conferma Pagamento</DialogTitle>
+                <DialogTitle>Aggiorna Stato Pagamento</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <p>
-                  Sei sicuro di voler contrassegnare questa transazione come pagata manualmente?
-                </p>
                 {selectedTransaction && (
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div><strong>Cliente:</strong> {selectedTransaction.client_name || 'N/A'}</div>
+                    <div><strong>Azienda:</strong> {selectedTransaction.company_name || 'N/A'}</div>
                     <div><strong>Importo:</strong> €{Number(selectedTransaction.final_amount || selectedTransaction.finalAmount || 0).toFixed(2)}</div>
                     <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
+                    <div><strong>Stato Attuale:</strong> {getStatusBadge(selectedTransaction.status)}</div>
                   </div>
                 )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment-status">Nuovo Stato Pagamento</Label>
+                  <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
+                    <SelectTrigger data-testid="select-payment-status">
+                      <SelectValue placeholder="Seleziona stato pagamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contanti">Contanti</SelectItem>
+                      <SelectItem value="bonifico">Bonifico</SelectItem>
+                      <SelectItem value="carta_di_credito">Carta di Credito</SelectItem>
+                      <SelectItem value="dall_agente">Dall'Agente</SelectItem>
+                      <SelectItem value="dal_rivenditore">Dal Rivenditore</SelectItem>
+                      <SelectItem value="gratis">Gratis</SelectItem>
+                      <SelectItem value="altro">Altro</SelectItem>
+                      <SelectItem value="in_attesa">In Attesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setSelectedTransaction(null)}>
+                  <Button variant="outline" onClick={() => {
+                    setSelectedTransaction(null);
+                    setSelectedPaymentStatus('');
+                  }}>
                     Annulla
                   </Button>
                   <Button
-                    onClick={() => selectedTransaction && handleMarkAsPaid(selectedTransaction)}
-                    disabled={updateStatusMutation.isPending}
-                    data-testid="button-confirm-mark-paid"
+                    onClick={() => selectedTransaction && handleUpdatePaymentStatus(selectedTransaction)}
+                    disabled={updateStatusMutation.isPending || !selectedPaymentStatus}
+                    data-testid="button-confirm-payment-status"
                   >
-                    {updateStatusMutation.isPending ? 'Salvando...' : 'Conferma Pagamento'}
+                    {updateStatusMutation.isPending ? 'Salvando...' : 'Aggiorna Stato'}
                   </Button>
                 </div>
               </div>

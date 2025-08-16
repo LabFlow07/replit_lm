@@ -97,12 +97,13 @@ export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   licenseId: varchar("license_id").notNull(),
   clientId: varchar("client_id"), // client who needs to pay
+  companyId: varchar("company_id"), // company of the client
   type: text("type").notNull(), // attivazione, rinnovo, posticipato
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
   finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(), // amount - discount
-  paymentMethod: text("payment_method"),
-  status: text("status").default('pending'), // completed, pending, failed, manual_paid
+  paymentMethod: text("payment_method"), // contanti, bonifico, carta_di_credito, stripe, paypal
+  status: text("status").default('in_attesa'), // in_attesa, contanti, bonifico, carta_di_credito, dall_agente, dal_rivenditore, gratis, altro
   paymentLink: text("payment_link"), // Stripe payment link
   paymentDate: timestamp("payment_date"), // when payment was completed
   notes: text("notes"),

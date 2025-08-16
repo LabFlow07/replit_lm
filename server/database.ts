@@ -156,12 +156,13 @@ class Database {
           id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
           license_id VARCHAR(36) NOT NULL,
           client_id VARCHAR(36),
+          company_id VARCHAR(36),
           type VARCHAR(50) NOT NULL,
           amount DECIMAL(10,2) NOT NULL,
           discount DECIMAL(10,2) DEFAULT 0.00,
           final_amount DECIMAL(10,2) NOT NULL,
           payment_method VARCHAR(100),
-          status VARCHAR(50) DEFAULT 'pending',
+          status VARCHAR(50) DEFAULT 'in_attesa',
           payment_link TEXT,
           payment_date TIMESTAMP NULL,
           notes TEXT,
@@ -173,6 +174,9 @@ class Database {
       // Add new columns to existing transactions table if they don't exist
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN client_id VARCHAR(36)`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN company_id VARCHAR(36)`);
       } catch (e) { /* Column already exists */ }
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN discount DECIMAL(10,2) DEFAULT 0.00`);

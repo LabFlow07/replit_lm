@@ -885,27 +885,29 @@ export class DatabaseStorage implements IStorage {
       insertLicense.assignedAgent || null
     ]);
 
-    // Crea automaticamente una transazione se il prezzo è specificato
-    if (insertLicense.price && insertLicense.price > 0) {
-      await this.createTransaction({
-        licenseId: id,
-        type: 'purchase',
-        amount: insertLicense.price,
-        paymentMethod: 'manual',
-        status: 'completed',
-        notes: 'Transazione creata automaticamente durante la creazione della licenza'
-      });
-    } else {
-      // Crea una transazione gratuita anche per prezzo 0
-      await this.createTransaction({
-        licenseId: id,
-        type: 'free',
-        amount: 0,
-        paymentMethod: 'free',
-        status: 'completed',
-        notes: 'Licenza gratuita'
-      });
-    }
+    // Ottieni informazioni del client per la transazione
+    const client = await this.getClientById(insertLicense.clientId);
+    const clientCompanyId = client?.companyId || client?.company_id;
+    
+    // Crea SEMPRE una transazione (anche per prezzo 0)
+    const transactionAmount = parseFloat(insertLicense.price?.toString() || '0');
+    const discountAmount = parseFloat(insertLicense.discount?.toString() || '0');
+    const finalAmount = transactionAmount - discountAmount;
+    
+    await this.createTransaction({
+      licenseId: id,
+      clientId: insertLicense.clientId,
+      companyId: clientCompanyId || null,
+      type: transactionAmount > 0 ? 'attivazione' : 'gratuita',
+      amount: transactionAmount.toString(),
+      discount: discountAmount.toString(),
+      finalAmount: finalAmount.toString(),
+      paymentMethod: transactionAmount > 0 ? 'manuale' : 'gratis',
+      status: transactionAmount > 0 ? 'in_attesa' : 'gratis',
+      notes: transactionAmount > 0 
+        ? 'Transazione creata automaticamente - in attesa pagamento' 
+        : 'Licenza gratuita - nessun pagamento richiesto'
+    });
 
     return { 
       ...insertLicense, 
@@ -1066,18 +1068,19 @@ export class DatabaseStorage implements IStorage {
     }
 
     await database.query(`
-      INSERT INTO transactions (id, license_id, client_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transactions (id, license_id, client_id, company_id, type, amount, discount, final_amount, payment_method, status, payment_link, payment_date, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, 
       insertTransaction.licenseId, 
       clientId, 
+      insertTransaction.companyId || null,
       insertTransaction.type || 'attivazione', 
       amount,
       discount, 
       finalAmount, 
       insertTransaction.paymentMethod || null, 
-      insertTransaction.status || 'in_sospeso', 
+      insertTransaction.status || 'in_attesa', 
       insertTransaction.paymentLink || null, 
       paymentDate, 
       insertTransaction.notes || null, 
@@ -1089,6 +1092,7 @@ export class DatabaseStorage implements IStorage {
       ...insertTransaction, 
       id, 
       clientId,
+      companyId: insertTransaction.companyId || null,
       amount, 
       discount, 
       finalAmount, 
@@ -1112,9 +1116,11 @@ export class DatabaseStorage implements IStorage {
         t.*,
         c.name as client_name,
         c.email as client_email,
+        comp.name as company_name,
         l.activation_key as license_key
       FROM transactions t
       LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN companies comp ON t.company_id = comp.id OR c.company_id = comp.id
       LEFT JOIN licenses l ON t.license_id = l.id
       ORDER BY t.created_at DESC
     `);
@@ -1122,6 +1128,7 @@ export class DatabaseStorage implements IStorage {
       ...row,
       client_name: row.client_name,
       client_email: row.client_email,
+      company_name: row.company_name,
       license_key: row.license_key
     }));
   }
