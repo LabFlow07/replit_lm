@@ -12,6 +12,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**August 16, 2025 - Complete License Expiry Management System**
+- Implemented comprehensive license expiry calculation and management system
+- Fixed automatic expiry date calculation for all license types (trial, monthly, yearly subscriptions)
+- Added license activation workflow with automatic expiry calculation during software registration classification
+- Created web interface with color-coded expiry display (red=expired, orange=expiring soon, green=ok)
+- Implemented admin control buttons: "Aggiorna Scadenze" and "Processa Rinnovi" for manual system management
+- Successfully tested with pippo2's monthly license - now shows correct 30-day expiry date instead of "Permanente"
+- Automatic renewal processing system active and functional (processes licenses expiring within 7 days)
+- Status: Complete expiry management system operational with real-time date calculations
+
 **August 16, 2025 - Database Authentication Fix**
 - Fixed critical authentication issue where login worked but data retrieval failed
 - Problem: `DatabaseStorage` class was using mock database instead of real MariaDB connection
