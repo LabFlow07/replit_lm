@@ -1719,6 +1719,58 @@ router.post("/api/transactions", authenticateToken, async (req: Request, res: Re
   }
 });
 
+// Update transaction status
+router.patch("/api/transactions/:id/status", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+    const { status, paymentMethod } = req.body;
+
+    // Check permissions
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to update transaction status" });
+    }
+
+    const transaction = await storage.updateTransactionStatus(transactionId, status, paymentMethod);
+    console.log('Transaction status updated:', transactionId, 'new status:', status);
+    res.json(transaction);
+  } catch (error) {
+    console.error('Update transaction status error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Generate payment link
+router.post("/api/transactions/:id/payment-link", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+
+    // Check permissions
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to generate payment links" });
+    }
+
+    // Get transaction details
+    const transaction = await storage.getTransaction(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Generate a simple payment link (in a real implementation, this would integrate with a payment provider)
+    const paymentLink = `https://payment.example.com/pay/${transactionId}?amount=${transaction.final_amount}&currency=EUR`;
+    
+    // Update transaction with payment link
+    const updatedTransaction = await storage.updateTransactionPaymentLink(transactionId, paymentLink);
+    
+    console.log('Payment link generated for transaction:', transactionId, 'link:', paymentLink);
+    res.json({ paymentLink, transaction: updatedTransaction });
+  } catch (error) {
+    console.error('Generate payment link error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.put("/api/products/:id", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

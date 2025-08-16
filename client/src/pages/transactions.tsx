@@ -463,6 +463,7 @@ export function TransactionsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Cliente</TableHead>
+                        <TableHead>Azienda</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Importo</TableHead>
                         <TableHead>Sconto</TableHead>
@@ -484,6 +485,9 @@ export function TransactionsPage() {
                                 <div className="font-medium">{transaction.client_name || 'N/A'}</div>
                                 <div className="text-sm text-gray-500">{transaction.client_email || ''}</div>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-sm">{transaction.company_name || 'N/A'}</div>
                             </TableCell>
                             <TableCell className="capitalize">{transaction.type}</TableCell>
                             <TableCell>€{parseFloat(transaction.amount || '0').toFixed(2)}</TableCell>

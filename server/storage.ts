@@ -1195,12 +1195,72 @@ export class DatabaseStorage implements IStorage {
     return transaction;
   }
 
-  async updateTransactionStatus(id: string, status: string, paymentDate?: Date): Promise<void> {
-    const updates: any = { status, updatedAt: new Date() };
-    if (paymentDate) {
-      updates.paymentDate = paymentDate;
+  async updateTransactionStatus(id: string, status: string, paymentMethod?: string): Promise<Transaction> {
+    const updates: any = { 
+      status, 
+      updatedAt: new Date() 
+    };
+    
+    if (paymentMethod) {
+      updates.paymentMethod = paymentMethod;
     }
-    await this.updateTransaction(id, updates);
+    
+    // Set payment date for completed transactions
+    if (status === 'completed' || status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito') {
+      updates.paymentDate = new Date();
+    }
+    
+    return await this.updateTransaction(id, updates);
+  }
+
+  async getTransaction(id: string): Promise<Transaction | undefined> {
+    const rows = await database.query(`
+      SELECT 
+        t.*,
+        c.name as client_name,
+        c.email as client_email,
+        comp.name as company_name,
+        l.activation_key as license_key
+      FROM transactions t
+      LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN companies comp ON t.company_id = comp.id OR c.company_id = comp.id
+      LEFT JOIN licenses l ON t.license_id = l.id
+      WHERE t.id = ?
+    `, [id]);
+
+    if (rows.length === 0) return undefined;
+
+    const row = rows[0];
+    return {
+      id: row.id,
+      licenseId: row.license_id,
+      clientId: row.client_id,
+      companyId: row.company_id,
+      client_name: row.client_name,
+      client_email: row.client_email,
+      company_name: row.company_name,
+      license_key: row.license_key,
+      type: row.type,
+      amount: parseFloat(row.amount || '0'),
+      discount: parseFloat(row.discount || '0'),
+      finalAmount: parseFloat(row.final_amount || '0'),
+      final_amount: parseFloat(row.final_amount || '0'),
+      paymentMethod: row.payment_method,
+      status: row.status,
+      paymentLink: row.payment_link,
+      paymentDate: row.payment_date,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      created_at: row.created_at
+    };
+  }
+
+  async updateTransactionPaymentLink(id: string, paymentLink: string): Promise<Transaction> {
+    return await this.updateTransaction(id, { 
+      paymentLink, 
+      updatedAt: new Date() 
+    });
   }
 
   async getTransactionsByClient(clientId: string): Promise<Transaction[]> {
