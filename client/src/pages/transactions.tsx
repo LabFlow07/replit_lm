@@ -235,6 +235,16 @@ export function TransactionsPage() {
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeCompanies = Array.isArray(companies) ? companies : [];
 
+  // Debug logging for transactions
+  console.log('Transactions received from API:', transactions.length, transactions.map(t => ({
+    id: t.id,
+    amount: t.amount,
+    discount: t.discount,
+    final_amount: t.final_amount,
+    client_name: t.client_name,
+    license_key: t.license_key
+  })));
+
   // Filter transactions based on selections
   const filteredTransactions = transactions.filter((transaction: Transaction) => {
     // First, check if transaction has required data to avoid rendering errors
@@ -267,10 +277,11 @@ export function TransactionsPage() {
     ? safeClients
     : safeClients.filter((c: Client) => c.companyId === selectedCompany || c.company_id === selectedCompany);
 
-  // Calculate statistics
+  // Calculate statistics - always use final_amount from database
   const totalRevenue = filteredTransactions.reduce((sum: number, t: Transaction) => {
-    const finalAmount = t.final_amount || t.finalAmount || ((t.amount || 0) - (t.discount || 0));
-    return sum + Number(finalAmount);
+    const finalAmount = parseFloat(t.final_amount || t.finalAmount || '0');
+    console.log('Revenue calculation for transaction:', t.id, 'final_amount:', finalAmount);
+    return sum + finalAmount;
   }, 0);
   
   const completedTransactions = filteredTransactions.filter((t: Transaction) => 
@@ -475,11 +486,19 @@ export function TransactionsPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTransactions.map((transaction) => {
-                        // If final_amount exists, use it; otherwise calculate from amount and discount
+                        // Always use final_amount from database, never recalculate
                         const amount = parseFloat(transaction.amount || '0');
                         const discount = parseFloat(transaction.discount || '0');
-                        const finalAmount = parseFloat(transaction.final_amount || transaction.finalAmount || '0') || 
-                                          Math.max(0, amount - discount);
+                        const finalAmount = parseFloat(transaction.final_amount || transaction.finalAmount || '0');
+                        
+                        console.log('Transaction display:', {
+                          id: transaction.id,
+                          amount: amount,
+                          discount: discount,
+                          finalAmount: finalAmount,
+                          status: transaction.status,
+                          client: transaction.client_name
+                        });
                         
                         return (
                           <TableRow key={transaction.id}>
@@ -493,9 +512,9 @@ export function TransactionsPage() {
                               <div className="font-medium text-sm">{transaction.company_name || 'N/A'}</div>
                             </TableCell>
                             <TableCell className="capitalize">{transaction.type}</TableCell>
-                            <TableCell>€{parseFloat(transaction.amount || '0').toFixed(2)}</TableCell>
-                            <TableCell>€{parseFloat(transaction.discount || '0').toFixed(2)}</TableCell>
-                            <TableCell className="font-medium">€{Number(finalAmount).toFixed(2)}</TableCell>
+                            <TableCell>€{amount.toFixed(2)}</TableCell>
+                            <TableCell>€{discount.toFixed(2)}</TableCell>
+                            <TableCell className="font-medium">€{finalAmount.toFixed(2)}</TableCell>
                             <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                             <TableCell>{new Date(transaction.createdAt).toLocaleDateString('it-IT')}</TableCell>
                             <TableCell>
@@ -555,7 +574,7 @@ export function TransactionsPage() {
                     <div><strong>Licenza:</strong> {selectedTransaction.license_key || 'N/A'}</div>
                     <div><strong>Importo:</strong> €{parseFloat(selectedTransaction.amount || '0').toFixed(2)}</div>
                     <div><strong>Sconto:</strong> €{parseFloat(selectedTransaction.discount || '0').toFixed(2)}</div>
-                    <div><strong>Importo Finale:</strong> €{parseFloat(selectedTransaction.final_amount || '0').toFixed(2)}</div>
+                    <div><strong>Importo Finale:</strong> €{parseFloat(selectedTransaction.final_amount || selectedTransaction.finalAmount || '0').toFixed(2)}</div>
                     <div><strong>Tipo:</strong> {selectedTransaction.type}</div>
                     <div><strong>Metodo Pagamento:</strong> {selectedTransaction.payment_method || 'N/A'}</div>
                     <div><strong>Stato:</strong> {getStatusBadge(selectedTransaction.status)}</div>
