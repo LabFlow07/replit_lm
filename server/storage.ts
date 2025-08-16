@@ -1238,14 +1238,18 @@ class DatabaseStorage implements IStorage {
 
   async updateTransactionStatus(transactionId: string, status: string, paymentMethod?: string, modifiedBy?: string): Promise<any> {
     try {
+      // Format date for MariaDB compatibility (YYYY-MM-DD HH:MM:SS)
+      const now = new Date();
+      const mariaDbDate = now.toISOString().slice(0, 19).replace('T', ' ');
+      
       const updates: any = {
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: mariaDbDate,
         modified_by: modifiedBy
       };
 
       if (status === 'completed' || status === 'manual_paid' || status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito') {
-        updates.payment_date = new Date().toISOString();
+        updates.payment_date = mariaDbDate;
       }
 
       if (paymentMethod) {
