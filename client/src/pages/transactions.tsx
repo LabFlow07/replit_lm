@@ -522,10 +522,28 @@ export function TransactionsPage() {
                                 {(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
                                   <Button
                                     size="sm"
-                                    onClick={() => setSelectedTransaction(transaction)}
+                                    onClick={() => {
+                                      console.log('Opening transaction dialog for:', transaction.id, 'status:', transaction.status);
+                                      setSelectedTransaction(transaction);
+                                    }}
                                     data-testid={`button-update-status-${transaction.id}`}
                                   >
                                     Aggiorna Stato
+                                  </Button>
+                                )}
+                                {/* Always show button for admins/superadmins to modify any transaction */}
+                                {(user?.role === 'superadmin' || user?.role === 'admin') && 
+                                 !(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      console.log('Opening transaction dialog for:', transaction.id, 'status:', transaction.status);
+                                      setSelectedTransaction(transaction);
+                                    }}
+                                    data-testid={`button-modify-status-${transaction.id}`}
+                                  >
+                                    Modifica Stato
                                   </Button>
                                 )}
                                 {transaction.paymentLink && (
