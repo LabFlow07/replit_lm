@@ -174,6 +174,11 @@ export function TransactionsPage() {
     console.error('Error loading transactions:', transactionsError);
   }
 
+  // Debug logging
+  console.log('Transactions data:', transactionsData);
+  console.log('Transactions loading:', transactionsLoading);
+  console.log('Transactions error:', transactionsError);
+
   // Helper functions
   const getStatusBadge = (status: string) => {
     const statusConfig: { [key: string]: { variant: any; label: string } } = {
@@ -226,7 +231,7 @@ export function TransactionsPage() {
     });
   };
 
-  // Ensure all data is always arrays
+  // Ensure all data is always arrays - handle case where API returns empty object due to auth issues
   const transactions = Array.isArray(transactionsData) ? transactionsData : [];
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeCompanies = Array.isArray(companies) ? companies : [];

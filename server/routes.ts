@@ -2111,40 +2111,7 @@ router.post("/api/software/register", async (req: Request, res: Response) => {
   }
 });
 
-// Get all transactions with filtering
-router.get("/api/transactions", authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const { companyId, clientId, status } = req.query;
-
-    let transactions = [];
-
-    if (user.role === 'superadmin') {
-      // Superadmin can see all transactions
-      if (companyId || clientId) {
-        transactions = await storage.getTransactionsByCompanyAndClient(
-          companyId as string, 
-          clientId as string
-        );
-      } else {
-        transactions = await storage.getAllTransactions();
-      }
-    } else {
-      // Other users can only see transactions from their company hierarchy
-      transactions = await storage.getTransactionsByCompanyHierarchy(user.companyId);
-    }
-
-    // Filter by status if requested
-    if (status && status !== 'all') {
-      transactions = transactions.filter(t => t.status === status);
-    }
-
-    res.json(transactions);
-  } catch (error) {
-    console.error('Get transactions error:', error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
+// Removed duplicate GET /api/transactions endpoint - using the one above
 
 // Update transaction status (mark as paid manually)
 router.patch("/api/transactions/:id/status", authenticateToken, async (req: Request, res: Response) => {
