@@ -654,8 +654,59 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
     console.log('Fetching device registrations for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
     console.log('Search parameters:', { status, nomeSoftware, search });
 
-    // Get all company registrations
-    const companies = await storage.getAllTestaRegAzienda();
+    // Get company registrations based on user role and company hierarchy
+    let companies;
+    
+    if (user.role === 'superadmin') {
+      // Superadmin can see all registrations
+      companies = await storage.getAllTestaRegAzienda();
+      console.log('Superadmin: fetched all', companies.length, 'company registrations');
+    } else if (user.role === 'admin' && user.companyId) {
+      // Admin can only see registrations from their company hierarchy
+      const companyHierarchy = await storage.getCompanyHierarchy(user.companyId);
+      console.log('Admin: company hierarchy for', user.companyId, ':', companyHierarchy);
+      
+      // Get all registrations and filter by company hierarchy  
+      const allCompanies = await storage.getAllTestaRegAzienda();
+      companies = [];
+      
+      for (const company of allCompanies) {
+        // Check if this registration should be visible to this admin
+        // We need to check if the company registration belongs to a client in the admin's company hierarchy
+        
+        // First, try to find if there's a direct license assignment
+        if (company.idLicenza) {
+          const license = await storage.getLicense(company.idLicenza);
+          if (license && license.assignedCompany && companyHierarchy.includes(license.assignedCompany)) {
+            companies.push(company);
+            continue;
+          }
+        }
+        
+        // If no license assigned, check if the registration company name matches any company in the hierarchy
+        // Get the company names from the hierarchy
+        const hierarchyCompanies = await Promise.all(
+          companyHierarchy.map(id => storage.getCompany(id))
+        );
+        const hierarchyCompanyNames = hierarchyCompanies
+          .filter(c => c)
+          .map(c => c.name.toLowerCase());
+        
+        // Check if registration company name matches any in the hierarchy
+        const registrationCompanyName = company.nomeAzienda?.toLowerCase();
+        if (registrationCompanyName && hierarchyCompanyNames.some(name => 
+          name.includes(registrationCompanyName) || registrationCompanyName.includes(name)
+        )) {
+          companies.push(company);
+        }
+      }
+      
+      console.log('Admin: filtered to', companies.length, 'company registrations in hierarchy');
+    } else {
+      // Other roles get empty results for now
+      companies = [];
+      console.log('User role', user.role, 'has no access to registrations');
+    }
 
     // Filter based on query parameters
     let filteredCompanies = companies;
