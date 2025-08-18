@@ -2409,6 +2409,58 @@ router.post("/api/licenses/process-renewals", authenticateToken, async (req: Req
   }
 });
 
+// Fix specific license missing expiry date
+router.post("/api/licenses/fix-specific-expiry", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Non autorizzato' });
+    }
+
+    // Find the specific license that needs fixing
+    const license = await storage.getLicenseByActivationKey('LIC-80885882-PHUUHXM6');
+    
+    if (!license) {
+      return res.status(404).json({ message: 'Licenza non trovata' });
+    }
+
+    if (!license.activationDate) {
+      return res.status(400).json({ message: 'Licenza non attivata, impossibile calcolare scadenza' });
+    }
+
+    // Calculate expiry date based on activation date and license type
+    const activationDate = new Date(license.activationDate);
+    let expiryDate: Date;
+
+    if (license.licenseType === 'abbonamento_mensile') {
+      expiryDate = new Date(activationDate);
+      expiryDate.setMonth(expiryDate.getMonth() + 1);
+      expiryDate.setDate(expiryDate.getDate() - 1);
+    } else if (license.licenseType === 'abbonamento_annuale') {
+      expiryDate = new Date(activationDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      expiryDate.setDate(expiryDate.getDate() - 1);
+    } else if (license.licenseType === 'trial') {
+      expiryDate = new Date(activationDate);
+      expiryDate.setDate(expiryDate.getDate() + 30);
+    } else {
+      return res.status(400).json({ message: 'Tipo licenza non supportato per calcolo scadenza' });
+    }
+
+    await storage.updateLicense(license.id, { expiryDate });
+
+    res.json({ 
+      message: `Data di scadenza aggiornata per licenza ${license.activationKey}`,
+      activationDate: activationDate.toISOString(),
+      expiryDate: expiryDate.toISOString(),
+      licenseType: license.licenseType
+    });
+  } catch (error) {
+    console.error('Error fixing specific expiry date:', error);
+    res.status(500).json({ message: 'Errore nell\'aggiornamento della data di scadenza' });
+  }
+});
+
 // Fix missing expiry dates for existing licenses
 router.post("/api/licenses/fix-expiry-dates", authenticateToken, async (req: Request, res: Response) => {
   try {
