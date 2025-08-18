@@ -415,6 +415,61 @@ export default function LicensesPage() {
               <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <div className="flex gap-2">
+              {user.role === 'superadmin' && (
+                <>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('qlm_token');
+                        const response = await fetch('/api/licenses/fix-expiry-dates', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        const result = await response.json();
+                        alert(result.message);
+                        queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                      } catch (error) {
+                        alert('Errore nel fix delle date di scadenza');
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Fix Date Scadenza
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('qlm_token');
+                        const response = await fetch('/api/licenses/process-renewals', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        const result = await response.json();
+                        alert(result.message);
+                        queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                      } catch (error) {
+                        alert('Errore nel processamento dei rinnovi');
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Processa Rinnovi
+                  </Button>
+                </>
+              )}
 
               <Button 
                 className="bg-primary hover:bg-blue-700"

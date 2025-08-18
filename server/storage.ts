@@ -795,12 +795,21 @@ class DatabaseStorage implements IStorage {
 
     // Calcola automaticamente la data di scadenza per gli abbonamenti
     let expiryDate = insertLicense.expiryDate || null;
+    
+    // Se viene fornita una chiave di attivazione e chiave computer, usa la data di attivazione per il calcolo
+    const baseDate = (insertLicense.activationKey && insertLicense.computerKey) ? new Date() : new Date();
+    
     if (insertLicense.licenseType === 'abbonamento_mensile') {
-      const now = new Date();
-      expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      expiryDate = new Date(baseDate);
+      expiryDate.setMonth(expiryDate.getMonth() + 1);
+      expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8 -> 17/9
     } else if (insertLicense.licenseType === 'abbonamento_annuale') {
-      const now = new Date();
-      expiryDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+      expiryDate = new Date(baseDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8/25 -> 17/8/26
+    } else if (insertLicense.licenseType === 'trial') {
+      expiryDate = new Date(baseDate);
+      expiryDate.setDate(expiryDate.getDate() + 30); // Trial di 30 giorni
     }
 
     // Se viene fornita una chiave di attivazione e chiave computer, attiva automaticamente
@@ -935,9 +944,30 @@ class DatabaseStorage implements IStorage {
       throw new Error('License already activated');
     }
 
+    // Calcola la data di scadenza basata sulla data di attivazione
+    const activationDate = new Date();
+    let expiryDate = license.expiryDate;
+
+    // Se non c'è data di scadenza e la licenza è di tipo abbonamento o trial, calcolala
+    if (!expiryDate) {
+      if (license.licenseType === 'abbonamento_mensile') {
+        expiryDate = new Date(activationDate);
+        expiryDate.setMonth(expiryDate.getMonth() + 1);
+        expiryDate.setDate(expiryDate.getDate() - 1);
+      } else if (license.licenseType === 'abbonamento_annuale') {
+        expiryDate = new Date(activationDate);
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        expiryDate.setDate(expiryDate.getDate() - 1);
+      } else if (license.licenseType === 'trial') {
+        expiryDate = new Date(activationDate);
+        expiryDate.setDate(expiryDate.getDate() + 30);
+      }
+    }
+
     await this.updateLicense(license.id, {
       computerKey,
-      activationDate: new Date(),
+      activationDate,
+      expiryDate,
       status: 'attiva'
     });
 
