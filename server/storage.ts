@@ -1278,25 +1278,28 @@ class DatabaseStorage implements IStorage {
   }
 
   async updateTransactionStatus(transactionId: string, status: string, paymentMethod?: string, modifiedBy?: string): Promise<any> {
+    console.log(`🔧 updateTransactionStatus called with: ${transactionId}, status: ${status}, paymentMethod: ${paymentMethod}, modifiedBy: ${modifiedBy}`);
     try {
       // Format date for MariaDB compatibility (YYYY-MM-DD HH:MM:SS)
       const now = new Date();
       const mariaDbDate = now.toISOString().slice(0, 19).replace('T', ' ');
 
-      console.log(`Updating transaction ${transactionId} to status: ${status}`);
+      console.log(`📅 Current MariaDB date: ${mariaDbDate}`);
 
       // Determine payment date based on status
       let paymentDateValue = null;
       if (status === 'in_attesa') {
         // If status is "in_attesa", explicitly set payment_date to NULL
         paymentDateValue = null;
-        console.log(`Status is "in_attesa" - removing payment date`);
+        console.log(`⏳ Status is "in_attesa" - removing payment date (setting to NULL)`);
       } else if (status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito' || 
                  status === 'dall_agente' || status === 'dal_rivenditore' || 
                  status === 'completed' || status === 'manual_paid') {
         // If status indicates payment received, set current date
         paymentDateValue = mariaDbDate;
-        console.log(`Status indicates payment received - setting payment date to: ${mariaDbDate}`);
+        console.log(`💳 Status indicates payment received - setting payment date to: ${mariaDbDate}`);
+      } else {
+        console.log(`ℹ️ Status "${status}" does not require payment date change - keeping current value`);
       }
 
       // Build the query dynamically based on what needs to be updated
@@ -1323,8 +1326,8 @@ class DatabaseStorage implements IStorage {
       queryParams.push(transactionId);
 
       const query = `UPDATE transactions SET ${updateFields.join(', ')} WHERE id = ?`;
-      console.log(`Executing query: ${query}`);
-      console.log(`With params:`, queryParams);
+      console.log(`🔍 Executing SQL query: ${query}`);
+      console.log(`📝 With parameters:`, queryParams);
 
       const result = await this.db.query(query, queryParams);
 
@@ -1332,7 +1335,7 @@ class DatabaseStorage implements IStorage {
         throw new Error('Transaction not found');
       }
 
-      console.log(`Transaction ${transactionId} updated successfully`);
+      console.log(`✅ Transaction ${transactionId} updated successfully with ${result.affectedRows} rows affected`);
       return await this.getTransactionById(transactionId);
     } catch (error) {
       console.error('Error updating transaction status:', error);

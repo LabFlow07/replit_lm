@@ -1774,41 +1774,7 @@ router.post("/api/transactions", authenticateToken, async (req: Request, res: Re
   }
 });
 
-// Update transaction status
-router.patch("/api/transactions/:id/status", authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const transactionId = req.params.id;
-    const { status, paymentMethod } = req.body;
-
-    // Check permissions
-    if (user.role !== 'superadmin' && user.role !== 'admin') {
-      return res.status(403).json({ message: "Not authorized to update transaction status" });
-    }
-
-    // Update transaction with user information
-    const updates: any = { 
-      status,
-      updatedAt: new Date(),
-      modifiedBy: user.id // Assuming user.id is the ID of the logged-in user
-    };
-
-    if (status === 'completed') {
-      updates.paymentDate = new Date();
-      if (paymentMethod) {
-        updates.paymentMethod = paymentMethod;
-      }
-    }
-
-    await storage.updateTransaction(transactionId, updates);
-    console.log('Transaction status updated:', transactionId, 'new status:', status, 'by user:', user.username);
-
-    res.json({ message: "Transaction status updated successfully" });
-  } catch (error) {
-    console.error('Update transaction status error:', error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
+// Removed old transaction status update route - using the comprehensive version below
 
 // Generate payment link
 router.post("/api/transactions/:id/payment-link", authenticateToken, async (req: Request, res: Response) => {
@@ -2237,10 +2203,14 @@ router.post("/api/software/register", async (req: Request, res: Response) => {
 
 // Update transaction status (mark as paid manually)
 router.patch("/api/transactions/:id/status", authenticateToken, async (req: Request, res: Response) => {
+  console.log(`📥 PATCH /api/transactions/:id/status called with ID: ${req.params.id}`);
   try {
     const user = (req as any).user;
     const transactionId = req.params.id;
     const { status, paymentMethod } = req.body;
+    
+    console.log(`📝 Request body:`, { status, paymentMethod });
+    console.log(`👤 User:`, { id: user?.id, username: user?.username, role: user?.role });
 
     // Only admin/superadmin can manually update payment status
     if (user.role !== 'superadmin' && user.role !== 'admin') {
@@ -2252,36 +2222,15 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
       return res.status(404).json({ message: "Transazione non trovata" });
     }
 
-    // Update transaction with payment information
-    const updates: any = { 
-      status,
-      updatedAt: new Date(),
-      modifiedBy: user.id
-    };
+    console.log(`💳 Found transaction:`, transaction.id, transaction.status);
 
-    // Logica per la gestione delle date di pagamento
-    if (status === 'in_attesa') {
-      // Se impostato "in attesa", rimuovi la data di pagamento
-      updates.paymentDate = null;
-      console.log(`Pagamento impostato "in attesa" - data pagamento rimossa per transazione ${transactionId}`);
-    } else if (status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito' || 
-               status === 'dall_agente' || status === 'dal_rivenditore' || 
-               status === 'completed' || status === 'manual_paid') {
-      // Se impostato come "avvenuto" (qualsiasi metodo di pagamento), imposta la data corrente
-      updates.paymentDate = new Date();
-      console.log(`Pagamento completato - data pagamento impostata per transazione ${transactionId}`);
-      
-      if (paymentMethod) {
-        updates.paymentMethod = paymentMethod;
-      }
-    }
-
-    await storage.updateTransactionStatus(transactionId, status, paymentMethod, user.id);
-    console.log(`Transaction status updated: ${transactionId} new status: ${status} by user: ${user.username}`);
+    // Use the dedicated method that handles payment date logic  
+    const result = await storage.updateTransactionStatus(transactionId, status, paymentMethod, user.id);
+    console.log(`🎉 Transaction status updated successfully:`, result?.id, result?.status, result?.paymentDate);
 
     res.json({ message: "Stato transazione aggiornato con successo" });
   } catch (error: any) {
-    console.error('Update transaction status error:', error);
+    console.error('❌ Update transaction status error:', error);
     res.status(500).json({ message: "Errore interno del server: " + error.message });
   }
 });
