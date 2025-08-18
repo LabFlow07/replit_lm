@@ -12,7 +12,11 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-**August 16, 2025 - Complete License Expiry Management System**
+**August 18, 2025 - Complete License Expiry Management System FULLY RESOLVED**
+- **FINAL FIX: Corrected API endpoint field mapping issue**
+  - Problem: GET `/api/licenses` and `/api/licenses/:id` endpoints were querying wrong database field (`expiration_date` instead of `expiry_date`)
+  - Solution: Updated both endpoints to correctly map `row.expiry_date` to response `expiryDate` field
+  - Frontend now correctly displays license expiry dates in the "Scadenza" column with color coding
 - Implemented comprehensive license expiry calculation and management system
 - Fixed automatic expiry date calculation for all license types (trial, monthly, yearly subscriptions)
 - Added license activation workflow with automatic expiry calculation during software registration classification
@@ -25,7 +29,7 @@ Preferred communication style: Simple, everyday language.
 - Successfully tested with pippo2's monthly license - now shows correct activation and 30-day expiry dates
 - License classification workflow fully functional with automatic date assignment
 - Automatic renewal processing system active and functional (processes licenses expiring within 7 days)
-- Status: Complete expiry management system operational with real-time date calculations and proper database storage
+- Status: COMPLETE - All license expiry functionality working correctly with proper database storage and frontend display
 
 **August 16, 2025 - Database Authentication Fix**
 - Fixed critical authentication issue where login worked but data retrieval failed

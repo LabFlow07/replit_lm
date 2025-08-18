@@ -439,8 +439,6 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
         parentCompanyName: row.parentCompanyName
       };
       
-
-      
       return license;
     });
 
