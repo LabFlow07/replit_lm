@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { database } from "./database";
 import { storage } from "./storage";
-import { calculateExpiryDate, generateRenewalTransaction, processAutomaticRenewals, updateMissingExpiryDates } from "./license-utils";
+import { calculateExpiryDate, generateRenewalTransaction, processAutomaticRenewals, updateMissingExpiryDates, startAutomaticRenewalScheduler } from "./license-utils";
 
 const router = express.Router();
 
@@ -2403,15 +2403,16 @@ router.post("/api/licenses/process-renewals", authenticateToken, async (req: Req
 
     // Only superadmin can process renewals
     if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Only superadmin can process renewals" });
+      return res.status(403).json({ message: "Accesso negato. Solo superadmin può processare i rinnovi automatici." });
     }
 
+    console.log(`Rinnovi automatici avviati manualmente da ${user.username}`);
     await processAutomaticRenewals(storage as any);
-    res.json({ message: "Automatic renewals processed successfully" });
+    res.json({ message: "Processo rinnovi automatici completato con successo" });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Process renewals error:', error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Errore nel processo rinnovi: " + error.message });
   }
 });
 

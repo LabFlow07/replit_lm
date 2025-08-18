@@ -1,5 +1,6 @@
 import type { License, InsertTransaction } from '@shared/schema';
 import { DatabaseStorage } from './storage';
+import cron from 'node-cron';
 
 /**
  * Calcola la data di scadenza per una licenza basata sul tipo
@@ -78,65 +79,120 @@ export async function generateRenewalTransaction(
 }
 
 /**
- * Processa i rinnovi automatici per le licenze in scadenza
+ * Processa i rinnovi automatici per le licenze scadute alla mezzanotte
  */
 export async function processAutomaticRenewals(storage: DatabaseStorage): Promise<void> {
   try {
-    console.log('Inizio processo rinnovi automatici...');
+    console.log('🔄 Inizio processo rinnovi automatici alla mezzanotte...');
     
-    // Trova tutte le licenze attive con rinnovo abilitato che scadono nei prossimi 7 giorni
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    // Oggi (data corrente)
+    const today = new Date();
+    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     
     const licenses = await storage.getLicenses();
     const renewalCandidates = licenses.filter(license => {
-      // Solo licenze attive con rinnovo abilitato
+      // Solo licenze con rinnovo automatico abilitato
+      if (!license.renewalEnabled) return false;
+      
+      // Solo licenze attive 
       if (license.status !== 'attiva') return false;
       
       // Solo abbonamenti (non permanenti o trial)
       if (license.licenseType === 'permanente' || license.licenseType === 'trial') return false;
       
-      // Solo licenze che scadono entro 7 giorni
+      // Solo licenze che scadono oggi o sono già scadute
       if (!license.expiryDate) return false;
       
       const expiryDate = new Date(license.expiryDate);
-      return expiryDate <= sevenDaysFromNow;
+      const expiryDateOnly = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+      
+      // Licenza scade oggi o è già scaduta
+      return expiryDateOnly <= todayDateOnly;
     });
     
-    console.log(`Trovate ${renewalCandidates.length} licenze candidate per il rinnovo automatico`);
+    console.log(`📋 Trovate ${renewalCandidates.length} licenze con rinnovo automatico da processare`);
+    
+    if (renewalCandidates.length === 0) {
+      console.log('✅ Nessuna licenza da rinnovare oggi');
+      return;
+    }
+    
+    let successfulRenewals = 0;
+    let failedRenewals = 0;
     
     for (const license of renewalCandidates) {
       try {
+        console.log(`🔄 Processando rinnovo per licenza ${license.activationKey}...`);
+        
         // Genera la transazione di rinnovo
         await generateRenewalTransaction(storage, license, 'rinnovo');
         
-        // Calcola la nuova data di scadenza
+        // Calcola la nuova data di scadenza partendo da oggi
         const newExpiryDate = calculateExpiryDate(
           license.licenseType,
           license.trialDays || 30,
-          license.expiryDate || new Date()
+          new Date() // Parte da oggi per evitare arretrati
         );
         
         if (newExpiryDate) {
           // Aggiorna la data di scadenza della licenza
+          const currentNotes = license.notes || '';
+          const renewalNote = `Rinnovo automatico effettuato il ${new Date().toLocaleDateString('it-IT')}`;
+          const updatedNotes = currentNotes ? `${currentNotes}\n${renewalNote}` : renewalNote;
+          
           await storage.updateLicense(license.id, {
             expiryDate: newExpiryDate,
-            notes: `Rinnovo automatico effettuato il ${new Date().toLocaleDateString('it-IT')}`
+            notes: updatedNotes,
+            status: 'attiva' // Assicura che rimanga attiva
           });
           
-          console.log(`Licenza ${license.activationKey} rinnovata fino al ${newExpiryDate.toLocaleDateString('it-IT')}`);
+          console.log(`✅ Licenza ${license.activationKey} rinnovata automaticamente fino al ${newExpiryDate.toLocaleDateString('it-IT')}`);
+          successfulRenewals++;
+        } else {
+          console.error(`❌ Errore nel calcolo data scadenza per licenza ${license.activationKey}`);
+          failedRenewals++;
         }
         
       } catch (error) {
-        console.error(`Errore nel rinnovo automatico della licenza ${license.id}:`, error);
+        console.error(`❌ Errore nel rinnovo automatico della licenza ${license.id}:`, error);
+        failedRenewals++;
       }
     }
     
-    console.log('Processo rinnovi automatici completato');
+    console.log(`🎯 Processo rinnovi automatici completato: ${successfulRenewals} successi, ${failedRenewals} errori`);
     
   } catch (error) {
-    console.error('Errore nel processo rinnovi automatici:', error);
+    console.error('❌ Errore nel processo rinnovi automatici:', error);
     throw error;
+  }
+}
+
+/**
+ * Avvia il sistema di rinnovo automatico con schedulazione a mezzanotte
+ */
+export function startAutomaticRenewalScheduler(storage: DatabaseStorage): void {
+  console.log('🕒 Avvio sistema di rinnovo automatico licenze...');
+  
+  // Schedula il rinnovo automatico ogni giorno alle 00:00 (mezzanotte)
+  cron.schedule('0 0 * * *', async () => {
+    console.log('🌅 Esecuzione rinnovi automatici programmata alle 00:00');
+    try {
+      await processAutomaticRenewals(storage);
+    } catch (error) {
+      console.error('❌ Errore nell\'esecuzione programmata dei rinnovi automatici:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: "Europe/Rome" // Fuso orario italiano
+  });
+  
+  console.log('✅ Sistema di rinnovo automatico attivato - esecuzione giornaliera alle 00:00 (Europe/Rome)');
+  
+  // Test immediato opzionale (solo in sviluppo)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 Modalità sviluppo: esecuzione test rinnovi...');
+    // Uncomment per test immediato in sviluppo:
+    // processAutomaticRenewals(storage).catch(console.error);
   }
 }
 

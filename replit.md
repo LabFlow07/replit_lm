@@ -31,6 +31,27 @@ Preferred communication style: Simple, everyday language.
 - Automatic renewal processing system active and functional (processes licenses expiring within 7 days)
 - Status: COMPLETE - All license expiry functionality working correctly with proper database storage and frontend display
 
+**August 18, 2025 - Automatic License Renewal System Implementation**
+- **IMPLEMENTED: Complete automatic renewal system for midnight processing**
+  - Added comprehensive automatic renewal logic that processes licenses with `renewal_enabled = true`
+  - System activates at 00:00 (Europe/Rome timezone) using node-cron scheduler
+  - Only processes active subscription licenses (monthly/yearly) that are expired or expiring today
+  - Automatically generates renewal transactions with proper pricing and discount application
+  - Updates license expiry dates from current date to avoid gaps in coverage
+  - Enhanced logging with emojis for better monitoring and debugging
+- **TECHNICAL IMPLEMENTATION:**
+  - Added `startAutomaticRenewalScheduler()` function with cron job scheduling
+  - Improved `processAutomaticRenewals()` to handle only licenses with auto-renewal enabled
+  - Integrated scheduler activation in server startup sequence
+  - Manual trigger endpoint available at `/api/licenses/process-renewals` for admin testing
+  - System respects license type constraints (no renewal for permanent/trial licenses)
+- **BUSINESS LOGIC:**
+  - Renewal transactions automatically created with same pricing rules as original license
+  - License notes updated with renewal date tracking
+  - Status maintained as 'attiva' during renewal process
+  - Error handling ensures partial failures don't stop entire renewal batch
+- Status: ACTIVE - Automatic renewal system operational and scheduled for daily execution
+
 **August 16, 2025 - Database Authentication Fix**
 - Fixed critical authentication issue where login worked but data retrieval failed
 - Problem: `DatabaseStorage` class was using mock database instead of real MariaDB connection
