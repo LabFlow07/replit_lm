@@ -123,9 +123,9 @@ class QLMRegistration {
   }
 
   /**
-   * Verifica lo stato della licenza presso QLM
+   * Valida la licenza presso QLM (chiamata separata dopo registrazione)
    */
-  async checkLicenseStatus() {
+  async validateLicense() {
     const computerKey = this.loadComputerKey();
     if (!computerKey) {
       console.log('⚠️ Computer key non trovata, registrazione necessaria');

@@ -340,15 +340,31 @@ class Program
             installationPath: @"C:\Program Files\MioSoftware\"
         );
 
-        var result = await qlm.RegisterSoftwareAsync();
+        // Prima registrazione (se non già fatto)
+        var registrationResult = await qlm.RegisterSoftwareAsync();
         
-        if (result.Success)
+        if (registrationResult.Success)
         {
-            Console.WriteLine($"🎉 Registrazione completata! Computer Key: {result.ComputerKey}");
+            Console.WriteLine($"🎉 Registrazione completata! Computer Key: {registrationResult.ComputerKey}");
+        }
+
+        // Poi validazione licenza (da fare periodicamente)
+        var validationResult = await qlm.ValidateLicenseAsync();
+        
+        if (validationResult.Success && validationResult.DeviceAuthorized)
+        {
+            Console.WriteLine($"✅ Licenza valida! Giorni rimanenti: {validationResult.ValidityDays}");
+            Console.WriteLine($"📋 Tipo licenza: {validationResult.LicenseType}");
+            Console.WriteLine($"🔧 Max dispositivi: {validationResult.MaxDevices}, Max utenti: {validationResult.MaxUsers}");
         }
         else
         {
-            Console.WriteLine($"💥 Registrazione fallita: {result.Error}");
+            Console.WriteLine($"❌ Licenza non valida: {validationResult.Message}");
+            
+            if (validationResult.NeedsRegistration)
+            {
+                Console.WriteLine("🔄 Registrazione necessaria");
+            }
         }
 
         qlm.Dispose();
