@@ -662,6 +662,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
       companies = await storage.getAllTestaRegAzienda();
       console.log('Superadmin: fetched all', companies.length, 'company registrations');
     } else if (user.role === 'admin' && user.companyId) {
+      console.log('🔍 ADMIN USER DETECTED - Applying company hierarchy filtering');
       // Admin can only see registrations from their company hierarchy
       const companyHierarchy = await storage.getCompanyHierarchy(user.companyId);
       console.log('Admin: company hierarchy for', user.companyId, ':', companyHierarchy);

@@ -12,6 +12,20 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**August 18, 2025 - Company Hierarchy Authorization Filter Implementation**
+- **RESOLVED: Admin users now see only their company's registrations**
+  - Problem: Admin users (like "cmh") were seeing all system registrations instead of only their company's data
+  - Solution: Implemented hierarchical filtering in `/api/software/registrazioni` endpoint
+  - Logic: Admin users see registrations from their company and all sub-companies in the hierarchy
+  - Results: Admin "cmh" (Cmh company) now sees 3 filtered registrations instead of all 20 system registrations
+  - Maintains superadmin access to all data while restricting admin visibility appropriately
+- **TECHNICAL IMPLEMENTATION:**
+  - Enhanced software registrations endpoint with role-based filtering
+  - Integrated existing `getCompanyHierarchy()` function for proper parent-child company relationships
+  - Added comprehensive logging with emoji debugging for monitoring filter application
+  - Filter logic checks both direct license assignments and company name matching
+  - Superadmin retains full system visibility while admin roles are properly restricted
+
 **August 18, 2025 - Complete License Expiry Management System FULLY RESOLVED**
 - **FINAL FIX: Corrected API endpoint field mapping issue**
   - Problem: GET `/api/licenses` and `/api/licenses/:id` endpoints were querying wrong database field (`expiration_date` instead of `expiry_date`)
