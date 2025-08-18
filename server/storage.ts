@@ -794,23 +794,33 @@ class DatabaseStorage implements IStorage {
     // Genera automaticamente la chiave di attivazione se non fornita
     const activationKey = insertLicense.activationKey || `${(insertLicense.licenseType || 'LIC').toUpperCase()}-${randomUUID().substring(0, 8).toUpperCase()}`;
 
-    // Calcola automaticamente la data di scadenza per gli abbonamenti
+    // 🚫 NON calcolare automaticamente la data di scadenza durante la creazione
+    // La data di scadenza viene calcolata SOLO durante l'attivazione della licenza
     let expiryDate = insertLicense.expiryDate || null;
     
-    // Se viene fornita una chiave di attivazione e chiave computer, usa la data di attivazione per il calcolo
-    const baseDate = (insertLicense.activationKey && insertLicense.computerKey) ? new Date() : new Date();
-    
-    if (insertLicense.licenseType === 'abbonamento_mensile') {
-      expiryDate = new Date(baseDate);
-      expiryDate.setMonth(expiryDate.getMonth() + 1);
-      expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8 -> 17/9
-    } else if (insertLicense.licenseType === 'abbonamento_annuale') {
-      expiryDate = new Date(baseDate);
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8/25 -> 17/8/26
-    } else if (insertLicense.licenseType === 'trial') {
-      expiryDate = new Date(baseDate);
-      expiryDate.setDate(expiryDate.getDate() + 30); // Trial di 30 giorni
+    // SOLO se la licenza viene creata GIÀ con computerKey (attivazione immediata)
+    // allora calcola la data di scadenza, altrimenti rimane NULL
+    if (insertLicense.computerKey && insertLicense.activationKey) {
+      console.log('🔄 Licenza creata con attivazione immediata - calcolo data scadenza');
+      const baseDate = new Date();
+      
+      if (insertLicense.licenseType === 'abbonamento_mensile') {
+        expiryDate = new Date(baseDate);
+        expiryDate.setMonth(expiryDate.getMonth() + 1);
+        expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8 -> 17/9
+        console.log('📅 Licenza mensile: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+      } else if (insertLicense.licenseType === 'abbonamento_annuale') {
+        expiryDate = new Date(baseDate);
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8/25 -> 17/8/26
+        console.log('📅 Licenza annuale: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+      } else if (insertLicense.licenseType === 'trial') {
+        expiryDate = new Date(baseDate);
+        expiryDate.setDate(expiryDate.getDate() + 30); // Trial di 30 giorni
+        console.log('📅 Licenza trial: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+      }
+    } else {
+      console.log('⏳ Licenza creata senza attivazione - data scadenza sarà calcolata durante attivazione');
     }
 
     // Se viene fornita una chiave di attivazione e chiave computer, attiva automaticamente
