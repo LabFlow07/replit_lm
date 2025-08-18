@@ -685,6 +685,13 @@ class DatabaseStorage implements IStorage {
     `;
 
     const rows = await this.db.query(query);
+    console.log(`getLicenses: Found ${rows.length} licenses. Sample row fields:`, rows[0] ? Object.keys(rows[0]) : 'No rows');
+    if (rows.length > 0) {
+      const sampleRow = rows.find(r => r.activation_key === 'LIC-80885882-PHUUHXM6');
+      if (sampleRow) {
+        console.log(`Sample license LIC-80885882-PHUUHXM6 data: expiry_date=${sampleRow.expiry_date}, activation_date=${sampleRow.activation_date}, license_type=${sampleRow.license_type}`);
+      }
+    }
     return this.mapLicenseRows(rows);
   }
 
