@@ -304,7 +304,7 @@ export function TransactionsPage() {
     <div className="min-h-screen flex bg-surface">
       <Sidebar />
 
-      <main className="flex-1 bg-surface transition-all duration-300 ease-in-out" style={{ marginLeft: collapsed ? '64px' : '256px' }}>
+      <main className="flex-1 bg-surface transition-all duration-300 ease-in-out" style={{ marginLeft: collapsed ? '64px' : '260px' }}>
         <TopBar />
 
         <div className="p-6 space-y-6">

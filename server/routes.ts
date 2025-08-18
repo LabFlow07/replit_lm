@@ -2276,7 +2276,7 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
       }
     }
 
-    await storage.updateTransaction(transactionId, updates);
+    await storage.updateTransactionStatus(transactionId, status, paymentMethod, user.id);
     console.log(`Transaction status updated: ${transactionId} new status: ${status} by user: ${user.username}`);
 
     res.json({ message: "Stato transazione aggiornato con successo" });
