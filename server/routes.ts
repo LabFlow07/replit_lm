@@ -1778,9 +1778,24 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
       return res.status(403).json({ message: "Not authorized to update transaction status" });
     }
 
-    const transaction = await storage.updateTransactionStatus(transactionId, status, paymentMethod, user.id);
+    // Update transaction with user information
+    const updates: any = { 
+      status,
+      updatedAt: new Date(),
+      modifiedBy: user.id
+    };
+
+    if (status === 'completed') {
+      updates.paymentDate = new Date();
+      if (paymentMethod) {
+        updates.paymentMethod = paymentMethod;
+      }
+    }
+
+    await storage.updateTransaction(transactionId, updates);
     console.log('Transaction status updated:', transactionId, 'new status:', status, 'by user:', user.username);
-    res.json(transaction);
+    
+    res.json({ message: "Transaction status updated successfully" });
   } catch (error) {
     console.error('Update transaction status error:', error);
     res.status(500).json({ message: "Internal server error" });

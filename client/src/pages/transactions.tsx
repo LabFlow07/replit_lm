@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Sidebar from '../components/layout/sidebar';
@@ -39,6 +38,10 @@ import {
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { Edit } from 'lucide-react';
+
 
 interface Transaction {
   id: string;
@@ -214,9 +217,9 @@ export function TransactionsPage() {
   };
 
   const generateReport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + "ID,Cliente,Tipo,Importo,Sconto,Importo Finale,Metodo Pagamento,Stato,Data Creazione\n"
-      + filteredTransactions.map(t => 
+      + filteredTransactions.map(t =>
           `${t.id},${t.client_name || 'N/A'},${t.type},${t.amount},${t.discount || 0},${t.final_amount || t.finalAmount || 0},${t.paymentMethod || 'N/A'},${t.status},${new Date(t.createdAt).toLocaleDateString()}`
         ).join("\n");
 
@@ -256,20 +259,20 @@ export function TransactionsPage() {
     if (statusFilter !== 'all' && transaction.status !== statusFilter) {
       return false;
     }
-    
+
     if (selectedCompany !== 'all') {
       // Find client for this transaction
       const client = safeClients.find((c: Client) => c.id === transaction.clientId);
       if (!client) return false;
-      
+
       const clientCompanyId = client.companyId || client.company_id;
       if (clientCompanyId !== selectedCompany) return false;
     }
-    
+
     if (selectedClient !== 'all' && transaction.clientId !== selectedClient) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -284,16 +287,16 @@ export function TransactionsPage() {
     console.log('Revenue calculation for transaction:', t.id, 'final_amount:', finalAmount);
     return sum + finalAmount;
   }, 0);
-  
-  const completedTransactions = filteredTransactions.filter((t: Transaction) => 
+
+  const completedTransactions = filteredTransactions.filter((t: Transaction) =>
     t.status === 'completed' || t.status === 'manual_paid'
   );
-  
-  const pendingTransactions = filteredTransactions.filter((t: Transaction) => 
+
+  const pendingTransactions = filteredTransactions.filter((t: Transaction) =>
     t.status === 'pending' || t.status === 'in_sospeso'
   );
-  
-  const failedTransactions = filteredTransactions.filter((t: Transaction) => 
+
+  const failedTransactions = filteredTransactions.filter((t: Transaction) =>
     t.status === 'failed'
   );
 
@@ -425,8 +428,8 @@ export function TransactionsPage() {
 
                 <div className="space-y-2">
                   <Label>&nbsp;</Label>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setSelectedCompany('all');
                       setSelectedClient('all');
@@ -457,8 +460,8 @@ export function TransactionsPage() {
               ) : transactionsError ? (
                 <div className="text-center py-8">
                   <p className="text-red-500">Errore nel caricamento delle transazioni: {transactionsError.message}</p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/transactions'] })}
                     className="mt-2"
                   >
@@ -483,7 +486,8 @@ export function TransactionsPage() {
                         <TableHead>Stato</TableHead>
                         <TableHead>Data Pagamento</TableHead>
                         <TableHead>Data Creazione</TableHead>
-                        <TableHead>Data Modifica</TableHead>
+                        <TableHead>Ultima Modifica</TableHead>
+                        <TableHead>Modificato da</TableHead>
                         <TableHead>Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -493,7 +497,7 @@ export function TransactionsPage() {
                         const amount = parseFloat(transaction.amount || '0');
                         const discount = parseFloat(transaction.discount || '0');
                         const finalAmount = parseFloat(transaction.final_amount || transaction.finalAmount || '0');
-                        
+
                         console.log('Transaction display:', {
                           id: transaction.id,
                           amount: amount,
@@ -502,7 +506,7 @@ export function TransactionsPage() {
                           status: transaction.status,
                           client: transaction.client_name
                         });
-                        
+
                         return (
                           <TableRow key={transaction.id}>
                             <TableCell>
@@ -553,6 +557,9 @@ export function TransactionsPage() {
                               )}
                             </TableCell>
                             <TableCell>
+                              {transaction.modifiedBy || '-'}
+                            </TableCell>
+                            <TableCell>
                               <div className="flex gap-2">
                                 {(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
                                   <Button
@@ -567,7 +574,7 @@ export function TransactionsPage() {
                                   </Button>
                                 )}
                                 {/* Always show button for admins/superadmins to modify any transaction */}
-                                {(user?.role === 'superadmin' || user?.role === 'admin') && 
+                                {(user?.role === 'superadmin' || user?.role === 'admin') &&
                                  !(transaction.status === 'pending' || transaction.status === 'in_sospeso' || transaction.status === 'in_attesa') && (
                                   <Button
                                     size="sm"
@@ -650,7 +657,7 @@ export function TransactionsPage() {
                     {(user?.role === 'superadmin' || user?.role === 'admin') && (
                       <div className="border-t pt-4 space-y-4">
                         <h4 className="font-medium text-lg">Aggiorna Stato Pagamento</h4>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="payment-status">Nuovo Stato</Label>
@@ -768,10 +775,10 @@ export function TransactionsPage() {
                     )}
                   </>
                 )}
-                
+
                 <div className="flex justify-end gap-2 border-t pt-4">
-                  {selectedTransaction && !selectedTransaction.paymentLink && 
-                   (selectedTransaction.status === 'in_attesa' || selectedTransaction.status === 'pending') && 
+                  {selectedTransaction && !selectedTransaction.paymentLink &&
+                   (selectedTransaction.status === 'in_attesa' || selectedTransaction.status === 'pending') &&
                    (user?.role === 'superadmin' || user?.role === 'admin') && (
                     <Button
                       variant="outline"

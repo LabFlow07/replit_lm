@@ -1098,7 +1098,7 @@ class DatabaseStorage implements IStorage {
     return rows;
   }
 
-  async getAllTransactions(): Promise<any[]> {
+  async getAllTransactions(): Promise<Transaction[]> {
     try {
       const query = `
         SELECT 
@@ -1198,14 +1198,46 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
-    const rows = await this.db.query(`
-      SELECT t.* FROM transactions t
-      JOIN licenses l ON t.license_id = l.id
-      JOIN clients c ON l.client_id = c.id
-      WHERE c.company_id = ?
+    const query = `
+      SELECT 
+        t.*,
+        c.name as client_name,
+        c.email as client_email,
+        comp.name as company_name,
+        l.activation_key as license_key,
+        u.username as modified_by_username
+      FROM transactions t
+      LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN companies comp ON t.company_id = comp.id
+      LEFT JOIN licenses l ON t.license_id = l.id
+      LEFT JOIN users u ON t.modified_by = u.id
+      WHERE t.company_id = ?
       ORDER BY t.created_at DESC
-    `, [companyId]);
-    return rows;
+    `;
+
+    const rows = await this.db.query(query, [companyId]);
+    return rows.map((row: any) => ({
+      id: row.id,
+      licenseId: row.license_id,
+      clientId: row.client_id,
+      companyId: row.company_id,
+      client_name: row.client_name,
+      client_email: row.client_email,
+      company_name: row.company_name,
+      license_key: row.license_key,
+      type: row.type,
+      amount: parseFloat(row.amount || '0'),
+      discount: parseFloat(row.discount || '0'),
+      final_amount: parseFloat(row.final_amount || '0'),
+      paymentMethod: row.payment_method,
+      status: row.status,
+      paymentLink: row.payment_link,
+      paymentDate: row.payment_date,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      modifiedBy: row.modified_by_username
+    }));
   }
 
   async getTransactionById(id: string): Promise<Transaction | null> {
@@ -1250,7 +1282,7 @@ class DatabaseStorage implements IStorage {
       // Format date for MariaDB compatibility (YYYY-MM-DD HH:MM:SS)
       const now = new Date();
       const mariaDbDate = now.toISOString().slice(0, 19).replace('T', ' ');
-      
+
       const updates: any = {
         status,
         updated_at: mariaDbDate,
@@ -1975,7 +2007,7 @@ class DatabaseStorage implements IStorage {
   // User management methods
   async getUsers(companyId?: string, includingInactive?: boolean): Promise<UserWithCompany[]> {
     console.log(`getUsers: companyId=${companyId}, includingInactive=${includingInactive}`);
-    
+
     let sql = `
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
       FROM users u
