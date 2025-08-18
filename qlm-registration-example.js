@@ -132,14 +132,70 @@ class QLMRegistration {
       return { authorized: false, needsRegistration: true };
     }
 
-    // Implementa logica di verifica stato licenza
-    console.log('🔍 Verifica stato licenza per computer key:', computerKey);
-    
-    return {
-      authorized: false, // Da implementare con chiamata API
-      validityDays: 0,
-      needsRegistration: false
-    };
+    try {
+      console.log('🔍 Verifica stato licenza per computer key:', computerKey);
+
+      const response = await fetch(`${this.apiBaseUrl}/api/software/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': `${this.nomeSoftware}-Validation/1.0`
+        },
+        body: JSON.stringify({
+          partitaIva: this.partitaIva,
+          nomeSoftware: this.nomeSoftware,
+          computerKey: computerKey,
+          machineInfo: this.getMachineInfo()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success && result.deviceAuthorized) {
+          console.log('✅ Licenza valida:', {
+            validityDays: result.licenseValidityDays,
+            licenseType: result.licenseType,
+            message: result.message
+          });
+          
+          return {
+            authorized: true,
+            validityDays: result.licenseValidityDays,
+            licenseType: result.licenseType,
+            maxDevices: result.maxDevices,
+            maxUsers: result.maxUsers,
+            needsRegistration: false,
+            message: result.message
+          };
+        } else {
+          console.log('❌ Licenza non valida:', result.message);
+          
+          return {
+            authorized: false,
+            validityDays: 0,
+            needsRegistration: false,
+            message: result.message
+          };
+        }
+      } else {
+        console.error('❌ Errore validazione licenza:', response.status);
+        return {
+          authorized: false,
+          validityDays: 0,
+          needsRegistration: false,
+          message: `Errore HTTP ${response.status}`
+        };
+      }
+    } catch (error) {
+      console.error('🚨 Errore di rete durante validazione:', error);
+      return {
+        authorized: false,
+        validityDays: 0,
+        needsRegistration: false,
+        message: 'Errore di connessione al server di validazione'
+      };
+    }
   }
 }
 

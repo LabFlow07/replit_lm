@@ -172,6 +172,102 @@ public class QLMRegistration
         }
     }
 
+    /// <summary>
+    /// Valida la licenza presso il server QLM
+    /// </summary>
+    public async Task<ValidationResult> ValidateLicenseAsync()
+    {
+        var computerKey = LoadComputerKey();
+        if (string.IsNullOrEmpty(computerKey))
+        {
+            Console.WriteLine("⚠️ Computer key non trovata, registrazione necessaria");
+            return new ValidationResult
+            {
+                Success = false,
+                DeviceAuthorized = false,
+                NeedsRegistration = true,
+                Message = "Computer key non trovata"
+            };
+        }
+
+        var payload = new
+        {
+            partitaIva = _partitaIva,
+            nomeSoftware = _nomeSoftware,
+            computerKey = computerKey,
+            machineInfo = GetMachineInfo()
+        };
+
+        try
+        {
+            Console.WriteLine($"🔍 Validazione licenza per computer key: {computerKey}");
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", $"{_nomeSoftware}-Validation/1.0");
+
+            var response = await _httpClient.PostAsync($"{_apiBaseUrl}/api/software/validate", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseText = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<QLMValidationResponse>(responseText);
+                
+                if (result.success && result.deviceAuthorized)
+                {
+                    Console.WriteLine($"✅ Licenza valida: {result.message}");
+                    
+                    return new ValidationResult
+                    {
+                        Success = true,
+                        DeviceAuthorized = true,
+                        ValidityDays = result.licenseValidityDays,
+                        LicenseType = result.licenseType,
+                        MaxDevices = result.maxDevices,
+                        MaxUsers = result.maxUsers,
+                        Message = result.message
+                    };
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Licenza non valida: {result.message}");
+                    
+                    return new ValidationResult
+                    {
+                        Success = false,
+                        DeviceAuthorized = false,
+                        Message = result.message
+                    };
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Errore validazione: {response.StatusCode} - {error}");
+                
+                return new ValidationResult
+                {
+                    Success = false,
+                    DeviceAuthorized = false,
+                    Message = $"HTTP {(int)response.StatusCode}: {error}"
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"🚨 Errore durante validazione licenza: {ex.Message}");
+            
+            return new ValidationResult
+            {
+                Success = false,
+                DeviceAuthorized = false,
+                Message = ex.Message
+            };
+        }
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
@@ -198,6 +294,36 @@ public class QLMResponse
     public string message { get; set; }
     public bool deviceAuthorized { get; set; }
     public int licenseValidityDays { get; set; }
+}
+
+/// <summary>
+/// Risposta dalla API di validazione QLM
+/// </summary>
+public class QLMValidationResponse
+{
+    public bool success { get; set; }
+    public string message { get; set; }
+    public bool deviceAuthorized { get; set; }
+    public int licenseValidityDays { get; set; }
+    public string licenseType { get; set; }
+    public int maxDevices { get; set; }
+    public int maxUsers { get; set; }
+    public string activationKey { get; set; }
+}
+
+/// <summary>
+/// Risultato della validazione licenza
+/// </summary>
+public class ValidationResult
+{
+    public bool Success { get; set; }
+    public bool DeviceAuthorized { get; set; }
+    public bool NeedsRegistration { get; set; }
+    public int ValidityDays { get; set; }
+    public string LicenseType { get; set; }
+    public int MaxDevices { get; set; }
+    public int MaxUsers { get; set; }
+    public string Message { get; set; }
 }
 
 // Esempio di utilizzo
