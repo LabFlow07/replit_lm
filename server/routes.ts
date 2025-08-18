@@ -1081,9 +1081,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           console.error('Error deleting transactions:', error);
         }
 
-        // Suspend the license instead of deactivating it completely
+        // Suspend the license and reset activation/expiry dates
         await storage.updateLicense(company.idLicenza, {
-          status: 'sospesa'
+          status: 'sospesa',
+          activationDate: null,
+          expiryDate: null
         });
 
         // Remove license assignment from company
