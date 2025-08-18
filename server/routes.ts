@@ -777,14 +777,8 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           // If no match at company level, check device-specific fields
           const companyAlreadyMatched = true; // Since company is already in filteredCompanies
 
-          // Only do additional device filtering if we want to exclude specific devices from matched companies
-          const matchDevice = device.uidDispositivo?.toLowerCase().includes(searchTerm) ||
-                             device.sistemaOperativo?.toLowerCase().includes(searchTerm) ||
-                             device.computerKey?.toLowerCase().includes(searchTerm) ||
-                             device.note?.toLowerCase().includes(searchTerm);
-
           // For now, include all devices from matched companies, but could add device-level filtering logic here
-          includeDevice = companyAlreadyMatched || matchDevice;
+          includeDevice = companyAlreadyMatched;
         }
 
         if (!includeDevice) continue;
@@ -930,11 +924,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         status: 'attiva',
         activationDate: activationDate
       };
-      
+
       // Calculate expiry date ALWAYS when activating a license, regardless of current status
       const now = new Date();
       let expiryDate: Date | null = null;
-      
+
       switch (license.licenseType) {
         case 'trial':
           expiryDate = new Date(now);
@@ -963,13 +957,13 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           expiryDate.setDate(expiryDate.getDate() - 1);
           break;
       }
-      
+
       if (expiryDate) {
         updateData.expiryDate = expiryDate;
       }
-      
+
       console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);
-      
+
       await storage.updateLicense(licenzaAssegnata, updateData);
 
       // Update company record with license assignment
@@ -1782,7 +1776,7 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
     const updates: any = { 
       status,
       updatedAt: new Date(),
-      modifiedBy: user.id
+      modifiedBy: user.id // Assuming user.id is the ID of the logged-in user
     };
 
     if (status === 'completed') {
@@ -1794,7 +1788,7 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
 
     await storage.updateTransaction(transactionId, updates);
     console.log('Transaction status updated:', transactionId, 'new status:', status, 'by user:', user.username);
-    
+
     res.json({ message: "Transaction status updated successfully" });
   } catch (error) {
     console.error('Update transaction status error:', error);
@@ -2247,7 +2241,8 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
     // Update transaction with payment information
     const updates: any = { 
       status,
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      modifiedBy: user.id // Assuming user.id is the ID of the logged-in user
     };
 
     if (status === 'completed' || status === 'manual_paid') {
@@ -2282,20 +2277,20 @@ router.post("/api/init-admin", async (req: Request, res: Response) => {
   try {
     // Delete all admin users first
     await database.query('DELETE FROM users WHERE username = ? OR role = ?', ['admin', 'superadmin']);
-    
+
     const hashedPassword = await bcrypt.hash('admin123', 10);
     const adminId = nanoid();
-    
+
     // Create fresh admin
     await database.query(`
       INSERT INTO users (id, username, password, role, company_id, name, email, is_active, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, NOW())
     `, [adminId, 'admin', hashedPassword, 'superadmin', null, 'Administrator', 'admin@example.com']);
-    
+
     // Verify user was created
     const verification = await database.query('SELECT username, role FROM users WHERE id = ?', [adminId]);
     console.log('Admin user recreated successfully:', verification[0]);
-    
+
     res.json({ 
       message: "Admin user created successfully", 
       id: adminId,
@@ -2373,15 +2368,15 @@ router.post("/api/transactions/:id/send-reminder", authenticateToken, async (req
 router.post("/api/licenses/update-expiry-dates", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Only superadmin can trigger expiry date updates
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Only superadmin can update expiry dates" });
     }
-    
+
     await updateMissingExpiryDates(storage as any);
     res.json({ message: "Expiry dates updated successfully" });
-    
+
   } catch (error) {
     console.error('Update expiry dates error:', error);
     res.status(500).json({ message: "Internal server error" });
@@ -2391,15 +2386,15 @@ router.post("/api/licenses/update-expiry-dates", authenticateToken, async (req: 
 router.post("/api/licenses/process-renewals", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Only superadmin can process renewals
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Only superadmin can process renewals" });
     }
-    
+
     await processAutomaticRenewals(storage as any);
     res.json({ message: "Automatic renewals processed successfully" });
-    
+
   } catch (error) {
     console.error('Process renewals error:', error);
     res.status(500).json({ message: "Internal server error" });
@@ -2412,16 +2407,16 @@ router.patch("/api/licenses/:id/assign", authenticateToken, async (req: Request,
     const user = (req as any).user;
     const licenseId = req.params.id;
     const { status, activateNow = false } = req.body;
-    
+
     // Get the existing license
     const license = await storage.getLicense(licenseId);
     if (!license) {
       return res.status(404).json({ message: "License not found" });
     }
-    
+
     // Update license status
     const updateData: any = { status };
-    
+
     // Calculate and set expiry date when activating
     if (activateNow && status === 'attiva') {
       const expiryDate = calculateExpiryDate(
@@ -2429,27 +2424,27 @@ router.patch("/api/licenses/:id/assign", authenticateToken, async (req: Request,
         license.trialDays || 30,
         new Date()
       );
-      
+
       if (expiryDate) {
         updateData.expiryDate = expiryDate;
         updateData.activationDate = new Date();
       }
-      
+
       // Generate activation transaction if needed
       if (parseFloat(license.price?.toString() || '0') > 0) {
         await generateRenewalTransaction(storage as any, license, 'attivazione');
       }
     }
-    
+
     const updatedLicense = await storage.updateLicense(licenseId, updateData);
-    
+
     res.json({
       ...updatedLicense,
       message: `License ${activateNow ? 'activated' : 'updated'} successfully${
         updateData.expiryDate ? ` with expiry date: ${updateData.expiryDate.toLocaleDateString('it-IT')}` : ''
       }`
     });
-    
+
   } catch (error) {
     console.error('Assign license error:', error);
     res.status(500).json({ message: "Internal server error" });

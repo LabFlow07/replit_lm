@@ -685,53 +685,7 @@ class DatabaseStorage implements IStorage {
     `;
 
     const rows = await this.db.query(query);
-    return rows.map(row => ({
-      id: row.id,
-      clientId: row.client_id,
-      productId: row.product_id,
-      activationKey: row.activation_key,
-      computerKey: row.computer_key,
-      activationDate: row.activation_date,
-      expiryDate: row.expiry_date,
-      licenseType: row.license_type,
-      status: row.status,
-      maxUsers: row.max_users,
-      maxDevices: row.max_devices,
-      price: row.price,
-      discount: row.discount,
-      activeModules: JSON.parse(row.active_modules || '[]'),
-      assignedCompany: row.assigned_company,
-      assignedAgent: row.assigned_agent,
-      createdAt: row.created_at,
-      client: {
-        id: row.client_id,
-        name: row.client_name,
-        email: row.client_email,
-        status: row.client_status,
-        companyId: row.company_id,
-        contactInfo: {},
-        isMultiSite: false,
-        isMultiUser: false,
-        createdAt: new Date()
-      },
-      product: {
-        id: row.product_id,
-        name: row.product_name,
-        version: row.product_version,
-        description: '',
-        supportedLicenseTypes: [],
-        createdAt: new Date()
-      },
-      company: row.company_name ? {
-        id: row.assigned_company,
-        name: row.company_name,
-        type: '',
-        parentId: null,
-        status: 'active',
-        contactInfo: null,
-        createdAt: new Date()
-      } : undefined
-    }));
+    return this.mapLicenseRows(rows);
   }
 
   async getLicense(id: string): Promise<LicenseWithDetails | undefined> {

@@ -486,7 +486,7 @@ export function TransactionsPage() {
                         <TableHead>Stato</TableHead>
                         <TableHead>Data Pagamento</TableHead>
                         <TableHead>Data Creazione</TableHead>
-                        <TableHead>Ultima Modifica</TableHead>
+                        <TableHead>Data Modifica</TableHead>
                         <TableHead>Modificato da</TableHead>
                         <TableHead>Azioni</TableHead>
                       </TableRow>
