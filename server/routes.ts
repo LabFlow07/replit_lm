@@ -428,6 +428,8 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
       discount: row.discount,
       notes: row.notes,
       activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
+      renewalEnabled: row.renewal_enabled,
+      renewalPeriod: row.renewal_period,
       // Additional fields for fallback display
       clientName: row.clientName,
       clientEmail: row.clientEmail,
@@ -517,6 +519,8 @@ router.get("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
       discount: row.discount,
       notes: row.notes,
       activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
+      renewalEnabled: row.renewal_enabled,
+      renewalPeriod: row.renewal_period,
       // Additional fields for fallback display
       clientName: row.clientName,
       clientEmail: row.clientEmail,
@@ -1390,7 +1394,9 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       price,
       discount,
       status,
-      activeModules
+      activeModules,
+      renewalEnabled,
+      renewalPeriod
     } = req.body;
 
     // Validate required fields
@@ -1444,7 +1450,9 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       assignedCompany: client.company_id || client.companyId,
       assignedAgent: user.id,
       activationKey: req.body.activationKey || undefined,
-      computerKey: req.body.computerKey || undefined
+      computerKey: req.body.computerKey || undefined,
+      renewalEnabled: renewalEnabled || false,
+      renewalPeriod: renewalPeriod || null
     };
 
     console.log('Creating license with data:', licenseData);

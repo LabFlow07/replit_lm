@@ -812,8 +812,8 @@ class DatabaseStorage implements IStorage {
       INSERT INTO licenses (
         id, client_id, product_id, activation_key, computer_key, activation_date,
         expiry_date, license_type, status, max_users, max_devices, price, discount,
-        active_modules, assigned_company, assigned_agent
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        active_modules, assigned_company, assigned_agent, renewal_enabled, renewal_period
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, 
       insertLicense.clientId, 
@@ -830,7 +830,9 @@ class DatabaseStorage implements IStorage {
       insertLicense.discount || 0,
       JSON.stringify(insertLicense.activeModules || []), 
       insertLicense.assignedCompany || null,
-      insertLicense.assignedAgent || null
+      insertLicense.assignedAgent || null,
+      insertLicense.renewalEnabled || false,
+      insertLicense.renewalPeriod || null
     ]);
 
     // Ottieni informazioni del client per la transazione
@@ -877,7 +879,9 @@ class DatabaseStorage implements IStorage {
       'expiryDate': 'expiry_date',
       'activeModules': 'active_modules',
       'assignedCompany': 'assigned_company',
-      'assignedAgent': 'assigned_agent'
+      'assignedAgent': 'assigned_agent',
+      'renewalEnabled': 'renewal_enabled',
+      'renewalPeriod': 'renewal_period'
     };
 
     const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'createdAt');
@@ -1451,6 +1455,8 @@ class DatabaseStorage implements IStorage {
       activeModules: JSON.parse(row.active_modules || '[]'),
       assignedCompany: row.assigned_company,
       assignedAgent: row.assigned_agent,
+      renewalEnabled: row.renewal_enabled,
+      renewalPeriod: row.renewal_period,
       createdAt: row.created_at,
       client: {
         id: row.client_id,

@@ -180,7 +180,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
         price: license.price,
         discount: license.discount,
         status: license.status,
-        licenseType: license.licenseType
+        licenseType: license.licenseType,
+        renewalEnabled: license.renewalEnabled || false,
+        renewalPeriod: license.renewalPeriod
       });
       setIsEditing(false);
     }
@@ -412,24 +414,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
 
                 <Separator className="my-2" />
 
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Tipologia</p>
-                  <p className="text-sm text-gray-900 capitalize">
-                    {license.licenseType?.replace('_', ' ') || 'N/A'}
-                  </p>
-                </div>
 
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Prezzo</p>
-                  <p className="text-sm text-gray-900 font-medium">
-                    €{parseFloat(license.price?.toString() || '0').toFixed(2)}
-                    {license.discount && parseFloat(license.discount.toString()) > 0 && (
-                      <span className="text-orange-600 ml-1">
-                        (-{parseFloat(license.discount.toString()).toFixed(2)}%)
-                      </span>
-                    )}
-                  </p>
-                </div>
 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Creata il</p>
@@ -462,9 +447,54 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   }`}>
                     {license.expiryDate 
                       ? new Date(license.expiryDate).toLocaleDateString('it-IT')
-                      : 'Permanente'
+                      : (license.licenseType === 'permanente' ? 'Permanente' : 'Data non impostata')
                     }
                   </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Rinnovo Automatico</p>
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={editedLicense.renewalEnabled || false}
+                          onChange={(e) => setEditedLicense({...editedLicense, renewalEnabled: e.target.checked})}
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <span className="text-sm text-gray-900">Attiva rinnovo automatico</span>
+                      </label>
+                      {editedLicense.renewalEnabled && (
+                        <Select
+                          value={editedLicense.renewalPeriod || ''}
+                          onValueChange={(value) => setEditedLicense({...editedLicense, renewalPeriod: value})}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Periodo rinnovo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Mensile</SelectItem>
+                            <SelectItem value="yearly">Annuale</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-900">
+                      {license.renewalEnabled ? (
+                        <span className="flex items-center">
+                          <i className="fas fa-check-circle text-green-600 mr-1"></i>
+                          Attivo ({license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : license.renewalPeriod})
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <i className="fas fa-times-circle text-red-600 mr-1"></i>
+                          Disattivo
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -520,7 +550,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     price: license.price,
                     discount: license.discount,
                     status: license.status,
-                    licenseType: license.licenseType
+                    licenseType: license.licenseType,
+                    renewalEnabled: license.renewalEnabled || false,
+                    renewalPeriod: license.renewalPeriod
                   });
                 }}
               >

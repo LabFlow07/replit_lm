@@ -59,6 +59,8 @@ export interface License {
   activeModules?: string[];
   assignedCompany?: string;
   assignedAgent?: string;
+  renewalEnabled?: boolean;
+  renewalPeriod?: string;
   createdAt: Date;
 }
 
@@ -104,6 +106,8 @@ export interface LicenseWithDetails {
   computerKey?: string | null;
   activationDate?: string | null;
   expiryDate?: string | null;
+  renewalEnabled?: boolean;
+  renewalPeriod?: string;
   licenseType: string;
   status: string;
   maxUsers: number;
@@ -113,6 +117,8 @@ export interface LicenseWithDetails {
   activeModules: string[];
   assignedCompany?: string | null;
   assignedAgent?: string | null;
+  renewalEnabled?: boolean;
+  renewalPeriod?: string;
   createdAt: string;
   client?: {
     id: string;

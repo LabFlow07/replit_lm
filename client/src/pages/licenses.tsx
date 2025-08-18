@@ -33,6 +33,9 @@ interface License {
   client: { name: string; company_id?: string; companyId?: string };
   product: { name: string; version?: string };
   notes?: string;
+  renewalEnabled?: boolean;
+  renewalPeriod?: string;
+  discount?: string;
 }
 
 // Define types for client and product for clarity
@@ -412,54 +415,7 @@ export default function LicensesPage() {
               <p className="text-sm text-gray-600">Visualizza e gestisci tutte le licenze del sistema</p>
             </div>
             <div className="flex gap-2">
-              {user?.role === 'superadmin' && (
-                <>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const token = localStorage.getItem('qlm_token');
-                      try {
-                        const response = await fetch('/api/licenses/update-expiry-dates', {
-                          method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (response.ok) {
-                          queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-                          alert('Date di scadenza aggiornate con successo!');
-                        }
-                      } catch (error) {
-                        console.error('Error updating expiry dates:', error);
-                      }
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Aggiorna Scadenze
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const token = localStorage.getItem('qlm_token');
-                      try {
-                        const response = await fetch('/api/licenses/process-renewals', {
-                          method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (response.ok) {
-                          queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-                          alert('Rinnovi automatici processati con successo!');
-                        }
-                      } catch (error) {
-                        console.error('Error processing renewals:', error);
-                      }
-                    }}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Processa Rinnovi
-                  </Button>
-                </>
-              )}
+
               <Button 
                 className="bg-primary hover:bg-blue-700"
                 onClick={() => setIsNewLicenseModalOpen(true)}
@@ -698,29 +654,13 @@ export default function LicensesPage() {
                                   </div>
                                 </div>
                               ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                  Permanente
-                                </Badge>
-                              )}
-                            </td>
-
-                            <td className="p-2 border-r text-xs">
-                              {license.expiryDate ? (
-                                <div className={
-                                  isExpired(license.expiryDate) ? 'text-red-600 font-medium' :
-                                  isExpiringSoon(license.expiryDate) ? 'text-orange-600 font-medium' :
-                                  ''
-                                }>
-                                  {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
-                                  {isExpiringSoon(license.expiryDate) && !isExpired(license.expiryDate) && (
-                                    <div className="text-xs text-orange-500">In scadenza</div>
-                                  )}
-                                  {isExpired(license.expiryDate) && (
-                                    <div className="text-xs text-red-500">Scaduta</div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">Mai</span>
+                                license.licenseType === 'permanente' ? (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Permanente
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">Data non impostata</span>
+                                )
                               )}
                             </td>
 
@@ -820,6 +760,8 @@ export default function LicensesPage() {
                     maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
                     price: parseFloat(formData.get('price') as string) || 0,
                     discount: parseFloat(formData.get('discount') as string) || 0,
+                    renewalEnabled: formData.get('renewalEnabled') === 'on',
+                    renewalPeriod: formData.get('renewalPeriod') || null,
                     activeModules: ['core'],
                     activationKey: formData.get('activationKey') || undefined,
                     computerKey: formData.get('computerKey') || undefined
@@ -943,6 +885,31 @@ export default function LicensesPage() {
                     min="0"
                     max="100"
                   />
+                </div>
+              </div>
+
+              {/* Rinnovo Automatico */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="renewal-enabled"
+                    name="renewalEnabled"
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                  />
+                  <Label htmlFor="renewal-enabled" className="text-sm font-medium">Attiva rinnovo automatico</Label>
+                </div>
+                <div className="pl-6">
+                  <Label htmlFor="renewal-period" className="text-sm font-medium">Periodo di rinnovo</Label>
+                  <Select name="renewalPeriod">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona periodo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensile</SelectItem>
+                      <SelectItem value="yearly">Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
                 </div>
