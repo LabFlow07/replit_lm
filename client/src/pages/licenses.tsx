@@ -357,26 +357,21 @@ export default function LicensesPage() {
 
     return searchMatch && statusMatch && typeMatch;
   }).sort((a: License, b: License) => {
-    // Priorità di ordinamento: 1. In attesa, 2. Sospese, 3. Attive, 4. Altre
-    const statusOrder = {
-      'in_attesa_convalida': 1,
-      'sospesa': 2, 
-      'attiva': 3,
-      'demo': 4,
-      'trial': 4,
-      'scaduta': 5
-    };
+    // Ordinamento per data di scadenza crescente
+    const aExpiryDate = a.expiryDate ? new Date(a.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
+    const bExpiryDate = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
     
-    const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 6;
-    const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 6;
-    
-    // Prima ordina per priorità stato
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
+    // Le licenze permanenti (senza scadenza) vanno alla fine
+    if (!a.expiryDate && !b.expiryDate) {
+      // Se entrambe sono permanenti, ordina per data di attivazione
+      return new Date(a.activationDate || '').getTime() - new Date(b.activationDate || '').getTime();
     }
     
-    // Poi per data di creazione (più recenti prima)
-    return new Date(b.activationDate || '').getTime() - new Date(a.activationDate || '').getTime();
+    if (!a.expiryDate) return 1; // a va dopo b
+    if (!b.expiryDate) return -1; // b va dopo a
+    
+    // Ordinamento crescente per data di scadenza (prima le più prossime alla scadenza)
+    return aExpiryDate - bExpiryDate;
   });
 
   const handleEditLicense = (license: License) => {
