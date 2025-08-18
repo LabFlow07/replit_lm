@@ -2244,34 +2244,45 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
 
     // Only admin/superadmin can manually update payment status
     if (user.role !== 'superadmin' && user.role !== 'admin') {
-      return res.status(403).json({ message: "Not authorized to update payment status" });
+      return res.status(403).json({ message: "Accesso negato. Solo admin/superadmin possono aggiornare lo stato pagamento." });
     }
 
     const transaction = await storage.getTransactionById(transactionId);
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ message: "Transazione non trovata" });
     }
 
     // Update transaction with payment information
     const updates: any = { 
       status,
       updatedAt: new Date(),
-      modifiedBy: user.id // Assuming user.id is the ID of the logged-in user
+      modifiedBy: user.id
     };
 
-    if (status === 'completed' || status === 'manual_paid') {
+    // Logica per la gestione delle date di pagamento
+    if (status === 'in_attesa') {
+      // Se impostato "in attesa", rimuovi la data di pagamento
+      updates.paymentDate = null;
+      console.log(`Pagamento impostato "in attesa" - data pagamento rimossa per transazione ${transactionId}`);
+    } else if (status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito' || 
+               status === 'dall_agente' || status === 'dal_rivenditore' || 
+               status === 'completed' || status === 'manual_paid') {
+      // Se impostato come "avvenuto" (qualsiasi metodo di pagamento), imposta la data corrente
       updates.paymentDate = new Date();
+      console.log(`Pagamento completato - data pagamento impostata per transazione ${transactionId}`);
+      
       if (paymentMethod) {
         updates.paymentMethod = paymentMethod;
       }
     }
 
     await storage.updateTransaction(transactionId, updates);
+    console.log(`Transaction status updated: ${transactionId} new status: ${status} by user: ${user.username}`);
 
-    res.json({ message: "Transaction status updated successfully" });
-  } catch (error) {
+    res.json({ message: "Stato transazione aggiornato con successo" });
+  } catch (error: any) {
     console.error('Update transaction status error:', error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Errore interno del server: " + error.message });
   }
 });
 
