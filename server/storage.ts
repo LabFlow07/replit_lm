@@ -878,6 +878,8 @@ class DatabaseStorage implements IStorage {
   }
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
+    console.log(`updateLicense called for license ${id} with updates:`, updates);
+    
     const fieldMapping: { [key: string]: string } = {
       'maxUsers': 'max_users',
       'maxDevices': 'max_devices',
@@ -908,16 +910,25 @@ class DatabaseStorage implements IStorage {
       // Convert Date objects or ISO strings to MySQL datetime format
       if (field === 'activationDate' || field === 'expiryDate') {
         if (value instanceof Date) {
-          value = value.toISOString().slice(0, 19).replace('T', ' ');
+          const convertedValue = value.toISOString().slice(0, 19).replace('T', ' ');
+          console.log(`Converting ${field} from Date ${value.toISOString()} to MySQL format: ${convertedValue}`);
+          value = convertedValue;
         } else if (typeof value === 'string' && value.includes('T')) {
           // Convert ISO string to MySQL datetime format
-          value = value.slice(0, 19).replace('T', ' ');
+          const convertedValue = value.slice(0, 19).replace('T', ' ');
+          console.log(`Converting ${field} from ISO string ${value} to MySQL format: ${convertedValue}`);
+          value = convertedValue;
         }
       }
       return value;
     });
 
-    await this.db.query(`UPDATE licenses SET ${setClause} WHERE id = ?`, [...values, id]);
+    const query = `UPDATE licenses SET ${setClause} WHERE id = ?`;
+    console.log(`Executing query: ${query}`);
+    console.log(`With values:`, [...values, id]);
+    
+    await this.db.query(query, [...values, id]);
+    console.log(`License ${id} updated successfully in database`);
   }
 
   async deleteLicense(licenseId: string): Promise<void> {
@@ -1469,53 +1480,53 @@ class DatabaseStorage implements IStorage {
 
   private mapLicenseRows(rows: any[]): LicenseWithDetails[] {
     return rows.map(row => ({
-      id: row.id,
-      clientId: row.client_id,
-      productId: row.product_id,
-      activationKey: row.activation_key,
-      computerKey: row.computer_key,
-      activationDate: row.activation_date,
-      expiryDate: row.expiry_date,
-      licenseType: row.license_type,
-      status: row.status,
-      maxUsers: row.max_users,
-      maxDevices: row.max_devices,
-      price: row.price,
-      discount: row.discount,
-      activeModules: JSON.parse(row.active_modules || '[]'),
-      assignedCompany: row.assigned_company,
-      assignedAgent: row.assigned_agent,
-      renewalEnabled: row.renewal_enabled,
-      renewalPeriod: row.renewal_period,
-      createdAt: row.created_at,
-      client: {
-        id: row.client_id,
-        name: row.client_name,
-        email: row.client_email,
-        status: row.client_status,
-        companyId: row.client_company_id || row.company_id,
-        contactInfo: {},
-        isMultiSite: false,
-        isMultiUser: false,
-        createdAt: new Date()
-      },
-      product: {
-        id: row.product_id,
-        name: row.product_name,
-        version: row.product_version,
-        description: '',
-        supportedLicenseTypes: [],
-        createdAt: new Date()
-      },
-      company: row.company_name ? {
-        id: row.assigned_company,
-        name: row.company_name,
-        type: '',
-        parentId: null,
-        status: 'active',
-        contactInfo: null,
-        createdAt: new Date()
-      } : undefined
+        id: row.id,
+        clientId: row.client_id,
+        productId: row.product_id,
+        activationKey: row.activation_key,
+        computerKey: row.computer_key,
+        activationDate: row.activation_date,
+        expiryDate: row.expiry_date,
+        licenseType: row.license_type,
+        status: row.status,
+        maxUsers: row.max_users,
+        maxDevices: row.max_devices,
+        price: row.price,
+        discount: row.discount,
+        activeModules: JSON.parse(row.active_modules || '[]'),
+        assignedCompany: row.assigned_company,
+        assignedAgent: row.assigned_agent,
+        renewalEnabled: row.renewal_enabled,
+        renewalPeriod: row.renewal_period,
+        createdAt: row.created_at,
+        client: {
+          id: row.client_id,
+          name: row.client_name,
+          email: row.client_email,
+          status: row.client_status,
+          companyId: row.client_company_id || row.company_id,
+          contactInfo: {},
+          isMultiSite: false,
+          isMultiUser: false,
+          createdAt: new Date()
+        },
+        product: {
+          id: row.product_id,
+          name: row.product_name,
+          version: row.product_version,
+          description: '',
+          supportedLicenseTypes: [],
+          createdAt: new Date()
+        },
+        company: row.company_name ? {
+          id: row.assigned_company,
+          name: row.company_name,
+          type: '',
+          parentId: null,
+          status: 'active',
+          contactInfo: null,
+          createdAt: new Date()
+        } : undefined
     }));
   }
 

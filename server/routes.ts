@@ -508,8 +508,8 @@ router.get("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
       licenseType: row.license_type,
       maxDevices: row.max_devices,
       maxUsers: row.max_users,
-      expirationDate: row.expiration_date,
-      expiryDate: row.expiration_date,
+      expirationDate: row.expiry_date,
+      expiryDate: row.expiry_date,
       activationDate: row.activation_date,
       isActive: row.is_active,
       lastActivation: row.last_activation,
@@ -966,8 +966,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       }
 
       console.log(`Setting expiry date for license ${licenzaAssegnata} (${license.licenseType}): ${expiryDate ? expiryDate.toISOString() : 'never'}`);
+      console.log(`updateData before storage update:`, updateData);
 
       await storage.updateLicense(licenzaAssegnata, updateData);
+      
+      console.log(`License ${licenzaAssegnata} updated successfully`);
 
       // Update company record with license assignment
       await storage.updateTestaRegAzienda(partitaIva, {
