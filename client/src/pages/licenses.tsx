@@ -889,6 +889,20 @@ export default function LicensesPage() {
 
               {/* Rinnovo Automatico */}
               <div className="space-y-3">
+                <div>
+                  <Label htmlFor="license-type" className="text-sm font-medium">Tipologia Licenza</Label>
+                  <Select name="licenseType" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona tipologia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                      <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -897,18 +911,6 @@ export default function LicensesPage() {
                     className="h-4 w-4 text-blue-600 rounded border-gray-300"
                   />
                   <Label htmlFor="renewal-enabled" className="text-sm font-medium">Attiva rinnovo automatico</Label>
-                </div>
-                <div className="pl-6">
-                  <Label htmlFor="renewal-period" className="text-sm font-medium">Periodo di rinnovo</Label>
-                  <Select name="renewalPeriod">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona periodo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Mensile</SelectItem>
-                      <SelectItem value="yearly">Annuale</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
                 </div>

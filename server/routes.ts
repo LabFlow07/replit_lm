@@ -941,7 +941,6 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         case 'abbonamento_mensile':
         case 'mensile':
           expiryDate = new Date(now);
-          // Set to the day before next month (e.g., if activated on 16/08, expires on 15/09)
           expiryDate.setMonth(expiryDate.getMonth() + 1);
           expiryDate.setDate(expiryDate.getDate() - 1);
           break;
