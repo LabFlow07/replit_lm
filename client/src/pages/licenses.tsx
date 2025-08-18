@@ -301,6 +301,9 @@ export default function LicensesPage() {
       const data = await response.json();
 
       console.log(`Licenses API returned ${data.length} licenses for user ${user?.username}`);
+      
+
+      
       return data;
     }
   });

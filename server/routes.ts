@@ -394,49 +394,55 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
 
     const rows = await database.query(query, queryParams);
 
-    const mappedLicenses = rows.map((row: any) => ({
-      id: row.id,
-      activationKey: row.activation_key,
-      client: {
-        id: row.client_id,
-        name: row.clientName,
-        email: row.clientEmail,
-        company_id: row.clientCompanyId
-      },
-      company: {
-        id: row.clientCompanyId,
-        name: row.companyName,
-        parent_id: row.parentCompanyId
-      },
-      product: {
-        id: row.product_id,
-        name: row.productName,
-        version: row.productVersion
-      },
-      status: row.status,
-      licenseType: row.license_type,
-      maxDevices: row.max_devices,
-      maxUsers: row.max_users,
-      expirationDate: row.expiry_date,
-      expiryDate: row.expiry_date,
-      activationDate: row.activation_date,
-      isActive: row.is_active,
-      lastActivation: row.last_activation,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      price: row.price,
-      discount: row.discount,
-      notes: row.notes,
-      activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
-      renewalEnabled: row.renewal_enabled,
-      renewalPeriod: row.renewal_period,
-      // Additional fields for fallback display
-      clientName: row.clientName,
-      clientEmail: row.clientEmail,
-      companyName: row.companyName,
-      parentCompanyId: row.parentCompanyId,
-      parentCompanyName: row.parentCompanyName
-    }));
+    const mappedLicenses = rows.map((row: any) => {
+      const license = {
+        id: row.id,
+        activationKey: row.activation_key,
+        client: {
+          id: row.client_id,
+          name: row.clientName,
+          email: row.clientEmail,
+          company_id: row.clientCompanyId
+        },
+        company: {
+          id: row.clientCompanyId,
+          name: row.companyName,
+          parent_id: row.parentCompanyId
+        },
+        product: {
+          id: row.product_id,
+          name: row.productName,
+          version: row.productVersion
+        },
+        status: row.status,
+        licenseType: row.license_type,
+        maxDevices: row.max_devices,
+        maxUsers: row.max_users,
+        expirationDate: row.expiry_date,
+        expiryDate: row.expiry_date,
+        activationDate: row.activation_date,
+        isActive: row.is_active,
+        lastActivation: row.last_activation,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        price: row.price,
+        discount: row.discount,
+        notes: row.notes,
+        activeModules: row.active_modules ? JSON.parse(row.active_modules) : ['core'],
+        renewalEnabled: row.renewal_enabled,
+        renewalPeriod: row.renewal_period,
+        // Additional fields for fallback display
+        clientName: row.clientName,
+        clientEmail: row.clientEmail,
+        companyName: row.companyName,
+        parentCompanyId: row.parentCompanyId,
+        parentCompanyName: row.parentCompanyName
+      };
+      
+
+      
+      return license;
+    });
 
     licenses = mappedLicenses;
     console.log(`Licenses API returned ${licenses.length} licenses for user ${user.username}`);
