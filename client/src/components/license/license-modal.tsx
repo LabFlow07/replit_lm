@@ -413,6 +413,25 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                 <Separator className="my-2" />
 
                 <div>
+                  <p className="text-sm font-medium text-gray-700">Tipologia</p>
+                  <p className="text-sm text-gray-900 capitalize">
+                    {license.licenseType?.replace('_', ' ') || 'N/A'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Prezzo</p>
+                  <p className="text-sm text-gray-900 font-medium">
+                    €{parseFloat(license.price?.toString() || '0').toFixed(2)}
+                    {license.discount && parseFloat(license.discount.toString()) > 0 && (
+                      <span className="text-orange-600 ml-1">
+                        (-{parseFloat(license.discount.toString()).toFixed(2)}%)
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div>
                   <p className="text-sm font-medium text-gray-700">Creata il</p>
                   <p className="text-sm text-gray-900">
                     {license.createdAt 
@@ -434,7 +453,13 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
 
                 <div>
                   <p className="text-sm font-medium text-gray-700">Scade il</p>
-                  <p className="text-sm text-gray-900 font-semibold">
+                  <p className={`text-sm font-semibold ${
+                    license.expiryDate ? (
+                      new Date(license.expiryDate) < new Date() ? 'text-red-600' :
+                      new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
+                      'text-green-600'
+                    ) : 'text-gray-900'
+                  }`}>
                     {license.expiryDate 
                       ? new Date(license.expiryDate).toLocaleDateString('it-IT')
                       : 'Permanente'

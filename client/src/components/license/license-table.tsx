@@ -16,11 +16,49 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React, { useState } from 'react';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+
+// Helper functions for date comparisons (assuming these are defined elsewhere or should be included)
+const isExpired = (expiryDate: string | Date): boolean => {
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  return expiry < now;
+};
+
+const isExpiringSoon = (expiryDate: string | Date): boolean => {
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  const diffTime = expiry.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= 7; // Expiring within 7 days
+};
+
 
 function LicenseModal({ license, isOpen, onClose, onEdit }: { license: any, isOpen: boolean, onClose: () => void, onEdit?: () => void }) {
   if (!license) {
     return null;
   }
+
+  // State for form inputs if editing
+  const [editedLicense, setEditedLicense] = useState(license);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setEditedLicense(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (value: string, field: string) => {
+    setEditedLicense(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = () => {
+    // Here you would typically call an API to save the changes
+    console.log("Saving changes:", editedLicense);
+    onEdit?.(); // Call the onEdit prop passed from parent if it exists
+    onClose();
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -36,47 +74,97 @@ function LicenseModal({ license, isOpen, onClose, onEdit }: { license: any, isOp
             <Label htmlFor="activationKey" className="text-right">
               Chiave Licenza
             </Label>
-            <Input id="activationKey" value={license.activationKey} className="col-span-3" disabled={!onEdit} />
+            <Input id="activationKey" value={editedLicense.activationKey} className="col-span-3" disabled={!onEdit} onChange={handleInputChange}/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="productName" className="text-right">
               Prodotto
             </Label>
-            <Input id="productName" value={license.product?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+            <Input id="productName" value={editedLicense.product?.name || 'N/A'} className="col-span-3" disabled={!onEdit} onChange={(e) => setEditedLicense(prev => ({ ...prev, product: { ...prev.product, name: e.target.value } }))}/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="clientName" className="text-right">
               Cliente
             </Label>
-            <Input id="clientName" value={license.client?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+            <Input id="clientName" value={editedLicense.client?.name || 'N/A'} className="col-span-3" disabled={!onEdit} onChange={(e) => setEditedLicense(prev => ({ ...prev, client: { ...prev.client, name: e.target.value } }))}/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="companyName" className="text-right">
               Azienda
             </Label>
-            <Input id="companyName" value={license.company?.name || 'N/A'} className="col-span-3" disabled={!onEdit} />
+            <Input id="companyName" value={editedLicense.company?.name || 'N/A'} className="col-span-3" disabled={!onEdit} onChange={(e) => setEditedLicense(prev => ({ ...prev, company: { ...prev.company, name: e.target.value } }))}/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="licenseType" className="text-right">
               Tipo Licenza
             </Label>
-            <Input id="licenseType" value={license.licenseType} className="col-span-3" disabled={!onEdit} />
+            <Select onValueChange={(value) => handleSelectChange(value, 'licenseType')} disabled={!onEdit} value={editedLicense.licenseType}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Seleziona tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permanent">Permanente</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="subscription">Abbonamento Mensile</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="status" className="text-right">
               Stato
             </Label>
-            <Input id="status" value={license.status} className="col-span-3" disabled={!onEdit} />
+             <Select onValueChange={(value) => handleSelectChange(value, 'status')} disabled={!onEdit} value={editedLicense.status}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Seleziona stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="attiva">Attiva</SelectItem>
+                <SelectItem value="scaduta">Scaduta</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="sospesa">Sospesa</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="expiryDate" className="text-right">
               Scadenza
             </Label>
-            <Input id="expiryDate" value={license.expiryDate ? new Date(license.expiryDate).toLocaleDateString('it-IT') : 'Mai'} className="col-span-3" disabled={!onEdit} />
+            <Input
+              id="expiryDate"
+              type="date" // Use type="date" for native date picker
+              value={editedLicense.expiryDate ? new Date(editedLicense.expiryDate).toISOString().split('T')[0] : ''}
+              className="col-span-3"
+              disabled={!onEdit || editedLicense.licenseType === 'permanent'} // Disable if not editing or if license is permanent
+              onChange={(e) => {
+                const newDate = e.target.value;
+                setEditedLicense(prev => ({ ...prev, expiryDate: newDate }));
+              }}
+            />
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="price" className="text-right">
+              Prezzo
+            </Label>
+            <Input id="price" value={editedLicense.price || ''} className="col-span-3" disabled={!onEdit} onChange={handleInputChange}/>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="priceType" className="text-right">
+              Tipologia Prezzo
+            </Label>
+            <Select onValueChange={(value) => handleSelectChange(value, 'priceType')} disabled={!onEdit} value={editedLicense.priceType}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Seleziona tipologia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mensile">Mensile</SelectItem>
+                <SelectItem value="annuale">Annuale</SelectItem>
+                <SelectItem value="una_tantum">Una Tantum</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         {onEdit ? (
-          <Button type="submit">Salva Modifiche</Button>
+          <Button type="submit" onClick={handleSave}>Salva Modifiche</Button>
         ) : (
           <Button onClick={onEdit}>Modifica</Button>
         )}
@@ -89,7 +177,7 @@ export default function LicenseTable() {
   const [, setLocation] = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState(null);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -178,6 +266,7 @@ export default function LicenseTable() {
   const openEditModal = async (license: any) => {
     try {
       const token = localStorage.getItem('qlm_token');
+      // Fetching detailed license data for editing
       const response = await fetch(`/api/licenses/${license.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -186,17 +275,19 @@ export default function LicenseTable() {
 
       if (response.ok) {
         const detailedLicense = await response.json();
+        // Ensure the fetched data includes all fields needed for the modal,
+        // including price and priceType if they are not always present in the initial list.
         setSelectedLicense(detailedLicense);
         setModalOpen(true);
       } else {
-        console.error('Failed to fetch license details');
-        // Fallback to using the license as-is
+        console.error('Failed to fetch license details, using provided license data instead.');
+        // Fallback to using the license data passed to the function
         setSelectedLicense(license);
         setModalOpen(true);
       }
     } catch (error) {
       console.error('Error fetching license details:', error);
-      // Fallback to using the license as-is
+      // Fallback to using the license data passed to the function
       setSelectedLicense(license);
       setModalOpen(true);
     }
@@ -219,7 +310,7 @@ export default function LicenseTable() {
       });
 
       if (response.ok) {
-        // Refresh licenses list
+        // Refresh licenses list by re-fetching
         window.location.reload();
       } else {
         console.error(`Failed to ${action} license`);
@@ -228,6 +319,20 @@ export default function LicenseTable() {
       console.error(`Error ${action} license:`, error);
     }
   };
+
+  const filteredLicenses = licenses.filter((license: any) => {
+    const searchTermMatch = 
+      license.activationKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (license.product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (license.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (license.company?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+
+    const statusMatch = statusFilter === "all" || license.status === statusFilter;
+    const typeMatch = typeFilter === "all" || license.licenseType === typeFilter;
+
+    return searchTermMatch && statusMatch && typeMatch;
+  });
+
 
   return (
     <Card>
@@ -238,7 +343,7 @@ export default function LicenseTable() {
             Elenco Licenze
           </CardTitle>
         </div>
-        
+
         {/* Filtri */}
         <div className="flex flex-col gap-4">
           <Input
@@ -310,7 +415,7 @@ export default function LicenseTable() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {licenses.map((license: any) => (
+                {filteredLicenses.map((license: any) => (
                   <tr key={license.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                       {license.activationKey}
@@ -356,7 +461,23 @@ export default function LicenseTable() {
                       {getStatusBadge(license.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {license.expiryDate ? new Date(license.expiryDate).toLocaleDateString('it-IT') : 'Mai'}
+                      {license.expiryDate ? (
+                        <div className={
+                          isExpired(license.expiryDate) ? 'text-red-600 font-medium' :
+                          isExpiringSoon(license.expiryDate) ? 'text-orange-600 font-medium' :
+                          'text-green-600'
+                        }>
+                          {format(new Date(license.expiryDate), 'dd/MM/yyyy', { locale: it })}
+                          {isExpiringSoon(license.expiryDate) && !isExpired(license.expiryDate) && (
+                            <div className="text-xs text-orange-500">In scadenza</div>
+                          )}
+                          {isExpired(license.expiryDate) && (
+                            <div className="text-xs text-red-500">Scaduta</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Permanente</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
@@ -387,7 +508,7 @@ export default function LicenseTable() {
               </tbody>
             </table>
 
-            {licenses.length === 0 && (
+            {filteredLicenses.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-key text-gray-400 text-2xl"></i>
@@ -404,7 +525,7 @@ export default function LicenseTable() {
         license={selectedLicense}
         isOpen={isModalOpen}
         onClose={closeModal}
-        isEditMode={true}
+        onEdit={() => handleLicenseAction(selectedLicense, 'update')} // Assuming 'update' is the correct action for saving edits
       />
     </Card>
   );

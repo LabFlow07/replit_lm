@@ -941,12 +941,17 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           expiryDate.setDate(expiryDate.getDate() + (license.trialDays || 30));
           break;
         case 'abbonamento_mensile':
+        case 'mensile':
           expiryDate = new Date(now);
+          // Set to the day before next month (e.g., if activated on 16/08, expires on 15/09)
           expiryDate.setMonth(expiryDate.getMonth() + 1);
+          expiryDate.setDate(expiryDate.getDate() - 1);
           break;
         case 'abbonamento_annuale':
+        case 'annuale':
           expiryDate = new Date(now);
           expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          expiryDate.setDate(expiryDate.getDate() - 1);
           break;
         case 'permanente':
           expiryDate = null; // No expiry for permanent licenses
@@ -955,6 +960,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           // For any other license types, treat as monthly
           expiryDate = new Date(now);
           expiryDate.setMonth(expiryDate.getMonth() + 1);
+          expiryDate.setDate(expiryDate.getDate() - 1);
           break;
       }
       

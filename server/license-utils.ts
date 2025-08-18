@@ -17,13 +17,17 @@ export function calculateExpiryDate(licenseType: string, trialDays: number = 30,
       return trialExpiry;
     
     case 'abbonamento_mensile':
+    case 'mensile':
       const monthlyExpiry = new Date(baseDate);
       monthlyExpiry.setMonth(monthlyExpiry.getMonth() + 1);
+      monthlyExpiry.setDate(monthlyExpiry.getDate() - 1);
       return monthlyExpiry;
     
     case 'abbonamento_annuale':
+    case 'annuale':
       const yearlyExpiry = new Date(baseDate);
       yearlyExpiry.setFullYear(yearlyExpiry.getFullYear() + 1);
+      yearlyExpiry.setDate(yearlyExpiry.getDate() - 1);
       return yearlyExpiry;
     
     default:
