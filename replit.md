@@ -36,6 +36,13 @@ Preferred communication style: Simple, everyday language.
       - Added detection system for inverted environment variables
       - System now correctly identifies when VITE_STRIPE_PUBLIC_KEY contains secret key instead of public key
       - Provides clear console error messages guiding user to fix Replit Secrets configuration
+  - **WALLET TRANSACTION DISPLAY SYSTEM COMPLETED:**
+    - Fixed critical issue preventing wallet transaction display in modal
+    - Created dedicated endpoint `/api/company/:companyId/wallet-transactions` to avoid routing conflicts
+    - Successfully resolved HTTP caching issues that prevented new code execution
+    - Wallet transaction modal now correctly displays all transactions from `wallet_transactions` table
+    - Confirmed working with Shadow company showing 4 actual transactions including Stripe payments
+    - System properly shows transaction types, amounts, balances, and descriptions
 - **SIDEBAR LAYOUT RESOLVED:**
   - Fixed wallet page sidebar overlap issue with proper padding adjustment
   - Wallet page now displays correctly without content being hidden behind sidebar
