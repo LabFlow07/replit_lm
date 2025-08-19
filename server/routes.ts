@@ -3299,37 +3299,20 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
   }
 });
 
-// NEW ENDPOINT: Get wallet with transactions (bypass cache)
-router.get("/api/wallet-with-transactions/:companyId", authenticateToken, async (req: Request, res: Response) => {
-  const timestamp = Date.now();
-  console.log(`🎯 NEW WALLET ENDPOINT CALLED - TIMESTAMP: ${timestamp}`);
-  
+// ENDPOINT SEMPLICE: Leggi solo transazioni wallet
+router.get("/api/transactions/:companyId", authenticateToken, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
     const { companyId } = req.params;
-
-    // Get wallet
-    let wallet = await storage.getCompanyWallet(companyId);
-    if (!wallet) {
-      wallet = await storage.createCompanyWallet(companyId);
-    }
-
-    // Get transactions
+    console.log(`📋 Richiesta transazioni per company: ${companyId}`);
+    
     const transactions = await storage.getWalletTransactions(companyId, 100);
-    
-    console.log(`🔥 WALLET: Balance ${wallet.balance}, TRANSACTIONS: ${transactions.length}`);
-    
-    const response = {
-      ...wallet,
-      transactions: transactions,
-      _timestamp: timestamp
-    };
+    console.log(`💰 Trovate ${transactions.length} transazioni`);
     
     res.setHeader('Cache-Control', 'no-cache');
-    res.json(response);
+    res.json(transactions);
     
   } catch (error: any) {
-    console.error('New wallet endpoint error:', error);
+    console.error('❌ Errore endpoint transazioni:', error);
     res.status(500).json({ error: error.message });
   }
 });

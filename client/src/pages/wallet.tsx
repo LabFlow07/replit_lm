@@ -334,47 +334,26 @@ function WalletContent() {
 
   const handleViewTransactions = async (companyId: string, companyName: string) => {
     try {
-      console.log('🔍 handleViewTransactions called - Company:', companyName, 'ID:', companyId);
+      console.log('🔍 Caricamento transazioni per:', companyName);
       
-      const response = await apiRequest('GET', `/api/wallet-with-transactions/${companyId}`);
-      console.log('📡 API response status:', response.status);
+      const response = await apiRequest('GET', `/api/transactions/${companyId}`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Errore HTTP: ${response.status}`);
       }
       
-      const data = await response.json();
-      console.log('📊 Wallet data received from API:', data);
-      
-      // Le transazioni sono ora incluse direttamente nella risposta dell'endpoint wallet
-      const transactions = data.transactions || [];
-      // Check if response includes _debug info (new format)
-      const debugInfo = data._debug;
-      const transactionCount = debugInfo?.transactionCount ?? transactions.length;
-      
-      console.log(`📈 Transactions from API response: ${transactionCount}`);
-      if (debugInfo) {
-        console.log(`🔍 API Debug Info:`, debugInfo);
-      }
-      
-      if (transactionCount === 0) {
-        console.log(`❌ No transactions found for company: ${companyName}`);
-        console.log(`💰 But wallet balance is: ${data.balance}`);
-        console.log(`⚠️ This suggests the API endpoint is not including transactions in the response`);
-      } else {
-        console.log('✅ Sample transaction:', transactions[0]);
-      }
+      const transactions = await response.json();
+      console.log('📊 Transazioni caricate:', transactions.length);
       
       setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
       setShowTransactionsModal(true);
       
-      console.log('🔧 Modal should now be open with', transactions.length, 'transactions');
     } catch (error) {
-      console.error('💥 Error fetching transactions:', error);
+      console.error('❌ Errore caricamento transazioni:', error);
       toast({
         title: 'Errore',
-        description: `Errore nel caricamento delle transazioni: ${error.message}`,
+        description: 'Impossibile caricare le transazioni',
         variant: 'destructive'
       });
     }
