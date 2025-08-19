@@ -113,18 +113,47 @@ function WalletContent() {
     retry: 1
   });
 
-  // Fetch wallet for selected company or user's company
+  // Determine active company ID based on user role
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
-  const { data: walletData, isLoading: walletLoading } = useQuery({
+  
+  // Debug logging
+  console.log('Wallet Debug:', {
+    userRole,
+    selectedCompanyId,
+    userCompanyId,
+    activeCompanyId,
+    companiesCount: companies?.length
+  });
+  const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useQuery({
     queryKey: ['/api/wallet', activeCompanyId],
-    queryFn: () => apiRequest('GET', `/api/wallet/${activeCompanyId}`).then(res => res.json()),
+    queryFn: () => {
+      console.log('Fetching wallet for company:', activeCompanyId);
+      return apiRequest('GET', `/api/wallet/${activeCompanyId}`).then(res => res.json());
+    },
     enabled: !!user && !!activeCompanyId,
     retry: 1
   });
 
+  // Refetch wallet when activeCompanyId changes
+  useEffect(() => {
+    if (activeCompanyId) {
+      console.log('Active company changed to:', activeCompanyId);
+      refetchWallet();
+    }
+  }, [activeCompanyId, refetchWallet]);
+
   // Extract wallet and transactions from response
   const wallet = walletData?.wallet || {};
   const transactions = walletData?.transactions || [];
+  
+  // Debug logging for wallet data
+  console.log('Wallet Data Debug:', {
+    walletData,
+    wallet,
+    balance: wallet.balance,
+    activeCompanyId,
+    selectedCompanyId
+  });
 
   // Fetch all wallets for superadmin
   const { data: allWallets = [] } = useQuery({
@@ -274,7 +303,10 @@ function WalletContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+            <Select value={selectedCompanyId} onValueChange={(value) => {
+              console.log('Company selection changed to:', value);
+              setSelectedCompanyId(value);
+            }}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
               </SelectTrigger>
@@ -291,7 +323,7 @@ function WalletContent() {
       )}
 
       {/* Wallet Balance Card */}
-      {activeCompanyId && wallet && (
+      {activeCompanyId && walletData && wallet && Object.keys(wallet).length > 0 && (
         <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
