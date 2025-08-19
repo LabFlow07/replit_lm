@@ -5,11 +5,17 @@ import bcrypt from "bcryptjs";
 import { database } from "./database";
 import { storage } from "./storage";
 import { calculateExpiryDate, generateRenewalTransaction, processAutomaticRenewals, updateMissingExpiryDates, startAutomaticRenewalScheduler } from "./license-utils";
+import Stripe from "stripe";
 
 const router = express.Router();
 
 // JWT Secret - Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || "qlm-jwt-secret-key-2024";
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
+});
 
 // Middleware to verify JWT token
 function authenticateToken(req: Request, res: Response, next: NextFunction) {
@@ -2769,12 +2775,12 @@ router.get("/api/wallet/:companyId/transactions", authenticateToken, async (req:
   }
 });
 
-// Recharge wallet credits (admin only - prepares for Stripe integration)
-router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Request, res: Response) => {
+// Create Stripe payment intent for wallet recharge
+router.post("/api/wallet/:companyId/create-payment-intent", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { companyId } = req.params;
-    const { amount, paymentMethod = 'stripe' } = req.body;
+    const { amount } = req.body;
 
     // Only admin of the company can recharge their wallet
     if (user.role !== 'admin' && user.role !== 'superadmin') {
@@ -2790,8 +2796,134 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
       return res.status(400).json({ message: "Importo non valido" });
     }
 
-    // TODO: Integrate with Stripe for actual payment processing
-    // For now, we'll simulate successful payment for testing
+    // Get company info for customer creation
+    const company = await storage.getCompanyById(companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Azienda non trovata" });
+    }
+
+    // Get or create Stripe customer
+    let wallet = await storage.getCompanyWallet(companyId);
+    if (!wallet) {
+      wallet = await storage.createCompanyWallet(companyId);
+    }
+
+    let customerId = wallet.stripeCustomerId;
+    
+    if (!customerId) {
+      // Create new Stripe customer
+      const customer = await stripe.customers.create({
+        name: company.name,
+        metadata: {
+          companyId: companyId,
+          userId: user.id
+        }
+      });
+      
+      customerId = customer.id;
+      
+      // Update wallet with Stripe customer ID
+      await storage.updateWalletStripeCustomer(companyId, customerId);
+    }
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents (euros to cents)
+      currency: 'eur',
+      customer: customerId,
+      metadata: {
+        companyId: companyId,
+        credits: amount.toString(),
+        userId: user.id
+      },
+      description: `Ricarica ${amount} crediti per ${company.name}`
+    });
+
+    res.json({ 
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (error) {
+    console.error('Create payment intent error:', error);
+    res.status(500).json({ message: "Errore nella creazione del pagamento" });
+  }
+});
+
+// Confirm wallet recharge after successful Stripe payment
+router.post("/api/wallet/:companyId/confirm-payment", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+    const { paymentIntentId } = req.body;
+
+    // Only admin of the company can confirm payment
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo gli admin possono confermare i pagamenti" });
+    }
+
+    // Admin can only confirm for their own company wallet
+    if (user.role === 'admin' && user.companyId !== companyId) {
+      return res.status(403).json({ message: "Puoi confermare pagamenti solo per la tua azienda" });
+    }
+
+    // Retrieve payment intent from Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ message: "Pagamento non completato" });
+    }
+
+    if (paymentIntent.metadata.companyId !== companyId) {
+      return res.status(400).json({ message: "Pagamento non associato a questa azienda" });
+    }
+
+    const amount = parseFloat(paymentIntent.metadata.credits);
+    
+    // Update wallet balance
+    const wallet = await storage.updateWalletBalance(
+      companyId, 
+      amount, 
+      `Ricarica crediti via Stripe (${paymentIntentId})`, 
+      'ricarica', 
+      user.id
+    );
+
+    console.log(`💳 Stripe payment confirmed: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
+    
+    res.json({ 
+      message: "Ricarica completata con successo",
+      wallet,
+      amount: amount,
+      paymentIntentId
+    });
+  } catch (error) {
+    console.error('Confirm payment error:', error);
+    res.status(500).json({ message: "Errore nella conferma del pagamento" });
+  }
+});
+
+// Legacy recharge endpoint for testing (kept for backward compatibility)
+router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+    const { amount, paymentMethod = 'test' } = req.body;
+
+    // Only admin of the company can recharge their wallet
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo gli admin possono ricaricare il wallet" });
+    }
+
+    // Admin can only recharge their own company wallet
+    if (user.role === 'admin' && user.companyId !== companyId) {
+      return res.status(403).json({ message: "Puoi ricaricare solo il wallet della tua azienda" });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Importo non valido" });
+    }
+
+    // Test/simulation payment processing
     const wallet = await storage.updateWalletBalance(
       companyId, 
       amount, 
@@ -2800,7 +2932,7 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
       user.id
     );
 
-    console.log(`💳 Wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
+    console.log(`💳 Test wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
     
     res.json({ 
       message: "Ricarica completata con successo",

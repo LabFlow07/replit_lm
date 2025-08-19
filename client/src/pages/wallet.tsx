@@ -17,6 +17,78 @@ import { apiRequest } from '@/lib/queryClient';
 import { Wallet, CreditCard, ArrowUpDown, ArrowDown, ArrowUp, Euro, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
+
+// Stripe Payment Form Component
+function StripePaymentForm({ amount, companyId, onSuccess }: { 
+  amount: number; 
+  companyId: string; 
+  onSuccess: () => void; 
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/wallet?payment=success`,
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        toast({
+          title: "Pagamento fallito",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Pagamento completato",
+          description: `Ricarica di ${amount} crediti completata con successo!`,
+        });
+        onSuccess();
+      }
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il pagamento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      <Button 
+        type="submit" 
+        disabled={!stripe || isProcessing}
+        className="w-full"
+      >
+        {isProcessing ? 'Elaborazione...' : `Paga ${amount} €`}
+      </Button>
+    </form>
+  );
+}
 
 function WalletContent() {
   const { toast } = useToast();
@@ -60,7 +132,30 @@ function WalletContent() {
     retry: 1
   });
 
-  // Recharge wallet mutation
+  // State for Stripe payment
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [showStripeForm, setShowStripeForm] = useState(false);
+
+  // Create payment intent mutation
+  const createPaymentIntentMutation = useMutation({
+    mutationFn: (data: { companyId: string; amount: number }) =>
+      apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount }),
+    onSuccess: (response: any) => {
+      setClientSecret(response.clientSecret);
+      setPaymentIntentId(response.paymentIntentId);
+      setShowStripeForm(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Errore creazione pagamento',
+        description: error.message || 'Errore durante la creazione del pagamento',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  // Legacy recharge wallet mutation (for testing)
   const rechargeMutation = useMutation({
     mutationFn: (data: { companyId: string; amount: number }) =>
       apiRequest('POST', `/api/wallet/${data.companyId}/recharge`, { amount: data.amount }),
@@ -106,6 +201,29 @@ function WalletContent() {
       toast({ title: 'Errore', description: 'Selezionare un\'azienda', variant: 'destructive' });
       return;
     }
+    // Use Stripe payment for real transactions
+    createPaymentIntentMutation.mutate({ companyId: activeCompanyId, amount });
+  };
+
+  const handleStripePaymentSuccess = () => {
+    setShowStripeForm(false);
+    setClientSecret(null);
+    setPaymentIntentId(null);
+    setRechargeAmount('');
+    queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
+  };
+
+  const handleTestRecharge = () => {
+    const amount = parseFloat(rechargeAmount);
+    if (!amount || amount <= 0) {
+      toast({ title: 'Errore', description: 'Inserire un importo valido', variant: 'destructive' });
+      return;
+    }
+    if (!activeCompanyId) {
+      toast({ title: 'Errore', description: 'Selezionare un\'azienda', variant: 'destructive' });
+      return;
+    }
+    // Use test/simulation for development
     rechargeMutation.mutate({ companyId: activeCompanyId, amount });
   };
 
@@ -261,16 +379,26 @@ function WalletContent() {
                   data-testid="input-recharge-amount"
                 />
               </div>
-              <Button 
-                onClick={handleRecharge} 
-                disabled={rechargeMutation.isPending || !rechargeAmount}
-                className="w-full"
-                data-testid="button-recharge-wallet"
-              >
-                {rechargeMutation.isPending ? 'Elaborazione...' : `Ricarica ${rechargeAmount || '0'} crediti`}
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleRecharge} 
+                  disabled={createPaymentIntentMutation.isPending || !rechargeAmount}
+                  className="flex-1"
+                >
+                  {createPaymentIntentMutation.isPending ? 'Creazione...' : 'Ricarica con Stripe'}
+                </Button>
+                <Button 
+                  onClick={handleTestRecharge} 
+                  disabled={rechargeMutation.isPending || !rechargeAmount}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid="button-test-recharge"
+                >
+                  {rechargeMutation.isPending ? 'Test...' : 'Ricarica Test'}
+                </Button>
+              </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                💡 Attualmente simulato per testing. L'integrazione Stripe sarà disponibile a breve.
+                💡 Usa "Ricarica con Stripe" per pagamenti reali o "Ricarica Test" per simulazioni.
               </p>
             </CardContent>
           </Card>
@@ -448,6 +576,27 @@ function WalletContent() {
           </CardContent>
         </Card>
       )}
+
+      {/* Stripe Payment Dialog */}
+      <Dialog open={showStripeForm} onOpenChange={setShowStripeForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Ricarica Wallet con Stripe</DialogTitle>
+            <DialogDescription>
+              Completa il pagamento per ricaricare {rechargeAmount} crediti
+            </DialogDescription>
+          </DialogHeader>
+          {clientSecret && (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <StripePaymentForm 
+                amount={parseFloat(rechargeAmount) || 0} 
+                companyId={activeCompanyId || ''} 
+                onSuccess={handleStripePaymentSuccess}
+              />
+            </Elements>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2555,6 +2555,14 @@ class DatabaseStorage implements IStorage {
     }
   }
 
+  async updateWalletStripeCustomer(companyId: string, stripeCustomerId: string): Promise<void> {
+    await this.db.query(`
+      UPDATE company_wallets 
+      SET stripe_customer_id = ?, updated_at = ?
+      WHERE company_id = ?
+    `, [stripeCustomerId, new Date(), companyId]);
+  }
+
   async transferCredits(
     fromCompanyId: string, 
     toCompanyId: string, 
