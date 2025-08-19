@@ -3206,18 +3206,52 @@ router.post("/api/stripe/config", authenticateToken, async (req: Request, res: R
       return res.status(400).json({ message: "Invalid secret key format. Must start with sk_test_ or sk_live_" });
     }
 
-    // Update environment variables (these will take effect after restart)
-    process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
-    process.env.STRIPE_SECRET_KEY = secretKey;
+    // First ensure system_config table exists
+    try {
+      await database.query(`
+        CREATE TABLE IF NOT EXISTS system_config (
+          id VARCHAR(36) PRIMARY KEY,
+          config_key VARCHAR(100) UNIQUE NOT NULL,
+          config_value TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          created_by VARCHAR(36),
+          updated_by VARCHAR(36)
+        )
+      `);
+    } catch (tableError) {
+      console.log('System config table already exists or creation failed:', tableError.message);
+    }
 
-    console.log('✅ Stripe configuration updated by:', user.username);
-    console.log('Public key starts with:', publicKey.substring(0, 10));
-    console.log('Secret key starts with:', secretKey.substring(0, 10));
+    // Save to database for persistence
+    try {
+      await storage.saveStripeConfiguration(publicKey, secretKey, user.id);
+      
+      // Also update runtime environment variables for immediate use
+      process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
+      process.env.STRIPE_SECRET_KEY = secretKey;
 
-    res.json({ 
-      message: "Stripe configuration saved successfully",
-      needsRestart: true
-    });
+      console.log('✅ Stripe configuration saved to database by:', user.username);
+      console.log('Public key starts with:', publicKey.substring(0, 10));
+      console.log('Secret key starts with:', secretKey.substring(0, 10));
+
+      res.json({ 
+        message: "Stripe configuration saved successfully in database",
+        needsRestart: false // No restart needed since we're saving to DB
+      });
+    } catch (dbError) {
+      console.error('Database save failed, falling back to runtime variables:', dbError);
+      
+      // Fallback: just update runtime variables
+      process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
+      process.env.STRIPE_SECRET_KEY = secretKey;
+
+      res.json({ 
+        message: "Stripe configuration saved to runtime (restart required for persistence)",
+        needsRestart: true,
+        warning: "Could not save to database, configuration will be lost on restart"
+      });
+    }
   } catch (error) {
     console.error('Stripe configuration error:', error);
     res.status(500).json({ message: "Internal server error" });

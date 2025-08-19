@@ -134,6 +134,10 @@ export interface IStorage {
   getDettRegAziendaByComputerKey(computerKey: string): Promise<DettRegAzienda | undefined>;
   deleteTestaRegAzienda(partitaIva: string): Promise<void>;
   deleteDettRegAzienda(id: number): Promise<void>;
+
+  // Configuration methods
+  saveStripeConfiguration(publicKey: string, secretKey: string, userId: string): Promise<void>;
+  getStripeConfiguration(): Promise<{publicKey: string; secretKey: string} | null>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -2722,6 +2726,72 @@ class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error charging wallet for license:', error);
       return false;
+    }
+  }
+
+  // Configuration methods implementation
+  async saveStripeConfiguration(publicKey: string, secretKey: string, userId: string): Promise<void> {
+    try {
+      // First check if configuration already exists
+      const existing = await this.db.query(
+        'SELECT id FROM system_config WHERE config_key = ? OR config_key = ?',
+        ['stripe_public_key', 'stripe_secret_key']
+      );
+
+      if (existing.length > 0) {
+        // Update existing configuration
+        await this.db.query(
+          'UPDATE system_config SET config_value = ?, updated_at = NOW(), updated_by = ? WHERE config_key = ?',
+          [publicKey, userId, 'stripe_public_key']
+        );
+        await this.db.query(
+          'UPDATE system_config SET config_value = ?, updated_at = NOW(), updated_by = ? WHERE config_key = ?',
+          [secretKey, userId, 'stripe_secret_key']
+        );
+      } else {
+        // Insert new configuration
+        await this.db.query(
+          'INSERT INTO system_config (id, config_key, config_value, created_at, updated_at, created_by, updated_by) VALUES (?, ?, ?, NOW(), NOW(), ?, ?)',
+          [randomUUID(), 'stripe_public_key', publicKey, userId, userId]
+        );
+        await this.db.query(
+          'INSERT INTO system_config (id, config_key, config_value, created_at, updated_at, created_by, updated_by) VALUES (?, ?, ?, NOW(), NOW(), ?, ?)',
+          [randomUUID(), 'stripe_secret_key', secretKey, userId, userId]
+        );
+      }
+      
+      console.log('✅ Stripe configuration saved to database successfully');
+    } catch (error) {
+      console.error('❌ Database error saving Stripe config:', error);
+      throw new Error('Failed to save Stripe configuration to database');
+    }
+  }
+
+  async getStripeConfiguration(): Promise<{publicKey: string; secretKey: string} | null> {
+    try {
+      const rows = await this.db.query(
+        'SELECT config_key, config_value FROM system_config WHERE config_key IN (?, ?)',
+        ['stripe_public_key', 'stripe_secret_key']
+      );
+
+      if (rows.length < 2) {
+        return null;
+      }
+
+      const config: {publicKey: string; secretKey: string} = { publicKey: '', secretKey: '' };
+      
+      for (const row of rows) {
+        if (row.config_key === 'stripe_public_key') {
+          config.publicKey = row.config_value;
+        } else if (row.config_key === 'stripe_secret_key') {
+          config.secretKey = row.config_value;
+        }
+      }
+
+      return config.publicKey && config.secretKey ? config : null;
+    } catch (error) {
+      console.error('❌ Database error retrieving Stripe config:', error);
+      return null;
     }
   }
 }
