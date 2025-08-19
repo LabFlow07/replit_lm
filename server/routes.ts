@@ -3152,10 +3152,11 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
 // Get single company wallet and transactions
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
   try {
-    // Disable cache to ensure fresh data
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Force disable all caching
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
+    res.setHeader('Last-Modified', new Date().toUTCString());
     
     const user = (req as any).user;
     const { companyId } = req.params;
@@ -3224,7 +3225,62 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
   }
 });
 
-// Test endpoint to create sample transactions for testing
+// Force creation of historical transaction for companies with balance but no transactions
+router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può creare transazioni storiche" });
+    }
+
+    const { companyId } = req.params;
+    const wallet = await storage.getCompanyWallet(companyId);
+    
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet non trovato" });
+    }
+
+    const existingTransactions = await storage.getWalletTransactions(companyId, 10);
+    
+    if (wallet.balance > 0 && existingTransactions.length === 0) {
+      console.log(`🔧 FORCE Creating historical transaction for company ${companyId} with balance ${wallet.balance}`);
+      
+      await storage.createWalletTransaction({
+        companyId: companyId,
+        type: 'ricarica',
+        amount: wallet.balance,
+        balanceBefore: 0,
+        balanceAfter: wallet.balance,
+        description: 'Ricarica storica - saldo esistente importato nel sistema',
+        relatedEntityType: 'historical',
+        relatedEntityId: null,
+        fromCompanyId: null,
+        toCompanyId: null,
+        stripePaymentIntentId: null,
+        createdBy: 'system'
+      });
+
+      const newTransactions = await storage.getWalletTransactions(companyId, 10);
+      console.log(`✅ Historical transaction created! New count: ${newTransactions.length}`);
+      
+      return res.json({ 
+        success: true, 
+        message: `Transazione storica creata per ${wallet.balance} crediti`,
+        transactionsCount: newTransactions.length
+      });
+    } else {
+      return res.json({ 
+        success: false, 
+        message: `Nessuna transazione da creare. Balance: ${wallet.balance}, Transactions: ${existingTransactions.length}`
+      });
+    }
+  } catch (error) {
+    console.error('Fix historical transaction error:', error);
+    res.status(500).json({ message: "Errore nella creazione della transazione storica" });
+  }
+});
+
+// Test endpoint to create sample transactions for testing  
 router.post("/api/wallet/:companyId/test-transactions", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
