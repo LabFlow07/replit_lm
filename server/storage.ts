@@ -11,7 +11,6 @@ import type {
   WalletTransaction, InsertWalletTransaction,
   ActivationLog, InsertActivationLog,
   AccessLog, InsertAccessLog,
-  SoftwareRegistration, InsertSoftwareRegistration,
   DashboardStats, UserWithCompany, TestaRegAzienda, InsertTestaRegAzienda, DettRegAzienda, InsertDettRegAzienda
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -245,12 +244,9 @@ class DatabaseStorage implements IStorage {
 
       const mapped = rows.map((row: any) => ({
         ...row,
-        parentId: row.parent_id,
-        parent_id: row.parent_id, // Mantieni entrambi per compatibilità
+        parentId: (!row.parent_id || row.parent_id === '0' || row.parent_id === 0) ? null : row.parent_id,
         contactInfo: row.contact_info ? JSON.parse(row.contact_info) : {},
-        createdAt: row.created_at,
-         // Normalize parent_id: convert 0, empty string, or null to null
-        parent_id: (!row.parent_id || row.parent_id === '0' || row.parent_id === 0) ? null : row.parent_id
+        createdAt: row.created_at
       }));
 
       console.log('getCompanies: Mapped companies:', mapped.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })));
@@ -2701,25 +2697,6 @@ class DatabaseStorage implements IStorage {
       stripePaymentIntentId: row.stripePaymentIntentId,
       createdBy: row.createdBy,
       createdAt: row.createdAt
-    })); created_at DESC 
-      LIMIT ?
-    `, [companyId, limit]);
-
-    return rows.map((row: any) => ({
-      id: row.id,
-      companyId: row.company_id,
-      type: row.type,
-      amount: parseFloat(row.amount),
-      balanceBefore: parseFloat(row.balance_before),
-      balanceAfter: parseFloat(row.balance_after),
-      description: row.description,
-      relatedEntityType: row.related_entity_type,
-      relatedEntityId: row.related_entity_id,
-      fromCompanyId: row.from_company_id,
-      toCompanyId: row.to_company_id,
-      stripePaymentIntentId: row.stripe_payment_intent_id,
-      createdBy: row.created_by,
-      createdAt: row.created_at
     }));
   }
 
