@@ -3152,12 +3152,14 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
 // Get single company wallet and transactions
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
   try {
-    // FORCE DISABLE ALL HTTP CACHING - TIMESTAMP: ${Date.now()}
+    // FORCE NEW REQUEST EVERY TIME + TIMESTAMP TO FORCE EXECUTION
+    const timestamp = Date.now();
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache'); 
     res.setHeader('Expires', '0');
     res.setHeader('Last-Modified', new Date().toUTCString());
-    res.setHeader('ETag', Date.now().toString());
+    res.setHeader('ETag', `wallet-${timestamp}`);
+    res.setHeader('X-Debug-Timestamp', timestamp.toString());
     
     const user = (req as any).user;
     const { companyId } = req.params;
@@ -3183,22 +3185,145 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     // Get wallet transactions from wallet_transactions table
     const transactions = await storage.getWalletTransactions(companyId, 100); // Aumenta il limite per vedere più transazioni
 
-    console.log(`🆕 WALLET ENDPOINT ACCESSED AT ${new Date().toISOString()}: Company ${companyId}, Balance: ${wallet.balance}`);
-    console.log(`💥 TRANSACTIONS FOUND IN DATABASE: ${transactions.length}`);
+    console.log(`🚀 WALLET REQUEST TIMESTAMP ${timestamp} - Company ${companyId}, Balance: ${wallet.balance}`);
+    console.log(`🎯 DATABASE RETURNED ${transactions.length} TRANSACTIONS`);
     
-    // SEMPRE includiamo le transazioni nel response
-    const walletWithTransactions = {
-      ...wallet,
-      transactions: transactions
+    // CRITICAL: ALWAYS include transactions in response
+    const responseData = {
+      id: wallet.id,
+      companyId: wallet.companyId,
+      balance: wallet.balance,
+      totalRecharges: wallet.totalRecharges,
+      totalSpent: wallet.totalSpent,
+      lastRechargeDate: wallet.lastRechargeDate,
+      stripeCustomerId: wallet.stripeCustomerId,
+      createdAt: wallet.createdAt,
+      updatedAt: wallet.updatedAt,
+      transactions: transactions, // ✅ ALWAYS INCLUDED
+      _debug: {
+        timestamp,
+        transactionCount: transactions.length,
+        walletBalance: wallet.balance
+      }
     };
+
+    console.log(`✅ RESPONSE READY: ${transactions.length} transactions for company ${companyId}`);
     
-    console.log(`📤 SENDING RESPONSE: Balance ${wallet.balance}, Transactions: ${transactions.length}`);
-    console.log(`📋 RESPONSE KEYS:`, Object.keys(walletWithTransactions));
-    
-    res.json(walletWithTransactions);
+    res.json(responseData);
   } catch (error) {
     console.error('Get company wallet error:', error);
     res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// FORCE CREATE: Insert test transactions directly into database 
+router.post("/api/wallet/:companyId/force-create-transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può creare transazioni" });
+    }
+
+    const { companyId } = req.params;
+    
+    // Check if transactions already exist
+    const existingTransactions = await storage.getWalletTransactions(companyId, 10);
+    if (existingTransactions.length > 0) {
+      return res.json({ 
+        message: `Transazioni già esistenti: ${existingTransactions.length}`,
+        transactions: existingTransactions 
+      });
+    }
+
+    // Create test transactions for Shadow company
+    const testTransactions = [
+      {
+        type: 'ricarica',
+        amount: 100,
+        balanceBefore: 0,
+        balanceAfter: 100,
+        description: 'Ricarica iniziale Stripe - Test',
+        relatedEntityType: 'stripe'
+      },
+      {
+        type: 'ricarica', 
+        amount: 90,
+        balanceBefore: 100,
+        balanceAfter: 190,
+        description: 'Seconda ricarica Stripe - Test',
+        relatedEntityType: 'stripe'
+      },
+      {
+        type: 'spesa',
+        amount: 10,
+        balanceBefore: 190,
+        balanceAfter: 180,
+        description: 'Rinnovo licenza AutoCAD Pro - Test',
+        relatedEntityType: 'license_renewal'
+      }
+    ];
+
+    const createdTransactions = [];
+    
+    for (const tx of testTransactions) {
+      const transaction = await storage.createWalletTransaction({
+        companyId: companyId,
+        type: tx.type,
+        amount: tx.amount,
+        balanceBefore: tx.balanceBefore,
+        balanceAfter: tx.balanceAfter,
+        description: tx.description,
+        relatedEntityType: tx.relatedEntityType,
+        relatedEntityId: null,
+        fromCompanyId: null,
+        toCompanyId: null,
+        stripePaymentIntentId: null,
+        createdBy: user.username
+      });
+      createdTransactions.push(transaction);
+    }
+
+    console.log(`✅ FORCE CREATED ${createdTransactions.length} transactions for company ${companyId}`);
+    
+    return res.json({
+      success: true,
+      message: `Creati ${createdTransactions.length} transazioni di test`,
+      transactions: createdTransactions
+    });
+    
+  } catch (error: any) {
+    console.error('🔧 FORCE CREATE Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DEBUG: Direct test of getWalletTransactions function  
+router.get("/api/wallet/:companyId/debug-transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può testare" });
+    }
+
+    const { companyId } = req.params;
+    console.log(`🔧 DEBUG: Testing getWalletTransactions for company ${companyId} at ${new Date().toISOString()}`);
+    
+    const transactions = await storage.getWalletTransactions(companyId, 100);
+    console.log(`🔧 DEBUG: Function returned ${transactions.length} transactions`);
+    
+    if (transactions.length > 0) {
+      console.log(`🔧 DEBUG: First transaction:`, JSON.stringify(transactions[0], null, 2));
+    }
+    
+    return res.json({
+      companyId,
+      transactionsCount: transactions.length,
+      transactions: transactions
+    });
+    
+  } catch (error: any) {
+    console.error('🔧 DEBUG: Error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -3219,15 +3344,15 @@ router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (r
 
     const existingTransactions = await storage.getWalletTransactions(companyId, 10);
     
-    if (wallet.balance > 0 && existingTransactions.length === 0) {
+    if (wallet.balance && parseFloat(wallet.balance.toString()) > 0 && existingTransactions.length === 0) {
       console.log(`🔧 FORCE Creating historical transaction for company ${companyId} with balance ${wallet.balance}`);
       
       await storage.createWalletTransaction({
         companyId: companyId,
         type: 'ricarica',
-        amount: wallet.balance,
+        amount: parseFloat(wallet.balance.toString()),
         balanceBefore: 0,
-        balanceAfter: wallet.balance,
+        balanceAfter: parseFloat(wallet.balance.toString()),
         description: 'Ricarica storica - saldo esistente importato nel sistema',
         relatedEntityType: 'historical',
         relatedEntityId: null,
@@ -3242,13 +3367,13 @@ router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (r
       
       return res.json({ 
         success: true, 
-        message: `Transazione storica creata per ${wallet.balance} crediti`,
+        message: `Transazione storica creata per ${parseFloat(wallet.balance.toString())} crediti`,
         transactionsCount: newTransactions.length
       });
     } else {
       return res.json({ 
         success: false, 
-        message: `Nessuna transazione da creare. Balance: ${wallet.balance}, Transactions: ${existingTransactions.length}`
+        message: `Nessuna transazione da creare. Balance: ${parseFloat(wallet.balance?.toString() || '0')}, Transactions: ${existingTransactions.length}`
       });
     }
   } catch (error) {
@@ -3293,15 +3418,15 @@ router.post("/api/wallet/:companyId/test-transactions", authenticateToken, async
     for (const testTx of testTransactions) {
       const balanceBefore = currentBalance;
       const balanceAfter = testTx.type === 'ricarica' ? 
-        currentBalance + testTx.amount : 
-        currentBalance - testTx.amount;
+        parseFloat(currentBalance?.toString() || '0') + testTx.amount : 
+        parseFloat(currentBalance?.toString() || '0') - testTx.amount;
 
       const transaction = await storage.createWalletTransaction({
         companyId: companyId,
         type: testTx.type,
         amount: testTx.amount,
-        balanceBefore: balanceBefore,
-        balanceAfter: balanceAfter,
+        balanceBefore: parseFloat(balanceBefore?.toString() || '0'),
+        balanceAfter: parseFloat(balanceAfter?.toString() || '0'),
         description: testTx.description,
         relatedEntityType: 'test',
         relatedEntityId: null,
