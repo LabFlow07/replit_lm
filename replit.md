@@ -30,6 +30,12 @@ Preferred communication style: Simple, everyday language.
     - Stripe configuration section with API key management and connection testing
     - System settings with automatic renewal toggles and statistics
     - Notification configuration for various system events
+    - **RESOLVED: Stripe configuration endpoint and key validation**
+      - Added missing `/api/stripe/config` backend endpoint
+      - Implemented proper key format validation (pk_test_/pk_live_ for public, sk_test_/sk_live_ for secret)
+      - Added detection system for inverted environment variables
+      - System now correctly identifies when VITE_STRIPE_PUBLIC_KEY contains secret key instead of public key
+      - Provides clear console error messages guiding user to fix Replit Secrets configuration
 - **SIDEBAR LAYOUT RESOLVED:**
   - Fixed wallet page sidebar overlap issue with proper padding adjustment
   - Wallet page now displays correctly without content being hidden behind sidebar

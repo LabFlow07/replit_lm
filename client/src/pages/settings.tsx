@@ -47,9 +47,19 @@ function SettingsContent() {
     try {
       // Controlla se le chiavi Stripe sono configurate
       const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-      if (publicKey) {
+      
+      // Verifica che la chiave pubblica sia effettivamente una chiave pubblica (pk_test_ o pk_live_)
+      if (publicKey && (publicKey.startsWith('pk_test_') || publicKey.startsWith('pk_live_'))) {
         setStripePublicKey(publicKey);
         setIsStripeConfigured(true);
+      } else if (publicKey) {
+        // Se c'è una chiave ma non è pubblica, probabilmente è stata configurata male
+        console.error('❌ PROBLEMA SECRETS REPLIT: VITE_STRIPE_PUBLIC_KEY contiene la chiave segreta invece della pubblica!');
+        console.error('Valore attuale:', publicKey.substring(0, 20) + '...');
+        console.error('🔧 SOLUZIONE: Vai su Secrets nel menu laterale di Replit e modifica VITE_STRIPE_PUBLIC_KEY');
+        console.error('Devi inserire la PUBLISHABLE KEY che inizia con pk_test_ (NON la Secret Key sk_test_)');
+        console.error('Dashboard Stripe: https://dashboard.stripe.com/apikeys');
+        setIsStripeConfigured(false);
       }
     } catch (error) {
       console.error('Errore controllo configurazione Stripe:', error);
@@ -89,16 +99,45 @@ function SettingsContent() {
 
   const saveStripeConfiguration = async () => {
     try {
+      // Validazione locale prima dell'invio
+      if (!stripePublicKey.startsWith('pk_test_') && !stripePublicKey.startsWith('pk_live_')) {
+        toast({
+          title: "Errore Chiave Pubblica",
+          description: "La chiave pubblica deve iniziare con pk_test_ o pk_live_",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!stripeSecretKey.startsWith('sk_test_') && !stripeSecretKey.startsWith('sk_live_')) {
+        toast({
+          title: "Errore Chiave Segreta",
+          description: "La chiave segreta deve iniziare con sk_test_ o sk_live_",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await apiRequest('POST', '/api/stripe/config', {
         publicKey: stripePublicKey,
         secretKey: stripeSecretKey
       });
 
       if (response.ok) {
+        const result = await response.json();
         toast({
           title: "Configurazione Stripe salvata",
-          description: "Le chiavi Stripe sono state salvate con successo.",
+          description: "Le chiavi Stripe sono state salvate con successo. Riavvia l'applicazione per applicare le modifiche.",
         });
+        
+        // Aggiorna la configurazione visualizzata con i valori corretti
+        setIsStripeConfigured(true);
+        
+        // Mantieni i valori nei campi dopo il salvataggio per conferma
+        console.log('✅ Chiavi Stripe salvate correttamente');
+        console.log('Chiave pubblica:', stripePublicKey.substring(0, 15) + '...');
+        console.log('Chiave segreta:', stripeSecretKey.substring(0, 15) + '...');
+        
       } else {
         const errorData = await response.json();
         toast({
