@@ -143,7 +143,7 @@ function WalletContent() {
   }, [activeCompanyId, refetchWallet]);
 
   // Extract wallet and transactions from response
-  const wallet = walletData?.wallet || {};
+  const wallet = walletData || {};
   const transactions = walletData?.transactions || [];
   
   // Debug logging for wallet data
@@ -323,7 +323,7 @@ function WalletContent() {
       )}
 
       {/* Wallet Balance Card */}
-      {activeCompanyId && walletData && wallet && Object.keys(wallet).length > 0 && (
+      {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
         <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
