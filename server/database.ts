@@ -330,6 +330,21 @@ class Database {
         await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2)`);
       } catch (e) { /* Column already exists */ }
 
+      // 🔧 SYSTEM CONFIG - Create system configuration table
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS system_config (
+          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          config_key VARCHAR(255) UNIQUE NOT NULL,
+          config_value TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          created_by VARCHAR(36),
+          updated_by VARCHAR(36),
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+          FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+      `);
+
       console.log('Database tables initialized successfully');
     } catch (error) {
       console.error('Error initializing database tables:', error);

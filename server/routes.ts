@@ -186,11 +186,16 @@ router.post('/api/stripe/config', authenticateToken, async (req: Request, res: R
       return res.status(400).json({ message: "La chiave segreta deve iniziare con sk_" });
     }
     
-    // In a real implementation, you would save these to a secure configuration store
-    // For now, we'll just validate and return success
+    // Save Stripe configuration to database
     console.log('Stripe configuration updated by:', user.username);
     console.log('Public key updated:', publicKey ? 'Yes' : 'No');
     console.log('Secret key updated:', secretKey ? 'Yes' : 'No');
+    
+    // Actually save the configuration to the database
+    if (publicKey && secretKey) {
+      await storage.saveStripeConfiguration(publicKey, secretKey, user.id);
+      console.log('✅ Stripe configuration saved to system_config table');
+    }
     
     res.json({ 
       success: true,
