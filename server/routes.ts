@@ -3185,40 +3185,16 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     console.log(`🚀 WALLET ENDPOINT HIT: Company ${companyId}, Balance: ${wallet.balance}`);
     console.log(`🔍 TRANSACTIONS COUNT: ${transactions.length}`);
     
-    // If any company has balance but no transactions, create a historical transaction record
-    if (wallet.balance > 0 && transactions.length === 0) {
-      console.log(`🔧 Creating historical transaction for company ${companyId} with existing balance ${wallet.balance}`);
-      try {
-        await storage.createWalletTransaction({
-          companyId: companyId,
-          type: 'ricarica',
-          amount: wallet.balance,
-          balanceBefore: 0,
-          balanceAfter: wallet.balance,
-          description: 'Ricarica storica - saldo esistente importato nel sistema',
-          relatedEntityType: 'historical',
-          relatedEntityId: null,
-          fromCompanyId: null,
-          toCompanyId: null,
-          stripePaymentIntentId: null,
-          createdBy: 'system'
-        });
-        // Refresh transactions after creating the historical record
-        const refreshedTransactions = await storage.getWalletTransactions(companyId, 100);
-        console.log(`🔧 Historical transaction created, new count: ${refreshedTransactions.length}`);
-        return res.json({
-          ...wallet,
-          transactions: refreshedTransactions
-        });
-      } catch (error) {
-        console.error('Error creating historical transaction:', error);
-      }
-    }
-
-    res.json({
+    // SEMPRE includiamo le transazioni nel response
+    const walletWithTransactions = {
       ...wallet,
-      transactions
-    });
+      transactions: transactions
+    };
+    
+    console.log(`📤 SENDING RESPONSE: Balance ${wallet.balance}, Transactions: ${transactions.length}`);
+    console.log(`📋 RESPONSE KEYS:`, Object.keys(walletWithTransactions));
+    
+    res.json(walletWithTransactions);
   } catch (error) {
     console.error('Get company wallet error:', error);
     res.status(500).json({ message: "Errore interno del server" });
