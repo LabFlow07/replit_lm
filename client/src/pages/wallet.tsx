@@ -37,15 +37,17 @@ function WalletContent() {
   // Fetch companies for admin/superadmin
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
-    enabled: !!user && (userRole === 'superadmin' || userRole === 'admin')
-  }) as { data: any[] };
+    enabled: !!user && (userRole === 'superadmin' || userRole === 'admin'),
+    retry: 1
+  });
 
   // Fetch wallet for selected company or user's company
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
   const { data: walletData, isLoading: walletLoading } = useQuery({
     queryKey: ['/api/wallet', activeCompanyId],
-    enabled: !!user && !!activeCompanyId
-  }) as { data: any, isLoading: boolean };
+    enabled: !!user && !!activeCompanyId,
+    retry: 1
+  });
 
   // Extract wallet and transactions from response
   const wallet = walletData?.wallet || {};
@@ -54,8 +56,9 @@ function WalletContent() {
   // Fetch all wallets for superadmin
   const { data: allWallets = [] } = useQuery({
     queryKey: ['/api/wallets'],
-    enabled: !!user && userRole === 'superadmin'
-  }) as { data: any[] };
+    enabled: !!user && userRole === 'superadmin',
+    retry: 1
+  });
 
   // Recharge wallet mutation
   const rechargeMutation = useMutation({

@@ -519,9 +519,9 @@ export function TransactionsPage() {
                               <div className="font-medium text-sm">{transaction.company_name || 'N/A'}</div>
                             </TableCell>
                             <TableCell className="capitalize">{transaction.type}</TableCell>
-                            <TableCell>€{amount.toFixed(2)}</TableCell>
-                            <TableCell>€{discount.toFixed(2)}</TableCell>
-                            <TableCell className="font-medium">€{finalAmount.toFixed(2)}</TableCell>
+                            <TableCell>{Math.round(amount)} crediti</TableCell>
+                            <TableCell>{Math.round(discount)} crediti</TableCell>
+                            <TableCell className="font-medium">{Math.round(finalAmount)} crediti</TableCell>
                             <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                             <TableCell>
                               {transaction.paymentDate ? (

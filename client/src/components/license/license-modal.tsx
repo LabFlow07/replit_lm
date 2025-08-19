@@ -345,11 +345,11 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     <div className="flex gap-2">
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         value={editedLicense.price || license.price || 0}
                         onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                         className="h-8 text-sm"
-                        placeholder="0.00"
+                        placeholder="0"
                       />
                       <Input
                         type="number"
@@ -364,7 +364,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     </div>
                   ) : (
                     <p className="text-sm text-gray-900 font-semibold">
-                      €{parseFloat((license.price || 0).toString()).toFixed(2)}
+                      {Math.round(parseFloat((license.price || 0).toString()))} crediti
                       {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
                         <span className="text-green-600 ml-1 text-xs">
                           (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)

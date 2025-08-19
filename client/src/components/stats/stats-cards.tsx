@@ -32,10 +32,10 @@ export default function StatsCards() {
       bgColor: 'bg-primary bg-opacity-10'
     },
     {
-      title: 'Fatturato Mensile',
-      value: `€${stats?.monthlyRevenue?.toLocaleString() || '0'}`,
+      title: 'Crediti Generati',
+      value: `${Math.round(stats?.monthlyRevenue || 0)} crediti`,
       change: '+18% vs scorso mese',
-      icon: 'fas fa-euro-sign',
+      icon: 'fas fa-coins',
       color: 'text-secondary',
       bgColor: 'bg-secondary bg-opacity-10'
     }

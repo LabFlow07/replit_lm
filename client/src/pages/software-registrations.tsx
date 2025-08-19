@@ -567,10 +567,7 @@ export default function SoftwareRegistrations() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount);
+    return `${Math.round(amount)} crediti`;
   };
 
   const filteredRegistrations = safeRegistrations.filter((registration: SoftwareRegistration) => {

@@ -380,10 +380,7 @@ export default function LicensesPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount);
+    return `${Math.round(amount)} crediti`;
   };
 
   const isExpired = (expiryDate: string) => {
