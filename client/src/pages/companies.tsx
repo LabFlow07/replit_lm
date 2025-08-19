@@ -75,7 +75,7 @@ export default function CompaniesPage() {
     enabled: !!user,
     select: (data) => Array.isArray(data) ? data : [], // Ensure always array
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -89,7 +89,7 @@ export default function CompaniesPage() {
 
       if (response.status === 401 || response.status === 403) {
         // Token scaduto o invalido, reindirizza al login
-        localStorage.removeItem('qlm_token');
+        localStorage.removeItem('token');
         setLocation('/login');
         throw new Error('Authentication failed');
       }
@@ -135,7 +135,7 @@ export default function CompaniesPage() {
     queryKey: ['/api/users'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -316,7 +316,7 @@ export default function CompaniesPage() {
   // Mutations for CRUD operations
   const createCompanyMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies', {
         method: 'POST',
         headers: {
@@ -338,7 +338,7 @@ export default function CompaniesPage() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: any }) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/companies/${id}`, {
         method: 'PUT',
         headers: {
@@ -359,7 +359,7 @@ export default function CompaniesPage() {
 
   const createAgentMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/agents', {
         method: 'POST',
         headers: {
@@ -382,7 +382,7 @@ export default function CompaniesPage() {
 
   const createUserMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -406,7 +406,7 @@ export default function CompaniesPage() {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: any }) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/users/${id}`, {
         method: 'PUT',
         headers: {
@@ -629,7 +629,7 @@ export default function CompaniesPage() {
                             const response = await fetch(`/api/companies/${company.id}`, {
                               method: 'DELETE',
                               headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
                               }
                             });
 

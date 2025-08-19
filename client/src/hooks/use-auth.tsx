@@ -108,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Define logout function before using it
   const logout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('qlm_token'); // Remove old token key as well
+    localStorage.removeItem('token'); // Remove old token key as well
     setUser(null);
     console.log('User logged out, redirecting to login...');
     setLocation('/login');
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const forceReauth = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('qlm_token'); // Remove old token key as well
+    localStorage.removeItem('token'); // Remove old token key as well
     setUser(null);
     setLoading(false);
     setLocation('/login'); // Ensure redirect on forced reauthentication

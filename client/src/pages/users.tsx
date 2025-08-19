@@ -54,7 +54,7 @@ export default function UsersPage() {
     queryKey: ['/api/users', user?.id, user?.role, user?.companyId],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -68,7 +68,7 @@ export default function UsersPage() {
     queryKey: ['/api/companies', user?.id, user?.role, user?.companyId],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -80,7 +80,7 @@ export default function UsersPage() {
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (userData: any) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -112,7 +112,7 @@ export default function UsersPage() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/users/${id}`, {
         method: 'PATCH',
         headers: {
@@ -137,7 +137,7 @@ export default function UsersPage() {
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/users/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

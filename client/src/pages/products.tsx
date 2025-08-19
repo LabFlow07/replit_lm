@@ -44,7 +44,7 @@ export default function ProductsPage() {
 
   const createProductMutation = useMutation({
     mutationFn: async (productData: typeof newProduct) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -97,7 +97,7 @@ export default function ProductsPage() {
     refetchOnWindowFocus: false,
     staleTime: 0,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -151,7 +151,7 @@ export default function ProductsPage() {
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, productData }: { id: string, productData: typeof editProduct }) => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -526,7 +526,7 @@ export default function ProductsPage() {
                                   const response = await fetch(`/api/products/${product.id}`, {
                                     method: 'DELETE',
                                     headers: {
-                                      'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+                                      'Authorization': `Bearer ${localStorage.getItem('token')}`
                                     }
                                   });
 
