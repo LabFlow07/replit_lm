@@ -3181,6 +3181,49 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
   }
 });
 
+// Stripe configuration endpoint
+router.post("/api/stripe/config", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can configure Stripe settings
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { publicKey, secretKey } = req.body;
+
+    // Validate the keys format
+    if (!publicKey || !secretKey) {
+      return res.status(400).json({ message: "Both public and secret keys are required" });
+    }
+
+    if (!publicKey.startsWith('pk_test_') && !publicKey.startsWith('pk_live_')) {
+      return res.status(400).json({ message: "Invalid public key format. Must start with pk_test_ or pk_live_" });
+    }
+
+    if (!secretKey.startsWith('sk_test_') && !secretKey.startsWith('sk_live_')) {
+      return res.status(400).json({ message: "Invalid secret key format. Must start with sk_test_ or sk_live_" });
+    }
+
+    // Update environment variables (these will take effect after restart)
+    process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
+    process.env.STRIPE_SECRET_KEY = secretKey;
+
+    console.log('✅ Stripe configuration updated by:', user.username);
+    console.log('Public key starts with:', publicKey.substring(0, 10));
+    console.log('Secret key starts with:', secretKey.substring(0, 10));
+
+    res.json({ 
+      message: "Stripe configuration saved successfully",
+      needsRestart: true
+    });
+  } catch (error) {
+    console.error('Stripe configuration error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }
