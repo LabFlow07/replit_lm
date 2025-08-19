@@ -23,18 +23,18 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    console.log('No token provided');
+    console.log('🔒 No token provided for:', req.path);
     return res.sendStatus(401);
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
-      console.error('Token verification error:', err);
+      console.error('🔒 Token verification error for', req.path + ':', err.message);
       console.log('Token that failed:', token.substring(0, 20) + '...');
       console.log('JWT_SECRET exists:', !!JWT_SECRET);
       return res.sendStatus(403);
     }
-    console.log('Token verified successfully for user:', user.username);
+    console.log('✅ Token verified successfully for user:', user.username, 'on path:', req.path);
     (req as any).user = user;
     next();
   });

@@ -57,7 +57,7 @@ export default function Sidebar() {
     queryKey: ['/api/licenses/active/count'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/licenses/active/count', {
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -41,7 +41,7 @@ export default function ClientsPage() {
     queryKey: ['/api/clients', user?.companyId],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       console.log('Fetching clients for user:', user?.username, 'Role:', user?.role, 'Company ID:', user?.companyId);
 
       const response = await fetch('/api/clients', {
@@ -72,7 +72,7 @@ export default function ClientsPage() {
     queryKey: ['/api/companies'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -95,7 +95,7 @@ export default function ClientsPage() {
     queryKey: ['/api/licenses'],
     enabled: !!user,
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/licenses', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -403,7 +403,7 @@ export default function ClientsPage() {
                                         const response = await fetch(`/api/clients/${client.id}`, {
                                           method: 'DELETE',
                                           headers: {
-                                            'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+                                            'Authorization': `Bearer ${localStorage.getItem('token')}`
                                           }
                                         });
 
@@ -469,7 +469,7 @@ export default function ClientsPage() {
               e.preventDefault();
 
               // Check if token exists
-              const token = localStorage.getItem('qlm_token');
+              const token = localStorage.getItem('token');
               if (!token) {
                 alert('La sessione è scaduta. Verrai reindirizzato al login.');
                 setLocation('/login');
@@ -509,7 +509,7 @@ export default function ClientsPage() {
                   window.location.reload();
                 } else if (response.status === 401 || response.status === 403) {
                   // Remove expired token and redirect to login
-                  localStorage.removeItem('qlm_token');
+                  localStorage.removeItem('token');
                   alert('La sessione è scaduta. Verrai reindirizzato al login.');
                   setLocation('/login');
                 } else {
@@ -641,7 +641,7 @@ export default function ClientsPage() {
               };
 
               try {
-                const token = localStorage.getItem('qlm_token');
+                const token = localStorage.getItem('token');
                 const response = await fetch(`/api/clients/${selectedClient?.id}`, {
                   method: 'PATCH',
                   headers: {

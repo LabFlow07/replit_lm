@@ -32,7 +32,7 @@ function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ['/api/software/registrazioni', { licenseId }],
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/software/registrazioni', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,7 +192,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
     if (!license || !editedLicense) return;
 
     try {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/licenses/${license.id}`, {
         method: 'PUT',
         headers: {
