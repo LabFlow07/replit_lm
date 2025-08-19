@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Wallet, CreditCard, ArrowUpDown, ArrowDown, ArrowUp, Euro, Users, Building2 } from 'lucide-react';
+import { Wallet, CreditCard, ArrowUpDown, ArrowDown, ArrowUp, Euro, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { loadStripe } from '@stripe/stripe-js';
@@ -26,7 +26,7 @@ const getStripeConfiguration = async () => {
   try {
     const response = await apiRequest('GET', '/api/stripe/config');
     const result = await response.json();
-
+    
     if (result.success && result.configured && result.publicKey?.startsWith('pk_')) {
       console.log('✅ Using Stripe config from database');
       return result.publicKey;
@@ -34,14 +34,14 @@ const getStripeConfiguration = async () => {
   } catch (error) {
     console.log('Database config not available, trying environment variables');
   }
-
+  
   // Fallback to environment variables
   const envKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
   if (envKey?.startsWith('pk_')) {
     console.log('✅ Using Stripe config from environment');
     return envKey;
   }
-
+  
   console.error('❌ No valid Stripe configuration found');
   return null;
 };
@@ -58,9 +58,9 @@ const getStripePromise = async () => {
 };
 
 // Stripe Payment Form Component
-function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: {
-  amount: number;
-  companyId: string;
+function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: { 
+  amount: number; 
+  companyId: string; 
   onSuccess: () => void;
   onProcessingChange?: (processing: boolean) => void;
 }) {
@@ -99,13 +99,13 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent);
-
+        
         // Confirm payment and update wallet balance on backend
         try {
           const confirmResponse = await apiRequest('POST', `/api/wallet/${companyId}/confirm-payment`, {
             paymentIntentId: paymentIntent.id
           });
-
+          
           if (confirmResponse.ok) {
             const result = await confirmResponse.json();
             console.log('✅ Wallet balance updated:', result);
@@ -124,7 +124,7 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
             variant: "destructive",
           });
         }
-
+        
         onSuccess();
       } else {
         console.log('Payment status:', paymentIntent?.status);
@@ -149,8 +149,8 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <PaymentElement />
-      <Button
-        type="submit"
+      <Button 
+        type="submit" 
         disabled={!stripe || isProcessing}
         className="w-full"
       >
@@ -177,7 +177,7 @@ function WalletContent() {
   const userRole = user?.role;
 
   // Fetch companies for admin/superadmin
-  const { data: companies = [], isLoading: isLoadingCompanies } = useQuery({
+  const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
     enabled: !!user && (userRole === 'superadmin' || userRole === 'admin'),
     retry: 1
@@ -185,7 +185,7 @@ function WalletContent() {
 
   // Determine active company ID based on user role
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
-
+  
   // Debug logging
   console.log('Wallet Debug:', {
     userRole,
@@ -198,7 +198,6 @@ function WalletContent() {
     queryKey: ['/api/wallet', activeCompanyId],
     queryFn: () => {
       console.log('Fetching wallet for company:', activeCompanyId);
-      if (!activeCompanyId) return Promise.resolve(null); // Don't fetch if no active company
       return apiRequest('GET', `/api/wallet/${activeCompanyId}`).then(res => res.json());
     },
     enabled: !!user && !!activeCompanyId,
@@ -216,7 +215,7 @@ function WalletContent() {
   // Extract wallet and transactions from response
   const wallet = walletData || {};
   const transactions = walletData?.transactions || [];
-
+  
   // Debug logging for wallet data
   console.log('Wallet Data Debug:', {
     walletData,
@@ -226,21 +225,12 @@ function WalletContent() {
     selectedCompanyId
   });
 
-  // Fetch all wallets for superadmin
-  const { data: allWallets = [], isLoading: isLoadingAllWallets } = useQuery({
+  // Fetch all wallets for superadmin and admin (for their company hierarchy)
+  const { data: allWallets = [] } = useQuery({
     queryKey: ['/api/wallets'],
-    enabled: !!user && userRole === 'superadmin',
+    enabled: !!user && (userRole === 'superadmin' || userRole === 'admin'),
     retry: 1
   });
-
-  // Fetch company wallets for admin
-  const { data: companyWallets = [], isLoading: isLoadingCompanyWallets } = useQuery({
-    queryKey: ['/api/companies/wallets'],
-    enabled: !!user && userRole === 'admin',
-    retry: 1
-  });
-
-  const isLoadingWallets = isLoadingAllWallets || isLoadingCompanyWallets;
 
   // State for Stripe payment
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -262,11 +252,11 @@ function WalletContent() {
       console.log('Payment intent created:', response);
       setClientSecret(response.clientSecret);
       setPaymentIntentId(response.paymentIntentId);
-
+      
       // Load Stripe configuration dynamically when opening payment form
       const stripePromise = await getStripePromise();
       setDynamicStripePromise(stripePromise);
-
+      
       setShowStripeForm(true);
     },
     onError: (error: any) => {
@@ -279,7 +269,7 @@ function WalletContent() {
     }
   });
 
-
+  
 
   // Transfer credits mutation
   const transferMutation = useMutation({
@@ -288,8 +278,6 @@ function WalletContent() {
     onSuccess: () => {
       toast({ title: 'Trasferimento completato', description: 'I crediti sono stati trasferiti con successo' });
       queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/companies'] }); // Invalidate companies to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/companies/wallets'] }); // Invalidate company wallets
       setTransferData({ fromCompanyId: '', toCompanyId: '', amount: '' });
     },
     onError: (error: any) => {
@@ -322,11 +310,11 @@ function WalletContent() {
     setPaymentIntentId(null);
     setRechargeAmount('');
     // Refresh wallet data
-    queryClient.invalidateQueries({ queryKey: ['/api/wallet', activeCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
     refetchWallet();
   };
 
-
+  
 
   const handleTransfer = () => {
     const amount = parseFloat(transferData.amount);
@@ -348,20 +336,20 @@ function WalletContent() {
   const handleViewTransactions = async (companyId: string, companyName: string) => {
     try {
       console.log('🔍 Caricamento transazioni per:', companyName);
-
+      
       const response = await apiRequest('GET', `/api/company/${companyId}/wallet-transactions`);
-
+      
       if (!response.ok) {
         throw new Error(`Errore HTTP: ${response.status}`);
       }
-
+      
       const transactions = await response.json();
       console.log('📊 Transazioni caricate:', transactions.length);
-
+      
       setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
       setShowTransactionsModal(true);
-
+      
     } catch (error) {
       console.error('❌ Errore caricamento transazioni:', error);
       toast({
@@ -419,7 +407,7 @@ function WalletContent() {
           </div>
         </div>
 
-
+        
 
         {/* Wallet Balance Card - Compact */}
         {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
@@ -447,8 +435,8 @@ function WalletContent() {
                   <div>
                     <p className="text-blue-200">Ultima Ricarica</p>
                     <p className="font-semibold text-xs">
-                      {wallet.lastRechargeDate ?
-                        format(new Date(wallet.lastRechargeDate), 'dd/MM/yyyy', { locale: it }) :
+                      {wallet.lastRechargeDate ? 
+                        format(new Date(wallet.lastRechargeDate), 'dd/MM/yyyy', { locale: it }) : 
                         'Mai'
                       }
                     </p>
@@ -490,8 +478,8 @@ function WalletContent() {
                 <CardContent className="pt-0">
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {transactions.slice(0, 10).map((transaction: any) => (
-                      <div
-                        key={transaction.id}
+                      <div 
+                        key={transaction.id} 
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                         data-testid={`transaction-${transaction.id}`}
                       >
@@ -520,129 +508,117 @@ function WalletContent() {
               </Card>
             )}
 
-            {/* All Wallets View for Superadmin or Company Wallets for Admin */}
-            {(userRole === 'superadmin' || userRole === 'admin') && (
+            {/* All Wallets Overview - Compact Table */}
+            {((userRole === 'superadmin' && allWallets.length > 0) || 
+              (userRole === 'admin' && companies.length > 0)) && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    {userRole === 'superadmin' ? 'Panoramica Tutti i Wallet' : 'Panoramica Wallet Azienda'}
-                  </CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle>Panoramica Tutti i Wallet</CardTitle>
                   <CardDescription>
-                    {userRole === 'superadmin'
-                      ? 'Vista generale di tutti i wallet aziendali'
-                      : 'Vista dei wallet della tua azienda e sottaziende'
-                    }
+                    Vista generale di tutti i wallet aziendali
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {isLoadingWallets ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-                    </div>
-                  ) : (userRole === 'superadmin' ? allWallets : companyWallets).length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2 font-semibold">Azienda</th>
-                            <th className="text-left p-2 font-semibold">Tipo</th>
-                            <th className="text-right p-2 font-semibold">Saldo</th>
-                            <th className="text-right p-2 font-semibold">Ricariche</th>
-                            <th className="text-right p-2 font-semibold">Spese</th>
-                            <th className="text-center p-2 font-semibold">Azioni</th>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2 font-semibold">Azienda</th>
+                          <th className="text-left p-2 font-semibold">Tipo</th>
+                          <th className="text-right p-2 font-semibold">Saldo</th>
+                          <th className="text-right p-2 font-semibold">Ricariche</th>
+                          <th className="text-right p-2 font-semibold">Spese</th>
+                          <th className="text-center p-2 font-semibold">Azioni</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(userRole === 'superadmin' ? allWallets : 
+                          companies.map(company => ({
+                            company,
+                            wallet: allWallets.find(w => w.company.id === company.id)?.wallet || {
+                              balance: 0,
+                              totalRecharges: 0,
+                              totalSpent: 0,
+                              lastRechargeDate: null
+                            }
+                          }))
+                        ).map((item: any) => (
+                          <tr 
+                            key={item.company.id}
+                            className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
+                              selectedCompanyId === item.company.id ? 'bg-muted' : ''
+                            }`}
+                            onClick={() => setSelectedCompanyId(item.company.id)}
+                            data-testid={`wallet-company-${item.company.id}`}
+                          >
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <span className="font-medium text-sm">{item.company.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <Badge variant="outline" className="text-xs">
+                                {item.company.type}
+                              </Badge>
+                            </td>
+                            <td className="p-2 text-right">
+                              <span className="font-bold text-blue-600">
+                                {(item.wallet.balance || 0).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="p-2 text-right text-green-600 text-sm">
+                              +{(item.wallet.totalRecharges || 0).toFixed(2)}
+                            </td>
+                            <td className="p-2 text-right text-red-600 text-sm">
+                              -{(item.wallet.totalSpent || 0).toFixed(2)}
+                            </td>
+                            <td className="p-2 text-center">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewTransactions(item.company.id, item.company.name);
+                                }}
+                                className="text-xs h-7"
+                              >
+                                Dettaglio
+                              </Button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {(userRole === 'superadmin' ? allWallets : companyWallets).map((item: any) => (
-                            <tr
-                              key={item.company.id}
-                              className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
-                                selectedCompanyId === item.company.id ? 'bg-muted' : ''
-                              }`}
-                              onClick={() => setSelectedCompanyId(item.company.id)}
-                              data-testid={`wallet-company-${item.company.id}`}
-                            >
-                              <td className="p-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                  <span className="font-medium text-sm">{item.company.name}</span>
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {item.company.type}
-                                </Badge>
-                              </td>
-                              <td className="p-2 text-right">
-                                <span className="font-bold text-blue-600">
-                                  {(item.wallet?.balance || item.balance || 0).toFixed(2)}
-                                </span>
-                              </td>
-                              <td className="p-2 text-right text-green-600 text-sm">
-                                +{(item.wallet?.totalRecharges || item.totalRecharges || 0).toFixed(2)}
-                              </td>
-                              <td className="p-2 text-right text-red-600 text-sm">
-                                -{(item.wallet?.totalSpent || item.totalSpent || 0).toFixed(2)}
-                              </td>
-                              <td className="p-2 text-center">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewTransactions(item.company.id, item.company.name);
-                                  }}
-                                  className="text-xs h-7"
-                                >
-                                  Dettaglio
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {/* Summary */}
-                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                          <div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Totale Aziende</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              {(userRole === 'superadmin' ? allWallets : companyWallets).length}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Crediti Sistema</p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {(userRole === 'superadmin' ? allWallets : companyWallets).reduce((sum: number, item: any) => sum + (item.wallet?.balance || item.balance || 0), 0).toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Ricariche Totali</p>
-                            <p className="text-2xl font-bold text-purple-600">
-                              {(userRole === 'superadmin' ? allWallets : companyWallets).filter(item => item.wallet?.totalRecharges || item.totalRecharges
-                           ).reduce((sum: number, item: any) => sum + (item.wallet?.totalRecharges || item.totalRecharges || 0), 0).toFixed(2)}
-                            </p>
-                          </div>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {/* Summary */}
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <div className="grid grid-cols-3 gap-4 text-center text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Totale Aziende</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {userRole === 'superadmin' ? allWallets.length : companies.length}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Crediti Sistema</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {(userRole === 'superadmin' ? allWallets : 
+                              companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { balance: 0 })
+                            ).reduce((sum: number, item: any) => sum + (item.wallet?.balance || item.balance || 0), 0).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Ricariche Totali</p>
+                          <p className="text-xl font-bold text-orange-600">
+                            {(userRole === 'superadmin' ? allWallets : 
+                              companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { totalRecharges: 0 })
+                            ).reduce((sum: number, item: any) => sum + (item.wallet?.totalRecharges || item.totalRecharges || 0), 0).toFixed(2)}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="text-gray-500 mb-4">
-                        <Building2 className="h-12 w-12 mx-auto mb-2" />
-                        <h3 className="text-lg font-semibold">Nessun wallet trovato</h3>
-                        <p className="text-sm">
-                          {userRole === 'superadmin'
-                            ? 'Non ci sono wallet aziendali nel sistema.'
-                            : 'Non ci sono wallet per la tua azienda e sottaziende.'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  )
-                }
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -665,8 +641,8 @@ function WalletContent() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="from-company">Azienda di origine</Label>
-                      <Select
-                        value={transferData.fromCompanyId}
+                      <Select 
+                        value={transferData.fromCompanyId} 
                         onValueChange={(value) => setTransferData({...transferData, fromCompanyId: value})}
                       >
                         <SelectTrigger data-testid="select-from-company" className="mt-1">
@@ -683,8 +659,8 @@ function WalletContent() {
                     </div>
                     <div>
                       <Label htmlFor="to-company">Azienda di destinazione</Label>
-                      <Select
-                        value={transferData.toCompanyId}
+                      <Select 
+                        value={transferData.toCompanyId} 
                         onValueChange={(value) => setTransferData({...transferData, toCompanyId: value})}
                       >
                         <SelectTrigger data-testid="select-to-company" className="mt-1">
@@ -714,8 +690,8 @@ function WalletContent() {
                       className="mt-1"
                     />
                   </div>
-                  <Button
-                    onClick={handleTransfer}
+                  <Button 
+                    onClick={handleTransfer} 
                     disabled={transferMutation.isPending || !transferData.amount}
                     className="w-full"
                     data-testid="button-transfer-credits"
@@ -724,7 +700,7 @@ function WalletContent() {
                   </Button>
                   <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      💡 <strong>Nota:</strong> I trasferimenti sono istantanei e irreversibili.
+                      💡 <strong>Nota:</strong> I trasferimenti sono istantanei e irreversibili. 
                       Assicurati di verificare le aziende e l'importo prima di procedere.
                     </p>
                   </div>
@@ -761,8 +737,6 @@ function WalletContent() {
                   <Select value={selectedCompanyId} onValueChange={(value) => {
                     console.log('Company selection changed to:', value);
                     setSelectedCompanyId(value);
-                    // Invalidate wallet data when company selection changes
-                    queryClient.invalidateQueries({ queryKey: ['/api/wallet', value] });
                   }}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
@@ -805,8 +779,8 @@ function WalletContent() {
                       className="mt-1"
                     />
                   </div>
-                  <Button
-                    onClick={handleRecharge}
+                  <Button 
+                    onClick={handleRecharge} 
                     disabled={createPaymentIntentMutation.isPending || !rechargeAmount}
                     className="w-full"
                     size="lg"
@@ -832,8 +806,8 @@ function WalletContent() {
                   </div>
                   <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
                     <p className="text-sm text-amber-700 dark:text-amber-300">
-                      💡 <strong>Informazioni:</strong> I crediti acquistati sono disponibili immediatamente
-                      e possono essere utilizzati per rinnovi automatici delle licenze.
+                      💡 <strong>Informazioni:</strong> I crediti acquistati sono disponibili immediatamente 
+                      e possono essere utilizzati per rinnovi automatici delle licenze. 
                       Pagamento sicuro tramite Stripe.
                     </p>
                   </div>
@@ -864,7 +838,7 @@ function WalletContent() {
         </Tabs>
 
         {/* No wallet message */}
-        {!walletLoading && !walletData && activeCompanyId && (
+        {!walletLoading && !wallet && activeCompanyId && userRole !== 'superadmin' && (
           <Card>
             <CardContent className="text-center py-8">
               <Wallet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -901,7 +875,7 @@ function WalletContent() {
             </DialogDescription>
           </DialogHeader>
           {clientSecret && dynamicStripePromise ? (
-            <Elements stripe={dynamicStripePromise} options={{
+            <Elements stripe={dynamicStripePromise} options={{ 
               clientSecret,
               appearance: {
                 theme: 'stripe',
@@ -910,9 +884,9 @@ function WalletContent() {
                 }
               }
             }}>
-              <StripePaymentForm
-                amount={parseFloat(rechargeAmount) || 0}
-                companyId={activeCompanyId || ''}
+              <StripePaymentForm 
+                amount={parseFloat(rechargeAmount) || 0} 
+                companyId={activeCompanyId || ''} 
                 onSuccess={handleStripePaymentSuccess}
                 onProcessingChange={setIsProcessing}
               />
@@ -954,8 +928,8 @@ function WalletContent() {
                 {selectedTransactions
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map((transaction: any) => (
-                  <div
-                    key={transaction.id}
+                  <div 
+                    key={transaction.id} 
                     className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800"
                   >
                     <div className="flex items-center gap-3">

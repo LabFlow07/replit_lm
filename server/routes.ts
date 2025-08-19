@@ -3122,12 +3122,21 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
   try {
     const user = (req as any).user;
 
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo superadmin può visualizzare tutti i wallet" });
+    // Allow superadmin and admin to access wallets (admin only for their hierarchy)
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Solo superadmin e admin possono visualizzare i wallet" });
     }
 
-    // Get all companies and their wallets
-    const companies = await storage.getCompanies();
+    // Get companies based on user role
+    let companies;
+    if (user.role === 'superadmin') {
+      companies = await storage.getCompanies();
+    } else {
+      // Admin: get only companies in their hierarchy
+      const companyIds = await storage.getCompanyHierarchy(user.companyId);
+      const allCompanies = await storage.getCompanies();
+      companies = allCompanies.filter(company => companyIds.includes(company.id));
+    }
     const walletsData = [];
 
     for (const company of companies) {
