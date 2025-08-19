@@ -117,6 +117,7 @@ function WalletContent() {
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
   const { data: walletData, isLoading: walletLoading } = useQuery({
     queryKey: ['/api/wallet', activeCompanyId],
+    queryFn: () => apiRequest('GET', `/api/wallet/${activeCompanyId}`).then(res => res.json()),
     enabled: !!user && !!activeCompanyId,
     retry: 1
   });
@@ -155,23 +156,7 @@ function WalletContent() {
     }
   });
 
-  // Legacy recharge wallet mutation (for testing)
-  const rechargeMutation = useMutation({
-    mutationFn: (data: { companyId: string; amount: number }) =>
-      apiRequest('POST', `/api/wallet/${data.companyId}/recharge`, { amount: data.amount }),
-    onSuccess: () => {
-      toast({ title: 'Ricarica completata', description: 'I crediti sono stati aggiunti al wallet' });
-      queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
-      setRechargeAmount('');
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Errore ricarica',
-        description: error.message || 'Errore durante la ricarica del wallet',
-        variant: 'destructive'
-      });
-    }
-  });
+  
 
   // Transfer credits mutation
   const transferMutation = useMutation({
@@ -213,19 +198,7 @@ function WalletContent() {
     queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
   };
 
-  const handleTestRecharge = () => {
-    const amount = parseFloat(rechargeAmount);
-    if (!amount || amount <= 0) {
-      toast({ title: 'Errore', description: 'Inserire un importo valido', variant: 'destructive' });
-      return;
-    }
-    if (!activeCompanyId) {
-      toast({ title: 'Errore', description: 'Selezionare un\'azienda', variant: 'destructive' });
-      return;
-    }
-    // Use test/simulation for development
-    rechargeMutation.mutate({ companyId: activeCompanyId, amount });
-  };
+  
 
   const handleTransfer = () => {
     const amount = parseFloat(transferData.amount);
@@ -379,26 +352,15 @@ function WalletContent() {
                   data-testid="input-recharge-amount"
                 />
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleRecharge} 
-                  disabled={createPaymentIntentMutation.isPending || !rechargeAmount}
-                  className="flex-1"
-                >
-                  {createPaymentIntentMutation.isPending ? 'Creazione...' : 'Ricarica con Stripe'}
-                </Button>
-                <Button 
-                  onClick={handleTestRecharge} 
-                  disabled={rechargeMutation.isPending || !rechargeAmount}
-                  variant="outline"
-                  className="flex-1"
-                  data-testid="button-test-recharge"
-                >
-                  {rechargeMutation.isPending ? 'Test...' : 'Ricarica Test'}
-                </Button>
-              </div>
+              <Button 
+                onClick={handleRecharge} 
+                disabled={createPaymentIntentMutation.isPending || !rechargeAmount}
+                className="w-full"
+              >
+                {createPaymentIntentMutation.isPending ? 'Creazione...' : 'Ricarica con Stripe'}
+              </Button>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                💡 Usa "Ricarica con Stripe" per pagamenti reali o "Ricarica Test" per simulazioni.
+                💡 Utilizza Stripe per effettuare ricariche sicure al wallet aziendale.
               </p>
             </CardContent>
           </Card>
