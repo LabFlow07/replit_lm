@@ -2660,6 +2660,16 @@ class DatabaseStorage implements IStorage {
   }
 
   async getWalletTransactions(companyId: string, limit: number = 50): Promise<WalletTransaction[]> {
+    console.log(`🔍 getWalletTransactions: Searching for company_id = ${companyId}, limit = ${limit}`);
+    
+    // First, let's check if the table exists and has any data
+    const totalRowsQuery = await this.db.query('SELECT COUNT(*) as total FROM wallet_transactions');
+    console.log(`🔍 Total wallet_transactions in database: ${totalRowsQuery[0]?.total || 0}`);
+    
+    // Check if there are any transactions for this specific company
+    const companyRowsQuery = await this.db.query('SELECT COUNT(*) as total FROM wallet_transactions WHERE company_id = ?', [companyId]);
+    console.log(`🔍 Transactions for company ${companyId}: ${companyRowsQuery[0]?.total || 0}`);
+    
     const rows = await this.db.query(`
       SELECT 
         id,
@@ -2681,6 +2691,11 @@ class DatabaseStorage implements IStorage {
       ORDER BY created_at DESC
       LIMIT ?
     `, [companyId, limit]);
+
+    console.log(`🔍 Query returned ${rows.length} transactions for company ${companyId}`);
+    if (rows.length > 0) {
+      console.log(`🔍 First transaction:`, rows[0]);
+    }
 
     return rows.map((row: any) => ({
       id: row.id,

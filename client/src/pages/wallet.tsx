@@ -334,31 +334,36 @@ function WalletContent() {
 
   const handleViewTransactions = async (companyId: string, companyName: string) => {
     try {
-      console.log('Fetching transactions for company:', companyId, companyName);
+      console.log('🔍 handleViewTransactions called - Company:', companyName, 'ID:', companyId);
+      
       const response = await apiRequest('GET', `/api/wallet/${companyId}`);
+      console.log('📡 API response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('Wallet data received:', data);
+      console.log('📊 Wallet data received from API:', data);
       
       // Le transazioni sono ora incluse direttamente nella risposta dell'endpoint wallet
       const transactions = data.transactions || [];
-      console.log('Transactions found from wallet_transactions table:', transactions.length);
+      console.log('📈 Transactions found from wallet_transactions table:', transactions.length);
       
       if (transactions.length === 0) {
-        console.log('No transactions found for company:', companyName);
+        console.log('❌ No transactions found for company:', companyName);
+        console.log('💰 But wallet balance is:', data.balance);
       } else {
-        console.log('Sample transaction:', transactions[0]);
+        console.log('✅ Sample transaction:', transactions[0]);
       }
       
       setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
       setShowTransactionsModal(true);
+      
+      console.log('🔧 Modal should now be open with', transactions.length, 'transactions');
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('💥 Error fetching transactions:', error);
       toast({
         title: 'Errore',
         description: `Errore nel caricamento delle transazioni: ${error.message}`,

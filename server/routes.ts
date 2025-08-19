@@ -3177,6 +3177,36 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     const transactions = await storage.getWalletTransactions(companyId, 100); // Aumenta il limite per vedere più transazioni
 
     console.log(`📊 Wallet endpoint: Company ${companyId}, Wallet balance: ${wallet.balance}, Transactions count: ${transactions.length}`);
+    
+    // If any company has balance but no transactions, create a historical transaction record
+    if (wallet.balance > 0 && transactions.length === 0) {
+      console.log(`🔧 Creating historical transaction for company ${companyId} with existing balance ${wallet.balance}`);
+      try {
+        await storage.createWalletTransaction({
+          companyId: companyId,
+          type: 'ricarica',
+          amount: wallet.balance,
+          balanceBefore: 0,
+          balanceAfter: wallet.balance,
+          description: 'Ricarica storica - saldo esistente importato nel sistema',
+          relatedEntityType: 'historical',
+          relatedEntityId: null,
+          fromCompanyId: null,
+          toCompanyId: null,
+          stripePaymentIntentId: null,
+          createdBy: 'system'
+        });
+        // Refresh transactions after creating the historical record
+        const refreshedTransactions = await storage.getWalletTransactions(companyId, 100);
+        console.log(`🔧 Historical transaction created, new count: ${refreshedTransactions.length}`);
+        return res.json({
+          ...wallet,
+          transactions: refreshedTransactions
+        });
+      } catch (error) {
+        console.error('Error creating historical transaction:', error);
+      }
+    }
 
     res.json({
       ...wallet,
@@ -3184,6 +3214,76 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     });
   } catch (error) {
     console.error('Get company wallet error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// Test endpoint to create sample transactions for testing
+router.post("/api/wallet/:companyId/test-transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può creare transazioni di test" });
+    }
+
+    const { companyId } = req.params;
+    const wallet = await storage.getCompanyWallet(companyId);
+    
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet non trovato" });
+    }
+
+    // Create a few test transactions
+    const testTransactions = [
+      {
+        type: 'ricarica',
+        amount: 100,
+        description: 'Ricarica test - Stripe payment',
+        stripePaymentIntentId: 'pi_test_' + Date.now()
+      },
+      {
+        type: 'spesa',
+        amount: 20,
+        description: 'Rinnovo licenza test - AutoCAD Pro'
+      }
+    ];
+
+    let currentBalance = wallet.balance;
+    const createdTransactions = [];
+
+    for (const testTx of testTransactions) {
+      const balanceBefore = currentBalance;
+      const balanceAfter = testTx.type === 'ricarica' ? 
+        currentBalance + testTx.amount : 
+        currentBalance - testTx.amount;
+
+      const transaction = await storage.createWalletTransaction({
+        companyId: companyId,
+        type: testTx.type,
+        amount: testTx.amount,
+        balanceBefore: balanceBefore,
+        balanceAfter: balanceAfter,
+        description: testTx.description,
+        relatedEntityType: 'test',
+        relatedEntityId: null,
+        fromCompanyId: null,
+        toCompanyId: null,
+        stripePaymentIntentId: testTx.stripePaymentIntentId || null,
+        createdBy: user.username
+      });
+
+      createdTransactions.push(transaction);
+      currentBalance = balanceAfter;
+    }
+
+    console.log(`✅ Created ${createdTransactions.length} test transactions for company ${companyId}`);
+    
+    res.json({
+      message: `Creati ${createdTransactions.length} transazioni di test`,
+      transactions: createdTransactions
+    });
+  } catch (error) {
+    console.error('Create test transactions error:', error);
     res.status(500).json({ message: "Errore interno del server" });
   }
 });
