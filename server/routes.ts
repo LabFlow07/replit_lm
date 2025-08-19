@@ -3176,6 +3176,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     // Get wallet transactions from wallet_transactions table
     const transactions = await storage.getWalletTransactions(companyId, 100); // Aumenta il limite per vedere più transazioni
 
+    console.log(`🔍 getWalletTransactions: Searching for company_id = ${companyId}, limit = ${100}`);
     console.log(`📊 Wallet endpoint: Company ${companyId}, Wallet balance: ${wallet.balance}, Transactions count: ${transactions.length}`);
     
     // If any company has balance but no transactions, create a historical transaction record
