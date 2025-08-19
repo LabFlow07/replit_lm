@@ -3152,6 +3152,11 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
 // Get single company wallet and transactions
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
   try {
+    // Disable cache to ensure fresh data
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     const user = (req as any).user;
     const { companyId } = req.params;
 
