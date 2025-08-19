@@ -46,7 +46,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [, setLocation] = useLocation();
 
   const checkTokenValidity = async (): Promise<boolean> => {
-    const token = localStorage.getItem('qlm_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       return false;
     }

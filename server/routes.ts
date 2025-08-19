@@ -10,7 +10,7 @@ import Stripe from "stripe";
 const router = express.Router();
 
 // JWT Secret - Use a consistent secret
-const JWT_SECRET = process.env.JWT_SECRET || "qlm-jwt-secret-key-2024";
+const JWT_SECRET = "qlm-jwt-secret-key-2024-fixed";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
