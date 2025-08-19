@@ -334,7 +334,7 @@ export default function SoftwareRegistrations() {
         ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
         ...(searchTerm && { search: searchTerm })
       });
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/software/registrazioni?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -366,7 +366,7 @@ export default function SoftwareRegistrations() {
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/clients', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -385,7 +385,7 @@ export default function SoftwareRegistrations() {
   const { data: licenses = [] } = useQuery({
     queryKey: ['/api/licenses'],
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/licenses', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -410,7 +410,7 @@ export default function SoftwareRegistrations() {
   const { data: products = [] } = useQuery({
     queryKey: ['/api/products'],
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/products', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -429,7 +429,7 @@ export default function SoftwareRegistrations() {
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
     queryFn: async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -488,7 +488,7 @@ export default function SoftwareRegistrations() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('qlm_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody)
       });
@@ -635,7 +635,7 @@ export default function SoftwareRegistrations() {
   const handleDelete = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questa registrazione?')) {
       try {
-        const token = localStorage.getItem('qlm_token');
+        const token = localStorage.getItem('token');
         const response = await fetch(`/api/software/registrazioni/${id}`, {
           method: 'DELETE',
           headers: {
@@ -987,7 +987,7 @@ export default function SoftwareRegistrations() {
                               onClick={async () => {
                                 if (confirm('Sei sicuro di voler eliminare questa registrazione? Questa azione non può essere annullata.')) {
                                   try {
-                                    const token = localStorage.getItem('qlm_token');
+                                    const token = localStorage.getItem('token');
                                     const response = await fetch(`/api/software/registrazioni/${registration.id}`, {
                                       method: 'DELETE',
                                       headers: {
