@@ -17,6 +17,7 @@ import SettingsPage from "@/pages/settings";
 import LogsPage from "@/pages/logs";
 import SoftwareRegistrationsPage from "@/pages/software-registrations";
 import UsersPage from "@/pages/users";
+import WalletPage from "@/pages/wallet";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/transactions" component={TransactionsPage} />
       <Route path="/software-registrations" component={SoftwareRegistrationsPage} />
       <Route path="/users" component={UsersPage} />
+      <Route path="/wallet" component={WalletPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/logs" component={LogsPage} />
       <Route path="/login" component={Login} />

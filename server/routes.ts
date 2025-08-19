@@ -2708,6 +2708,213 @@ router.patch("/api/licenses/:id/assign", authenticateToken, async (req: Request,
   }
 });
 
+// 💳 WALLET SYSTEM API ENDPOINTS - Sistema crediti aziendale
+
+// Get company wallet info
+router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+
+    // Authorization check - user can only access their company wallet or sub-companies
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(user.companyId);
+        if (!hierarchy.includes(companyId)) {
+          return res.status(403).json({ message: "Accesso negato al wallet di questa azienda" });
+        }
+      } else {
+        return res.status(403).json({ message: "Accesso negato" });
+      }
+    }
+
+    const wallet = await storage.getCompanyWallet(companyId);
+    if (!wallet) {
+      // Create wallet if it doesn't exist
+      const newWallet = await storage.createCompanyWallet(companyId);
+      return res.json(newWallet);
+    }
+
+    res.json(wallet);
+  } catch (error) {
+    console.error('Get wallet error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// Get wallet transactions
+router.get("/api/wallet/:companyId/transactions", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    // Authorization check
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(user.companyId);
+        if (!hierarchy.includes(companyId)) {
+          return res.status(403).json({ message: "Accesso negato" });
+        }
+      } else {
+        return res.status(403).json({ message: "Accesso negato" });
+      }
+    }
+
+    const transactions = await storage.getWalletTransactions(companyId, limit);
+    res.json(transactions);
+  } catch (error) {
+    console.error('Get wallet transactions error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// Recharge wallet credits (admin only - prepares for Stripe integration)
+router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+    const { amount, paymentMethod = 'stripe' } = req.body;
+
+    // Only admin of the company can recharge their wallet
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo gli admin possono ricaricare il wallet" });
+    }
+
+    // Admin can only recharge their own company wallet
+    if (user.role === 'admin' && user.companyId !== companyId) {
+      return res.status(403).json({ message: "Puoi ricaricare solo il wallet della tua azienda" });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Importo non valido" });
+    }
+
+    // TODO: Integrate with Stripe for actual payment processing
+    // For now, we'll simulate successful payment for testing
+    const wallet = await storage.updateWalletBalance(
+      companyId, 
+      amount, 
+      `Ricarica crediti via ${paymentMethod}`, 
+      'ricarica', 
+      user.id
+    );
+
+    console.log(`💳 Wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
+    
+    res.json({ 
+      message: "Ricarica completata con successo",
+      wallet,
+      amount: amount,
+      paymentMethod
+    });
+  } catch (error) {
+    console.error('Recharge wallet error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// Transfer credits between companies (parent to sub-companies)
+router.post("/api/wallet/transfer", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { fromCompanyId, toCompanyId, amount } = req.body;
+
+    // Only admin can transfer credits
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo gli admin possono trasferire crediti" });
+    }
+
+    // Admin can only transfer from their own company
+    if (user.role === 'admin' && user.companyId !== fromCompanyId) {
+      return res.status(403).json({ message: "Puoi trasferire crediti solo dalla tua azienda" });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Importo non valido" });
+    }
+
+    const success = await storage.transferCredits(fromCompanyId, toCompanyId, amount, user.id);
+    
+    if (success) {
+      res.json({ message: "Trasferimento crediti completato con successo" });
+    } else {
+      res.status(400).json({ message: "Trasferimento fallito" });
+    }
+  } catch (error: any) {
+    console.error('Transfer credits error:', error);
+    res.status(400).json({ message: error.message || "Errore nel trasferimento crediti" });
+  }
+});
+
+// Pay license renewal with wallet credits
+router.post("/api/wallet/pay-license", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { licenseId, companyId, amount } = req.body;
+
+    // Authorization check - admin can pay for licenses in their company hierarchy
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(user.companyId);
+        if (!hierarchy.includes(companyId)) {
+          return res.status(403).json({ message: "Accesso negato per questa azienda" });
+        }
+      } else {
+        return res.status(403).json({ message: "Accesso negato" });
+      }
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Importo non valido" });
+    }
+
+    const success = await storage.chargeWalletForLicense(companyId, licenseId, amount, user.id);
+    
+    if (success) {
+      console.log(`💳 License payment successful: License ${licenseId}, Company ${companyId}, Amount ${amount} crediti`);
+      res.json({ message: "Pagamento licenza completato con crediti" });
+    } else {
+      res.status(400).json({ message: "Saldo insufficiente nel wallet aziendale" });
+    }
+  } catch (error: any) {
+    console.error('Pay license with wallet error:', error);
+    res.status(500).json({ message: error.message || "Errore nel pagamento licenza" });
+  }
+});
+
+// Get all company wallets (superadmin only)
+router.get("/api/wallets", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può visualizzare tutti i wallet" });
+    }
+
+    // Get all companies and their wallets
+    const companies = await storage.getCompanies();
+    const walletsData = [];
+
+    for (const company of companies) {
+      let wallet = await storage.getCompanyWallet(company.id);
+      if (!wallet) {
+        wallet = await storage.createCompanyWallet(company.id);
+      }
+      
+      walletsData.push({
+        company: company,
+        wallet: wallet
+      });
+    }
+
+    res.json(walletsData);
+  } catch (error) {
+    console.error('Get all wallets error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }

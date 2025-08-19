@@ -97,20 +97,52 @@ export const licenses = pgTable("licenses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Transactions
+// Company Wallets - Sistema crediti aziendale
+export const companyWallets = pgTable("company_wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().unique(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).default('0.00'), // saldo crediti (1 credito = 1 euro)
+  totalRecharges: decimal("total_recharges", { precision: 10, scale: 2 }).default('0.00'), // totale ricariche effettuate
+  totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default('0.00'), // totale speso
+  lastRechargeDate: timestamp("last_recharge_date"),
+  stripeCustomerId: text("stripe_customer_id"), // ID cliente Stripe per ricariche
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wallet Transactions - Storico movimenti crediti
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull(),
+  type: text("type").notNull(), // ricarica, spesa, trasferimento_in, trasferimento_out
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // importo in crediti
+  balanceBefore: decimal("balance_before", { precision: 10, scale: 2 }).notNull(),
+  balanceAfter: decimal("balance_after", { precision: 10, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  relatedEntityType: text("related_entity_type"), // license, recharge, transfer
+  relatedEntityId: varchar("related_entity_id"), // ID della licenza, ricarica, o trasferimento
+  fromCompanyId: varchar("from_company_id"), // per trasferimenti
+  toCompanyId: varchar("to_company_id"), // per trasferimenti
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // per ricariche Stripe
+  createdBy: varchar("created_by"), // utente che ha creato la transazione
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Transactions - Modificato per supportare crediti
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   licenseId: varchar("license_id").notNull(),
   clientId: varchar("client_id"), // client who needs to pay
   companyId: varchar("company_id"), // company of the client
   type: text("type").notNull(), // attivazione, rinnovo, posticipato
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // ora in crediti
   discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
   finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(), // amount - discount
-  paymentMethod: text("payment_method"), // contanti, bonifico, carta_di_credito, stripe, paypal
-  status: text("status").default('in_attesa'), // in_attesa, contanti, bonifico, carta_di_credito, dall_agente, dal_rivenditore, gratis, altro
+  paymentMethod: text("payment_method"), // crediti, contanti, bonifico, carta_di_credito, stripe, paypal
+  status: text("status").default('in_attesa'), // in_attesa, pagato_crediti, contanti, bonifico, carta_di_credito, dall_agente, dal_rivenditore, gratis, altro
   paymentLink: text("payment_link"), // Stripe payment link
   paymentDate: timestamp("payment_date"), // when payment was completed
+  creditsUsed: decimal("credits_used", { precision: 10, scale: 2 }), // crediti utilizzati dal wallet
   notes: text("notes"),
   modifiedBy: varchar("modified_by"), // user who last modified the record
   createdAt: timestamp("created_at").defaultNow(),
@@ -213,6 +245,17 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   createdAt: true 
 });
 
+export const insertCompanyWalletSchema = createInsertSchema(companyWallets).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
 export const insertActivationLogSchema = createInsertSchema(activationLogs).omit({ 
   id: true, 
   createdAt: true 
@@ -255,6 +298,12 @@ export type InsertLicense = z.infer<typeof insertLicenseSchema>;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+
+export type CompanyWallet = typeof companyWallets.$inferSelect;
+export type InsertCompanyWallet = z.infer<typeof insertCompanyWalletSchema>;
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 
 export type ActivationLog = typeof activationLogs.$inferSelect;
 export type InsertActivationLog = z.infer<typeof insertActivationLogSchema>;

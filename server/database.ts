@@ -200,6 +200,9 @@ class Database {
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN modified_by VARCHAR(36)`);
       } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2) DEFAULT 0.00`);
+      } catch (e) { /* Column already exists */ }
 
       // Add new columns to existing licenses table if they don't exist
       try {
@@ -281,6 +284,51 @@ class Database {
       await this.query(`DROP TABLE IF EXISTS software_registrations`).catch(() => {
         // Table might not exist, ignore error
       });
+
+      // 💳 WALLET SYSTEM - Create company wallets table
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS company_wallets (
+          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          company_id VARCHAR(36) NOT NULL UNIQUE,
+          balance DECIMAL(10,2) DEFAULT 0.00,
+          total_recharges DECIMAL(10,2) DEFAULT 0.00,
+          total_spent DECIMAL(10,2) DEFAULT 0.00,
+          last_recharge_date TIMESTAMP NULL,
+          stripe_customer_id VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+      `);
+
+      // 📊 WALLET TRANSACTIONS - Create wallet transactions table
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS wallet_transactions (
+          id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          company_id VARCHAR(36) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          balance_before DECIMAL(10,2) NOT NULL,
+          balance_after DECIMAL(10,2) NOT NULL,
+          description TEXT NOT NULL,
+          related_entity_type VARCHAR(50),
+          related_entity_id VARCHAR(36),
+          from_company_id VARCHAR(36),
+          to_company_id VARCHAR(36),
+          stripe_payment_intent_id VARCHAR(255),
+          created_by VARCHAR(36),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+          FOREIGN KEY (from_company_id) REFERENCES companies(id) ON DELETE SET NULL,
+          FOREIGN KEY (to_company_id) REFERENCES companies(id) ON DELETE SET NULL,
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+      `);
+
+      // Add credits support to transactions table
+      try {
+        await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2)`);
+      } catch (e) { /* Column already exists */ }
 
       console.log('Database tables initialized successfully');
     } catch (error) {

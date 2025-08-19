@@ -79,11 +79,11 @@ export async function generateRenewalTransaction(
 }
 
 /**
- * Processa i rinnovi automatici per le licenze scadute alla mezzanotte
+ * Processa i rinnovi automatici per le licenze scadute usando i crediti del wallet aziendale
  */
 export async function processAutomaticRenewals(storage: DatabaseStorage): Promise<void> {
   try {
-    console.log('🔄 Inizio processo rinnovi automatici alla mezzanotte...');
+    console.log('🔄 Inizio processo rinnovi automatici con sistema crediti...');
     
     // Oggi (data corrente)
     const today = new Date();
@@ -119,38 +119,82 @@ export async function processAutomaticRenewals(storage: DatabaseStorage): Promis
     
     let successfulRenewals = 0;
     let failedRenewals = 0;
+    let walletPayments = 0;
+    let insufficientFunds = 0;
     
     for (const license of renewalCandidates) {
       try {
         console.log(`🔄 Processando rinnovo per licenza ${license.activationKey}...`);
         
-        // Genera la transazione di rinnovo
-        await generateRenewalTransaction(storage, license, 'rinnovo');
+        // Ottieni i dati del cliente per l'azienda
+        const client = await storage.getClientById(license.clientId);
+        if (!client) {
+          console.error(`❌ Cliente non trovato per licenza ${license.activationKey}`);
+          failedRenewals++;
+          continue;
+        }
         
-        // Calcola la nuova data di scadenza partendo da oggi
-        const newExpiryDate = calculateExpiryDate(
-          license.licenseType,
-          license.trialDays || 30,
-          new Date() // Parte da oggi per evitare arretrati
+        // Calcola l'importo del rinnovo (convertito in crediti - 1 euro = 1 credito)
+        const amount = parseFloat(license.price?.toString() || '0');
+        const discount = parseFloat(license.discount?.toString() || '0');
+        const creditsRequired = Math.max(0, amount - discount);
+        
+        console.log(`💳 Rinnovo licenza ${license.activationKey}: richiesti ${creditsRequired} crediti`);
+        
+        // Tenta il pagamento con crediti del wallet aziendale
+        const walletPaymentSuccess = await storage.chargeWalletForLicense(
+          client.companyId,
+          license.id,
+          creditsRequired,
+          'sistema_automatico'
         );
         
-        if (newExpiryDate) {
-          // Aggiorna la data di scadenza della licenza
+        if (walletPaymentSuccess) {
+          // Pagamento con crediti riuscito - procedi con il rinnovo
+          console.log(`💳 Pagamento con crediti riuscito per licenza ${license.activationKey}`);
+          walletPayments++;
+          
+          // Calcola la nuova data di scadenza partendo da oggi
+          const newExpiryDate = calculateExpiryDate(
+            license.licenseType,
+            license.trialDays || 30,
+            new Date() // Parte da oggi per evitare arretrati
+          );
+          
+          if (newExpiryDate) {
+            // Aggiorna la data di scadenza della licenza
+            const currentNotes = license.notes || '';
+            const renewalNote = `Rinnovo automatico con crediti (${creditsRequired}) effettuato il ${new Date().toLocaleDateString('it-IT')}`;
+            const updatedNotes = currentNotes ? `${currentNotes}\n${renewalNote}` : renewalNote;
+            
+            await storage.updateLicense(license.id, {
+              expiryDate: newExpiryDate,
+              notes: updatedNotes,
+              status: 'attiva' // Assicura che rimanga attiva
+            });
+            
+            console.log(`✅ Licenza ${license.activationKey} rinnovata automaticamente con crediti fino al ${newExpiryDate.toLocaleDateString('it-IT')}`);
+            successfulRenewals++;
+          } else {
+            console.error(`❌ Errore nel calcolo data scadenza per licenza ${license.activationKey}`);
+            failedRenewals++;
+          }
+        } else {
+          // Saldo insufficiente - genera solo transazione per pagamento manuale
+          console.log(`⚠️ Saldo insufficiente per licenza ${license.activationKey}, generazione transazione per pagamento manuale`);
+          insufficientFunds++;
+          
+          await generateRenewalTransaction(storage, license, 'rinnovo');
+          
+          // Aggiorna le note della licenza per indicare il problema
           const currentNotes = license.notes || '';
-          const renewalNote = `Rinnovo automatico effettuato il ${new Date().toLocaleDateString('it-IT')}`;
-          const updatedNotes = currentNotes ? `${currentNotes}\n${renewalNote}` : renewalNote;
+          const warningNote = `ATTENZIONE: Rinnovo automatico fallito per saldo insufficiente il ${new Date().toLocaleDateString('it-IT')} - Transazione generata per pagamento manuale`;
+          const updatedNotes = currentNotes ? `${currentNotes}\n${warningNote}` : warningNote;
           
           await storage.updateLicense(license.id, {
-            expiryDate: newExpiryDate,
-            notes: updatedNotes,
-            status: 'attiva' // Assicura che rimanga attiva
+            notes: updatedNotes
+            // Non aggiornare la data di scadenza - rimane scaduta fino al pagamento manuale
           });
-          
-          console.log(`✅ Licenza ${license.activationKey} rinnovata automaticamente fino al ${newExpiryDate.toLocaleDateString('it-IT')}`);
-          successfulRenewals++;
-        } else {
-          console.error(`❌ Errore nel calcolo data scadenza per licenza ${license.activationKey}`);
-          failedRenewals++;
         }
         
       } catch (error) {
@@ -159,7 +203,11 @@ export async function processAutomaticRenewals(storage: DatabaseStorage): Promis
       }
     }
     
-    console.log(`🎯 Processo rinnovi automatici completato: ${successfulRenewals} successi, ${failedRenewals} errori`);
+    console.log(`🎯 Processo rinnovi automatici completato:`);
+    console.log(`   💳 ${walletPayments} licenze rinnovate con crediti wallet`);
+    console.log(`   ⚠️ ${insufficientFunds} licenze con saldo insufficiente (transazioni generate)`);
+    console.log(`   ✅ ${successfulRenewals} rinnovi completati`);
+    console.log(`   ❌ ${failedRenewals} errori`);
     
   } catch (error) {
     console.error('❌ Errore nel processo rinnovi automatici:', error);

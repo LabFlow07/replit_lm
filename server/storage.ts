@@ -7,6 +7,8 @@ import type {
   Client, InsertClient,
   License, InsertLicense, LicenseWithDetails,
   Transaction, InsertTransaction,
+  CompanyWallet, InsertCompanyWallet,
+  WalletTransaction, InsertWalletTransaction,
   ActivationLog, InsertActivationLog,
   AccessLog, InsertAccessLog,
   SoftwareRegistration, InsertSoftwareRegistration,
@@ -79,14 +81,19 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getTransactionsByCompanyHierarchy(companyId: string): Promise<Transaction[]>;
   getTransactionsByCompany(companyId: string): Promise<Transaction[]>;
-  getTransactionById(id: string): Promise<Transaction | null>;
-  updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction>;
   updateTransactionStatus(id: string, status: string, paymentDate?: Date): Promise<void>;
   getTransactionsByClient(clientId: string): Promise<Transaction[]>;
   getTransactionsByCompanyAndClient(companyId?: string, clientId?: string): Promise<Transaction[]>;
-  deleteTransaction(id: string): Promise<void>;
   deleteTransactionsByLicense(licenseId: string): Promise<void>;
-  clearAllTransactions(): Promise<number>;
+
+  // Wallet methods
+  getCompanyWallet(companyId: string): Promise<CompanyWallet | null>;
+  createCompanyWallet(companyId: string): Promise<CompanyWallet>;
+  updateWalletBalance(companyId: string, amount: number, description: string, type: string, createdBy?: string): Promise<CompanyWallet>;
+  transferCredits(fromCompanyId: string, toCompanyId: string, amount: number, createdBy: string): Promise<boolean>;
+  getWalletTransactions(companyId: string, limit?: number): Promise<WalletTransaction[]>;
+  createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
+  chargeWalletForLicense(companyId: string, licenseId: string, amount: number, createdBy: string): Promise<boolean>;
 
   // Logging methods
   logActivation(log: InsertActivationLog): Promise<void>;
@@ -2452,6 +2459,246 @@ class DatabaseStorage implements IStorage {
 
   async deleteDettRegAzienda(id: number): Promise<void> {
     await this.db.query('DELETE FROM Dett_Reg_Azienda WHERE ID = ?', [id]);
+  }
+
+  // 💳 WALLET METHODS - Sistema crediti aziendale
+
+  async getCompanyWallet(companyId: string): Promise<CompanyWallet | null> {
+    const rows = await this.db.query(
+      'SELECT * FROM company_wallets WHERE company_id = ?',
+      [companyId]
+    );
+    
+    if (rows.length === 0) return null;
+    
+    const row = rows[0];
+    return {
+      id: row.id,
+      companyId: row.company_id,
+      balance: parseFloat(row.balance || '0'),
+      totalRecharges: parseFloat(row.total_recharges || '0'),
+      totalSpent: parseFloat(row.total_spent || '0'),
+      lastRechargeDate: row.last_recharge_date,
+      stripeCustomerId: row.stripe_customer_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async createCompanyWallet(companyId: string): Promise<CompanyWallet> {
+    const walletId = randomUUID();
+    const now = new Date();
+    
+    await this.db.query(`
+      INSERT INTO company_wallets (
+        id, company_id, balance, total_recharges, total_spent, 
+        created_at, updated_at
+      ) VALUES (?, ?, 0.00, 0.00, 0.00, ?, ?)
+    `, [walletId, companyId, now, now]);
+
+    return this.getCompanyWallet(companyId) as Promise<CompanyWallet>;
+  }
+
+  async updateWalletBalance(
+    companyId: string, 
+    amount: number, 
+    description: string, 
+    type: string, 
+    createdBy?: string
+  ): Promise<CompanyWallet> {
+    // Ottieni o crea il wallet
+    let wallet = await this.getCompanyWallet(companyId);
+    if (!wallet) {
+      wallet = await this.createCompanyWallet(companyId);
+    }
+
+    try {
+      const balanceBefore = wallet.balance;
+      const balanceAfter = balanceBefore + amount;
+
+      // Aggiorna il saldo del wallet
+      await this.db.query(`
+        UPDATE company_wallets 
+        SET balance = ?, 
+            ${type === 'ricarica' ? 'total_recharges = total_recharges + ?, last_recharge_date = ?' : 'total_spent = total_spent + ABS(?)'}, 
+            updated_at = ?
+        WHERE company_id = ?
+      `, type === 'ricarica' 
+        ? [balanceAfter, Math.abs(amount), new Date(), new Date(), companyId]
+        : [balanceAfter, Math.abs(amount), new Date(), companyId]
+      );
+
+      // Registra la transazione wallet
+      await this.createWalletTransaction({
+        companyId,
+        type,
+        amount: Math.abs(amount),
+        balanceBefore,
+        balanceAfter,
+        description,
+        createdBy
+      });
+
+      console.log(`💳 Wallet updated: Company ${companyId}, ${type} ${amount} crediti, saldo: ${balanceBefore} → ${balanceAfter}`);
+      
+      return await this.getCompanyWallet(companyId) as CompanyWallet;
+    } catch (error) {
+      console.error('Error updating wallet balance:', error);
+      throw error;
+    }
+  }
+
+  async transferCredits(
+    fromCompanyId: string, 
+    toCompanyId: string, 
+    amount: number, 
+    createdBy: string
+  ): Promise<boolean> {
+    // Verifica gerarchia aziendale
+    const fromCompany = await this.getCompany(fromCompanyId);
+    const toCompany = await this.getCompany(toCompanyId);
+    
+    if (!fromCompany || !toCompany) {
+      throw new Error('Azienda non trovata');
+    }
+
+    // Verifica che toCompany sia una sotto-azienda di fromCompany
+    const hierarchy = await this.getCompanyHierarchy(fromCompanyId);
+    if (!hierarchy.includes(toCompanyId)) {
+      throw new Error('Il trasferimento è consentito solo verso sotto-aziende');
+    }
+
+    // Verifica saldo disponibile
+    const fromWallet = await this.getCompanyWallet(fromCompanyId);
+    if (!fromWallet || fromWallet.balance < amount) {
+      throw new Error('Saldo insufficiente per il trasferimento');
+    }
+
+    try {
+      // Sottrai crediti dall'azienda madre
+      await this.updateWalletBalance(
+        fromCompanyId, 
+        -amount, 
+        `Trasferimento a ${toCompany.name}`, 
+        'trasferimento_out', 
+        createdBy
+      );
+
+      // Aggiungi crediti alla sotto-azienda
+      await this.updateWalletBalance(
+        toCompanyId, 
+        amount, 
+        `Trasferimento da ${fromCompany.name}`, 
+        'trasferimento_in', 
+        createdBy
+      );
+
+      console.log(`🔄 Trasferimento completato: ${fromCompany.name} → ${toCompany.name}, ${amount} crediti`);
+      return true;
+    } catch (error) {
+      console.error('Error transferring credits:', error);
+      throw error;
+    }
+  }
+
+  async getWalletTransactions(companyId: string, limit: number = 50): Promise<WalletTransaction[]> {
+    const rows = await this.db.query(`
+      SELECT * FROM wallet_transactions 
+      WHERE company_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT ?
+    `, [companyId, limit]);
+
+    return rows.map((row: any) => ({
+      id: row.id,
+      companyId: row.company_id,
+      type: row.type,
+      amount: parseFloat(row.amount),
+      balanceBefore: parseFloat(row.balance_before),
+      balanceAfter: parseFloat(row.balance_after),
+      description: row.description,
+      relatedEntityType: row.related_entity_type,
+      relatedEntityId: row.related_entity_id,
+      fromCompanyId: row.from_company_id,
+      toCompanyId: row.to_company_id,
+      stripePaymentIntentId: row.stripe_payment_intent_id,
+      createdBy: row.created_by,
+      createdAt: row.created_at
+    }));
+  }
+
+  async createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction> {
+    const id = randomUUID();
+    const now = new Date();
+
+    await this.db.query(`
+      INSERT INTO wallet_transactions (
+        id, company_id, type, amount, balance_before, balance_after,
+        description, related_entity_type, related_entity_id,
+        from_company_id, to_company_id, stripe_payment_intent_id,
+        created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, transaction.companyId, transaction.type, transaction.amount,
+      transaction.balanceBefore, transaction.balanceAfter, transaction.description,
+      transaction.relatedEntityType, transaction.relatedEntityId,
+      transaction.fromCompanyId, transaction.toCompanyId, 
+      transaction.stripePaymentIntentId, transaction.createdBy, now
+    ]);
+
+    return {
+      id,
+      companyId: transaction.companyId,
+      type: transaction.type,
+      amount: transaction.amount,
+      balanceBefore: transaction.balanceBefore,
+      balanceAfter: transaction.balanceAfter,
+      description: transaction.description,
+      relatedEntityType: transaction.relatedEntityType,
+      relatedEntityId: transaction.relatedEntityId,
+      fromCompanyId: transaction.fromCompanyId,
+      toCompanyId: transaction.toCompanyId,
+      stripePaymentIntentId: transaction.stripePaymentIntentId,
+      createdBy: transaction.createdBy,
+      createdAt: now
+    };
+  }
+
+  async chargeWalletForLicense(
+    companyId: string, 
+    licenseId: string, 
+    amount: number, 
+    createdBy: string
+  ): Promise<boolean> {
+    const wallet = await this.getCompanyWallet(companyId);
+    if (!wallet || wallet.balance < amount) {
+      console.log(`❌ Wallet charge failed: Company ${companyId}, insufficient balance (${wallet?.balance || 0} < ${amount})`);
+      return false;
+    }
+
+    try {
+      // Scala i crediti dal wallet
+      await this.updateWalletBalance(
+        companyId, 
+        -amount, 
+        `Rinnovo licenza ${licenseId}`, 
+        'spesa', 
+        createdBy
+      );
+
+      // Aggiorna la transazione licenza con crediti utilizzati
+      await this.db.query(`
+        UPDATE transactions 
+        SET credits_used = ?, payment_method = 'crediti', status = 'pagato_crediti', payment_date = ?
+        WHERE license_id = ? AND status = 'in_attesa'
+      `, [amount, new Date(), licenseId]);
+
+      console.log(`💳 Wallet charged: Company ${companyId}, License ${licenseId}, ${amount} crediti`);
+      return true;
+    } catch (error) {
+      console.error('Error charging wallet for license:', error);
+      return false;
+    }
   }
 }
 
