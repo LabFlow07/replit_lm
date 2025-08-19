@@ -1,5 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
+import Sidebar from '@/components/layout/sidebar';
+import TopBar from '@/components/layout/topbar';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +18,10 @@ import { Wallet, CreditCard, ArrowUpDown, ArrowDown, ArrowUp, Euro, Users } from
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-export default function WalletPage() {
+function WalletContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [transferData, setTransferData] = useState({
@@ -24,10 +30,9 @@ export default function WalletPage() {
     amount: ''
   });
 
-  // Get user data from local storage
-  const userData = JSON.parse(localStorage.getItem('user') || '{}');
-  const userCompanyId = userData.companyId;
-  const userRole = userData.role;
+  // Get user data from auth context
+  const userCompanyId = user?.companyId;
+  const userRole = user?.role;
 
   // Fetch companies for admin/superadmin
   const { data: companies = [] } = useQuery({
@@ -442,6 +447,42 @@ export default function WalletPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+export default function WalletPage() {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { contentMargin } = useSidebar();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation('/login');
+    }
+  }, [user, loading, setLocation]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <TopBar />
+        <main className="flex-1 p-6" style={{ marginLeft: contentMargin }}>
+          <WalletContent />
+        </main>
+      </div>
     </div>
   );
 }

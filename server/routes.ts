@@ -2915,6 +2915,79 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
   }
 });
 
+// Get single company wallet and transactions
+router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+
+    // Authorization check
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId !== companyId) {
+        const hierarchy = await storage.getCompanyHierarchy(user.companyId);
+        if (!hierarchy.includes(companyId)) {
+          return res.status(403).json({ message: "Accesso negato per questa azienda" });
+        }
+      } else if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Accesso negato" });
+      }
+    }
+
+    // Get or create wallet
+    let wallet = await storage.getCompanyWallet(companyId);
+    if (!wallet) {
+      wallet = await storage.createCompanyWallet(companyId);
+    }
+
+    // Get wallet transactions
+    const transactions = await storage.getWalletTransactions(companyId);
+
+    res.json({
+      wallet,
+      transactions
+    });
+  } catch (error) {
+    console.error('Get company wallet error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
+// Recharge company wallet
+router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+    const { amount } = req.body;
+
+    // Authorization check - only admin can recharge their own company wallet
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId !== companyId) {
+        return res.status(403).json({ message: "Puoi ricaricare solo il wallet della tua azienda" });
+      } else if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Solo gli admin possono ricaricare i wallet" });
+      }
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Importo non valido" });
+    }
+
+    const updatedWallet = await storage.updateWalletBalance(
+      companyId,
+      amount,
+      'Ricarica manuale via admin',
+      'ricarica',
+      user.id
+    );
+
+    console.log(`💰 Wallet recharged: Company ${companyId}, Amount ${amount} crediti`);
+    res.json(updatedWallet);
+  } catch (error: any) {
+    console.error('Recharge wallet error:', error);
+    res.status(500).json({ message: error.message || "Errore ricarica wallet" });
+  }
+});
+
 export default function registerRoutes(app: express.Express): void {
   app.use(router);
 }
