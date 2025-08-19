@@ -2572,7 +2572,7 @@ class DatabaseStorage implements IStorage {
         WHERE company_id = ?
       `, type === 'ricarica' 
         ? [balanceAfter, Math.abs(amount), new Date(), new Date(), companyId]
-        : [balanceAfter, Math.abs(amount), new Date(), companyId]ath.abs(amount), new Date(), companyId]
+        : [balanceAfter, Math.abs(amount), new Date(), companyId]
       );
 
       // Registra la transazione wallet
