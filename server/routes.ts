@@ -3299,20 +3299,26 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
   }
 });
 
-// ENDPOINT SEMPLICE: Leggi solo transazioni wallet
-router.get("/api/transactions/:companyId", authenticateToken, async (req: Request, res: Response) => {
+// ENDPOINT TRANSAZIONI WALLET PER AZIENDA SPECIFICA
+router.get("/api/company/:companyId/wallet-transactions", authenticateToken, async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
-    console.log(`📋 Richiesta transazioni per company: ${companyId}`);
+    console.log(`🏦 ENDPOINT WALLET TRANSACTIONS per company: ${companyId}`);
     
     const transactions = await storage.getWalletTransactions(companyId, 100);
-    console.log(`💰 Trovate ${transactions.length} transazioni`);
+    console.log(`💰 TROVATE ${transactions.length} transazioni wallet`);
     
-    res.setHeader('Cache-Control', 'no-cache');
+    // Log prime transazioni per debug
+    if (transactions.length > 0) {
+      console.log(`✨ Prima transazione:`, transactions[0]);
+    }
+    
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Content-Type', 'application/json');
     res.json(transactions);
     
   } catch (error: any) {
-    console.error('❌ Errore endpoint transazioni:', error);
+    console.error('💥 ERRORE ENDPOINT WALLET TRANSACTIONS:', error);
     res.status(500).json({ error: error.message });
   }
 });

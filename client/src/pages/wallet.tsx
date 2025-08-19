@@ -336,7 +336,7 @@ function WalletContent() {
     try {
       console.log('🔍 Caricamento transazioni per:', companyName);
       
-      const response = await apiRequest('GET', `/api/transactions/${companyId}`);
+      const response = await apiRequest('GET', `/api/company/${companyId}/wallet-transactions`);
       
       if (!response.ok) {
         throw new Error(`Errore HTTP: ${response.status}`);
