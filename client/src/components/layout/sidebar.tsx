@@ -7,8 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Menu, X } from "lucide-react";
 import { useSidebar } from "@/contexts/SidebarContext";
 
-const getNavigationItems = (userRole: string, activeLicensesCount: number) => {
-  const baseItems = [
+type NavigationItem = {
+  id: string;
+  label: string;
+  icon: string;
+  route: string;
+  badge?: string;
+  separator?: boolean;
+};
+
+const getNavigationItems = (userRole: string, activeLicensesCount: number): NavigationItem[] => {
+  const baseItems: NavigationItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
     { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: activeLicensesCount > 0 ? activeLicensesCount.toString() : undefined, route: '/licenses' },
     { id: 'software-registrations', label: 'Qlm Register', icon: 'fas fa-desktop', route: '/software-registrations' },

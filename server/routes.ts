@@ -144,6 +144,27 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
   }
 });
 
+// Stripe test endpoint
+router.post('/api/stripe/test', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    // Test connection by retrieving account info
+    const account = await stripe.accounts.retrieve();
+    
+    res.json({ 
+      success: true,
+      message: 'Connessione Stripe testata con successo',
+      accountId: account.id,
+      country: account.country
+    });
+  } catch (error: any) {
+    console.error('Stripe test error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Errore nella connessione Stripe: ' + error.message 
+    });
+  }
+});
+
 router.get("/api/auth/validate", authenticateToken, async (req: Request, res: Response) => {
   res.json({ isValid: true });
 });
