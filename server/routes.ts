@@ -3152,11 +3152,12 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
 // Get single company wallet and transactions
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
   try {
-    // Force disable all caching
+    // FORCE DISABLE ALL HTTP CACHING - TIMESTAMP: ${Date.now()}
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Pragma', 'no-cache'); 
     res.setHeader('Expires', '0');
     res.setHeader('Last-Modified', new Date().toUTCString());
+    res.setHeader('ETag', Date.now().toString());
     
     const user = (req as any).user;
     const { companyId } = req.params;
@@ -3182,8 +3183,8 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     // Get wallet transactions from wallet_transactions table
     const transactions = await storage.getWalletTransactions(companyId, 100); // Aumenta il limite per vedere più transazioni
 
-    console.log(`🚀 WALLET ENDPOINT HIT: Company ${companyId}, Balance: ${wallet.balance}`);
-    console.log(`🔍 TRANSACTIONS COUNT: ${transactions.length}`);
+    console.log(`🆕 WALLET ENDPOINT ACCESSED AT ${new Date().toISOString()}: Company ${companyId}, Balance: ${wallet.balance}`);
+    console.log(`💥 TRANSACTIONS FOUND IN DATABASE: ${transactions.length}`);
     
     // SEMPRE includiamo le transazioni nel response
     const walletWithTransactions = {
