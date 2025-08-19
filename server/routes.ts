@@ -3149,17 +3149,19 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
   }
 });
 
-// Get single company wallet and transactions
+// Get single company wallet and transactions - FIXED VERSION
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
+  const timestamp = Date.now();
+  console.log(`🚀 WALLET ENDPOINT HIT - TIMESTAMP: ${timestamp}`);
+  
   try {
-    // FORCE NEW REQUEST EVERY TIME + TIMESTAMP TO FORCE EXECUTION
-    const timestamp = Date.now();
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    // DISABLE ALL CACHING COMPLETELY
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
     res.setHeader('Pragma', 'no-cache'); 
     res.setHeader('Expires', '0');
-    res.setHeader('Last-Modified', new Date().toUTCString());
-    res.setHeader('ETag', `wallet-${timestamp}`);
-    res.setHeader('X-Debug-Timestamp', timestamp.toString());
+    res.setHeader('Last-Modified', new Date(0).toUTCString()); // Force old date
+    res.setHeader('ETag', `wallet-${timestamp}-${Math.random()}`); // Always unique
+    res.setHeader('X-Timestamp', timestamp.toString());
     
     const user = (req as any).user;
     const { companyId } = req.params;
@@ -3185,8 +3187,8 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     // Get wallet transactions from wallet_transactions table
     const transactions = await storage.getWalletTransactions(companyId, 100); // Aumenta il limite per vedere più transazioni
 
-    console.log(`🚀 WALLET REQUEST TIMESTAMP ${timestamp} - Company ${companyId}, Balance: ${wallet.balance}`);
-    console.log(`🎯 DATABASE RETURNED ${transactions.length} TRANSACTIONS`);
+    console.log(`💥 WALLET DATA: Company ${companyId}, Balance: ${wallet.balance}`);
+    console.log(`💥 TRANSACTION COUNT FROM DB: ${transactions.length}`);
     
     // CRITICAL: ALWAYS include transactions in response
     const responseData = {
@@ -3207,7 +3209,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
       }
     };
 
-    console.log(`✅ RESPONSE READY: ${transactions.length} transactions for company ${companyId}`);
+    console.log(`✅ SENDING RESPONSE WITH ${transactions.length} TRANSACTIONS - TIMESTAMP: ${timestamp}`);
     
     res.json(responseData);
   } catch (error) {
