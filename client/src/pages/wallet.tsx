@@ -20,8 +20,15 @@ import { it } from 'date-fns/locale';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
+// Initialize Stripe - make sure to use the PUBLIC key (pk_test_...)
+const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+console.log('Stripe public key (first 10 chars):', stripePublicKey?.substring(0, 10));
+
+if (!stripePublicKey || !stripePublicKey.startsWith('pk_')) {
+  console.error('Invalid Stripe public key. Must start with pk_test_ or pk_live_');
+}
+
+const stripePromise = loadStripe(stripePublicKey!);
 
 // Stripe Payment Form Component
 function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: { 
