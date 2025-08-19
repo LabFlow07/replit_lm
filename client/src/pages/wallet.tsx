@@ -344,9 +344,15 @@ function WalletContent() {
       const data = await response.json();
       console.log('Wallet data received:', data);
       
-      // Check if transactions are in the data or if we need to get them from a different endpoint
+      // Le transazioni sono ora incluse direttamente nella risposta dell'endpoint wallet
       const transactions = data.transactions || [];
-      console.log('Transactions found:', transactions.length);
+      console.log('Transactions found from wallet_transactions table:', transactions.length);
+      
+      if (transactions.length === 0) {
+        console.log('No transactions found for company:', companyName);
+      } else {
+        console.log('Sample transaction:', transactions[0]);
+      }
       
       setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
@@ -890,9 +896,9 @@ function WalletContent() {
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}
                         </p>
-                        {transaction.type === 'ricarica' && transaction.paymentIntentId && (
+                        {transaction.type === 'ricarica' && transaction.stripePaymentIntentId && (
                           <p className="text-xs text-blue-600 dark:text-blue-400">
-                            ID Pagamento: {transaction.paymentIntentId}
+                            ID Pagamento Stripe: {transaction.stripePaymentIntentId}
                           </p>
                         )}
                       </div>

@@ -2503,6 +2503,49 @@ class DatabaseStorage implements IStorage {
     return this.getCompanyWallet(companyId) as Promise<CompanyWallet>;
   }
 
+  async createWalletTransaction(data: {
+    companyId: string;
+    type: string;
+    amount: number;
+    balanceBefore: number;
+    balanceAfter: number;
+    description: string;
+    relatedEntityType?: string | null;
+    relatedEntityId?: string | null;
+    fromCompanyId?: string | null;
+    toCompanyId?: string | null;
+    stripePaymentIntentId?: string | null;
+    createdBy?: string | null;
+  }): Promise<void> {
+    const transactionId = randomUUID();
+    
+    await this.db.query(`
+      INSERT INTO wallet_transactions (
+        id, company_id, type, amount, balance_before, balance_after, 
+        description, related_entity_type, related_entity_id, 
+        from_company_id, to_company_id, stripe_payment_intent_id, 
+        created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      transactionId,
+      data.companyId,
+      data.type,
+      data.amount,
+      data.balanceBefore,
+      data.balanceAfter,
+      data.description,
+      data.relatedEntityType || null,
+      data.relatedEntityId || null,
+      data.fromCompanyId || null,
+      data.toCompanyId || null,
+      data.stripePaymentIntentId || null,
+      data.createdBy || null,
+      new Date()
+    ]);
+    
+    console.log(`💾 Wallet transaction saved: ${data.type} ${data.amount} crediti for company ${data.companyId}`);
+  }
+
   async updateWalletBalance(
     companyId: string, 
     amount: number, 
@@ -2529,7 +2572,7 @@ class DatabaseStorage implements IStorage {
         WHERE company_id = ?
       `, type === 'ricarica' 
         ? [balanceAfter, Math.abs(amount), new Date(), new Date(), companyId]
-        : [balanceAfter, Math.abs(amount), new Date(), companyId]
+        : [balanceAfter, Math.abs(amount), new Date(), companyId]ath.abs(amount), new Date(), companyId]
       );
 
       // Registra la transazione wallet
@@ -2622,9 +2665,43 @@ class DatabaseStorage implements IStorage {
 
   async getWalletTransactions(companyId: string, limit: number = 50): Promise<WalletTransaction[]> {
     const rows = await this.db.query(`
-      SELECT * FROM wallet_transactions 
+      SELECT 
+        id,
+        company_id as companyId,
+        type,
+        amount,
+        balance_before as balanceBefore,
+        balance_after as balanceAfter,
+        description,
+        related_entity_type as relatedEntityType,
+        related_entity_id as relatedEntityId,
+        from_company_id as fromCompanyId,
+        to_company_id as toCompanyId,
+        stripe_payment_intent_id as stripePaymentIntentId,
+        created_by as createdBy,
+        created_at as createdAt
+      FROM wallet_transactions 
       WHERE company_id = ? 
-      ORDER BY created_at DESC 
+      ORDER BY created_at DESC
+      LIMIT ?
+    `, [companyId, limit]);
+
+    return rows.map((row: any) => ({
+      id: row.id,
+      companyId: row.companyId,
+      type: row.type,
+      amount: parseFloat(row.amount || '0'),
+      balanceBefore: parseFloat(row.balanceBefore || '0'),
+      balanceAfter: parseFloat(row.balanceAfter || '0'),
+      description: row.description,
+      relatedEntityType: row.relatedEntityType,
+      relatedEntityId: row.relatedEntityId,
+      fromCompanyId: row.fromCompanyId,
+      toCompanyId: row.toCompanyId,
+      stripePaymentIntentId: row.stripePaymentIntentId,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt
+    })); created_at DESC 
       LIMIT ?
     `, [companyId, limit]);
 
