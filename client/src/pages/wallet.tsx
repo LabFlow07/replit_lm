@@ -348,11 +348,19 @@ function WalletContent() {
       
       // Le transazioni sono ora incluse direttamente nella risposta dell'endpoint wallet
       const transactions = data.transactions || [];
-      console.log('📈 Transactions found from wallet_transactions table:', transactions.length);
+      // Check if response includes _debug info (new format)
+      const debugInfo = data._debug;
+      const transactionCount = debugInfo?.transactionCount ?? transactions.length;
       
-      if (transactions.length === 0) {
-        console.log('❌ No transactions found for company:', companyName);
-        console.log('💰 But wallet balance is:', data.balance);
+      console.log(`📈 Transactions from API response: ${transactionCount}`);
+      if (debugInfo) {
+        console.log(`🔍 API Debug Info:`, debugInfo);
+      }
+      
+      if (transactionCount === 0) {
+        console.log(`❌ No transactions found for company: ${companyName}`);
+        console.log(`💰 But wallet balance is: ${data.balance}`);
+        console.log(`⚠️ This suggests the API endpoint is not including transactions in the response`);
       } else {
         console.log('✅ Sample transaction:', transactions[0]);
       }
