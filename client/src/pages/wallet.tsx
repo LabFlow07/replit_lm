@@ -37,27 +37,25 @@ function WalletContent() {
   // Fetch companies for admin/superadmin
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
-    enabled: userRole === 'superadmin' || userRole === 'admin'
-  });
+    enabled: !!user && (userRole === 'superadmin' || userRole === 'admin')
+  }) as { data: any[] };
 
   // Fetch wallet for selected company or user's company
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
-  const { data: wallet, isLoading: walletLoading } = useQuery({
+  const { data: walletData, isLoading: walletLoading } = useQuery({
     queryKey: ['/api/wallet', activeCompanyId],
-    enabled: !!activeCompanyId
-  });
+    enabled: !!user && !!activeCompanyId
+  }) as { data: any, isLoading: boolean };
 
-  // Fetch wallet transactions
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['/api/wallet', activeCompanyId, 'transactions'],
-    enabled: !!activeCompanyId
-  });
+  // Extract wallet and transactions from response
+  const wallet = walletData?.wallet || {};
+  const transactions = walletData?.transactions || [];
 
   // Fetch all wallets for superadmin
   const { data: allWallets = [] } = useQuery({
     queryKey: ['/api/wallets'],
-    enabled: userRole === 'superadmin'
-  });
+    enabled: !!user && userRole === 'superadmin'
+  }) as { data: any[] };
 
   // Recharge wallet mutation
   const rechargeMutation = useMutation({
@@ -152,7 +150,7 @@ function WalletContent() {
       // Admin can only transfer from their company to sub-companies
       if (isDestination) {
         // Show sub-companies only
-        return companies.filter((c: any) => c.parentId === userCompanyId);
+        return companies.filter((c: any) => c.parent_id === userCompanyId);
       } else {
         // Show only their company as source
         return companies.filter((c: any) => c.id === userCompanyId);
@@ -187,7 +185,7 @@ function WalletContent() {
                 <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
               </SelectTrigger>
               <SelectContent>
-                {companies.map((company: any) => (
+                {companies && Array.isArray(companies) && companies.map((company: any) => (
                   <SelectItem key={company.id} value={company.id}>
                     {company.name} ({company.type})
                   </SelectItem>
@@ -212,16 +210,16 @@ function WalletContent() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold mb-4">
-              {wallet.balance.toFixed(2)} crediti
+              {(wallet.balance || 0).toFixed(2)} crediti
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-blue-200">Totale Ricariche</p>
-                <p className="font-semibold">{wallet.totalRecharges.toFixed(2)} crediti</p>
+                <p className="font-semibold">{(wallet.totalRecharges || 0).toFixed(2)} crediti</p>
               </div>
               <div>
                 <p className="text-blue-200">Totale Spese</p>
-                <p className="font-semibold">{wallet.totalSpent.toFixed(2)} crediti</p>
+                <p className="font-semibold">{(wallet.totalSpent || 0).toFixed(2)} crediti</p>
               </div>
             </div>
             {wallet.lastRechargeDate && (
@@ -379,10 +377,10 @@ function WalletContent() {
                   <div className="text-right">
                     <Badge variant={getTransactionBadgeVariant(transaction.type)}>
                       {transaction.type === 'spesa' || transaction.type === 'trasferimento_out' ? '-' : '+'}
-                      {transaction.amount.toFixed(2)} crediti
+                      {(transaction.amount || 0).toFixed(2)} crediti
                     </Badge>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Saldo: {transaction.balanceAfter.toFixed(2)}
+                      Saldo: {(transaction.balanceAfter || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -415,17 +413,17 @@ function WalletContent() {
                     <Badge variant="outline">{item.company.type}</Badge>
                   </div>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {item.wallet.balance.toFixed(2)}
+                    {(item.wallet.balance || 0).toFixed(2)}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">crediti disponibili</p>
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                     <div>
                       <p className="text-gray-500">Ricariche</p>
-                      <p className="font-medium">{item.wallet.totalRecharges.toFixed(2)}</p>
+                      <p className="font-medium">{(item.wallet.totalRecharges || 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Spese</p>
-                      <p className="font-medium">{item.wallet.totalSpent.toFixed(2)}</p>
+                      <p className="font-medium">{(item.wallet.totalSpent || 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -479,7 +477,7 @@ export default function WalletPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <TopBar />
-        <main className="flex-1 p-6" style={{ marginLeft: contentMargin }}>
+        <main className="flex-1 p-6" style={{ paddingLeft: '280px', minHeight: '100vh' }}>
           <WalletContent />
         </main>
       </div>

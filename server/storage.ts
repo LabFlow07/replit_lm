@@ -2529,15 +2529,22 @@ class DatabaseStorage implements IStorage {
       );
 
       // Registra la transazione wallet
-      await this.createWalletTransaction({
+      const transactionData = {
         companyId,
         type,
         amount: Math.abs(amount),
         balanceBefore,
         balanceAfter,
         description,
-        createdBy
-      });
+        createdBy: createdBy || null,
+        relatedEntityType: null,
+        relatedEntityId: null,
+        fromCompanyId: null,
+        toCompanyId: null,
+        stripePaymentIntentId: null
+      };
+      
+      await this.createWalletTransaction(transactionData);
 
       console.log(`💳 Wallet updated: Company ${companyId}, ${type} ${amount} crediti, saldo: ${balanceBefore} → ${balanceAfter}`);
       
@@ -2639,11 +2646,20 @@ class DatabaseStorage implements IStorage {
         created_by, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, transaction.companyId, transaction.type, transaction.amount,
-      transaction.balanceBefore, transaction.balanceAfter, transaction.description,
-      transaction.relatedEntityType, transaction.relatedEntityId,
-      transaction.fromCompanyId, transaction.toCompanyId, 
-      transaction.stripePaymentIntentId, transaction.createdBy, now
+      id, 
+      transaction.companyId, 
+      transaction.type, 
+      transaction.amount,
+      transaction.balanceBefore || 0, 
+      transaction.balanceAfter || 0, 
+      transaction.description,
+      transaction.relatedEntityType || null, 
+      transaction.relatedEntityId || null,
+      transaction.fromCompanyId || null, 
+      transaction.toCompanyId || null, 
+      transaction.stripePaymentIntentId || null, 
+      transaction.createdBy || null, 
+      now
     ]);
 
     return {

@@ -12,6 +12,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**August 19, 2025 - Wallet System Implementation Progress**
+- **IN PROGRESS: Company wallet system with credit-based license renewals**
+  - Implemented complete backend wallet infrastructure with REST API endpoints
+  - Created wallet transaction tracking system with proper financial audit trail
+  - Modified automatic renewal system to use credits instead of euros (1 credit = 1 euro)
+  - Built comprehensive wallet management frontend with React TypeScript components
+  - Added wallet balance display, credit recharging, and inter-company transfer capabilities
+  - PENDING: Database wallet initialization - external MySQL access limitations preventing test data creation
+  - PENDING: Complete conversion of license pricing display from euros to credits throughout UI
+  - PENDING: Stripe payment integration for wallet recharging functionality
+  - Current Issue: TypeScript type errors in storage layer requiring resolution
+- **SIDEBAR LAYOUT RESOLVED:**
+  - Fixed wallet page sidebar overlap issue with proper padding adjustment
+  - Wallet page now displays correctly without content being hidden behind sidebar
+  - Responsive layout maintains proper spacing across different screen sizes
+
 **August 18, 2025 - Company Hierarchy Authorization Filter Implementation**
 - **RESOLVED: Admin users now see only their company's registrations**
   - Problem: Admin users (like "cmh") were seeing all system registrations instead of only their company's data
