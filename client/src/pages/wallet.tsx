@@ -237,6 +237,9 @@ function WalletContent() {
   const [showStripeForm, setShowStripeForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dynamicStripePromise, setDynamicStripePromise] = useState<Promise<any> | null>(null);
+  const [selectedTransactions, setSelectedTransactions] = useState<any[]>([]);
+  const [showTransactionsModal, setShowTransactionsModal] = useState(false);
+  const [selectedCompanyName, setSelectedCompanyName] = useState('');
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
@@ -327,6 +330,23 @@ function WalletContent() {
       toCompanyId: transferData.toCompanyId,
       amount
     });
+  };
+
+  const handleViewTransactions = async (companyId: string, companyName: string) => {
+    try {
+      const response = await apiRequest('GET', `/api/wallet/${companyId}`);
+      const data = await response.json();
+      setSelectedTransactions(data.transactions || []);
+      setSelectedCompanyName(companyName);
+      setShowTransactionsModal(true);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: 'Errore',
+        description: 'Errore nel caricamento delle transazioni',
+        variant: 'destructive'
+      });
+    }
   };
 
   const getTransactionIcon = (type: string) => {
@@ -712,11 +732,11 @@ function WalletContent() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedCompanyId(item.company.id);
+                            handleViewTransactions(item.company.id, item.company.name);
                           }}
                           className="text-xs"
                         >
-                          Visualizza
+                          Azioni
                         </Button>
                       </td>
                     </tr>
@@ -829,6 +849,64 @@ function WalletContent() {
               <span className="ml-2">Caricamento modulo pagamento...</span>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Transactions Modal */}
+      <Dialog open={showTransactionsModal} onOpenChange={setShowTransactionsModal}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Transazioni Wallet - {selectedCompanyName}</DialogTitle>
+            <DialogDescription>
+              Storico completo delle transazioni del wallet in ordine cronologico decrescente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedTransactions.length > 0 ? (
+              <div className="space-y-3">
+                {selectedTransactions
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((transaction: any) => (
+                  <div 
+                    key={transaction.id} 
+                    className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800"
+                  >
+                    <div className="flex items-center gap-3">
+                      {getTransactionIcon(transaction.type)}
+                      <div>
+                        <p className="font-medium">{transaction.description}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}
+                        </p>
+                        {transaction.type === 'ricarica' && transaction.paymentIntentId && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            ID Pagamento: {transaction.paymentIntentId}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={getTransactionBadgeVariant(transaction.type)} className="mb-1">
+                        {transaction.type === 'spesa' || transaction.type === 'trasferimento_out' ? '-' : '+'}
+                        {(transaction.amount || 0).toFixed(2)} crediti
+                      </Badge>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Saldo dopo: {(transaction.balanceAfter || 0).toFixed(2)} crediti
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-500 mb-4">
+                  <ArrowUpDown className="h-12 w-12 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold">Nessuna transazione</h3>
+                  <p className="text-sm">Non ci sono ancora transazioni per questo wallet.</p>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
