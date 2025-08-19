@@ -20,20 +20,41 @@ import { it } from 'date-fns/locale';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
-// Initialize Stripe - make sure to use the PUBLIC key (pk_test_...)
-const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-console.log('Stripe public key (first 10 chars):', stripePublicKey?.substring(0, 10));
+// Function to get Stripe configuration from database
+const getStripeConfiguration = async () => {
+  try {
+    const response = await apiRequest('GET', '/api/stripe/config');
+    const result = await response.json();
+    
+    if (result.success && result.configured && result.publicKey?.startsWith('pk_')) {
+      console.log('✅ Using Stripe config from database');
+      return result.publicKey;
+    }
+  } catch (error) {
+    console.log('Database config not available, trying environment variables');
+  }
+  
+  // Fallback to environment variables
+  const envKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+  if (envKey?.startsWith('pk_')) {
+    console.log('✅ Using Stripe config from environment');
+    return envKey;
+  }
+  
+  console.error('❌ No valid Stripe configuration found');
+  return null;
+};
 
-if (!stripePublicKey || !stripePublicKey.startsWith('pk_')) {
-  console.error('❌ PROBLEMA SECRETS REPLIT: VITE_STRIPE_PUBLIC_KEY contiene la chiave segreta invece della pubblica!');
-  console.error('Valore attuale:', stripePublicKey?.substring(0, 20) + '...');
-  console.error('🔧 SOLUZIONE: Vai su Secrets nel menu laterale di Replit e modifica VITE_STRIPE_PUBLIC_KEY');
-  console.error('Devi inserire la PUBLISHABLE KEY che inizia con pk_test_ (NON la Secret Key sk_test_)');
-  console.error('Dashboard Stripe: https://dashboard.stripe.com/apikeys');
-}
+// Initialize Stripe promise with dynamic configuration
+let stripePromise: Promise<any> | null = null;
 
-// Only initialize Stripe if we have a valid public key
-const stripePromise = stripePublicKey?.startsWith('pk_') ? loadStripe(stripePublicKey) : null;
+const getStripePromise = async () => {
+  if (!stripePromise) {
+    const publicKey = await getStripeConfiguration();
+    stripePromise = publicKey ? loadStripe(publicKey) : Promise.resolve(null);
+  }
+  return stripePromise;
+};
 
 // Stripe Payment Form Component
 function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: { 
@@ -193,6 +214,7 @@ function WalletContent() {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [showStripeForm, setShowStripeForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [dynamicStripePromise, setDynamicStripePromise] = useState<Promise<any> | null>(null);
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
@@ -200,10 +222,15 @@ function WalletContent() {
       const response = await apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount });
       return response.json();
     },
-    onSuccess: (response: any) => {
+    onSuccess: async (response: any) => {
       console.log('Payment intent created:', response);
       setClientSecret(response.clientSecret);
       setPaymentIntentId(response.paymentIntentId);
+      
+      // Load Stripe configuration dynamically when opening payment form
+      const stripePromise = await getStripePromise();
+      setDynamicStripePromise(stripePromise);
+      
       setShowStripeForm(true);
     },
     onError: (error: any) => {
@@ -642,8 +669,8 @@ function WalletContent() {
               Completa il pagamento per ricaricare {rechargeAmount} crediti
             </DialogDescription>
           </DialogHeader>
-          {clientSecret && stripePromise ? (
-            <Elements stripe={stripePromise} options={{ 
+          {clientSecret && dynamicStripePromise ? (
+            <Elements stripe={dynamicStripePromise} options={{ 
               clientSecret,
               appearance: {
                 theme: 'stripe',
@@ -659,18 +686,18 @@ function WalletContent() {
                 onProcessingChange={setIsProcessing}
               />
             </Elements>
-          ) : !stripePromise ? (
+          ) : dynamicStripePromise === null ? (
             <div className="p-6 text-center">
               <div className="text-red-600 mb-4">
                 ⚠️ Configurazione Stripe non valida
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                La chiave pubblica Stripe non è configurata correttamente.
-                Deve iniziare con <code>pk_test_</code> o <code>pk_live_</code>.
+                Le chiavi Stripe non sono configurate correttamente nel database.
+                Vai nelle Impostazioni per configurarle.
               </p>
-              <p className="text-xs text-gray-500">
-                Vai su Secrets nel menu laterale e configura <code>VITE_STRIPE_PUBLIC_KEY</code>
-              </p>
+              <Button onClick={() => window.location.href = '/settings'} variant="outline">
+                Vai alle Impostazioni
+              </Button>
             </div>
           ) : (
             <div className="flex items-center justify-center p-6">
