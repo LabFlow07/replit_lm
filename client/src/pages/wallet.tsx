@@ -291,7 +291,7 @@ function WalletContent() {
       )}
 
       {/* Wallet Balance Card */}
-      {wallet && (
+      {activeCompanyId && wallet && (
         <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -325,6 +325,19 @@ function WalletContent() {
         </Card>
       )}
 
+      {/* Message when no company selected for superadmin */}
+      {userRole === 'superadmin' && !selectedCompanyId && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Seleziona un'azienda</h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Seleziona un'azienda dal menu sopra per visualizzare il saldo del wallet.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recharge Wallet */}
         {(userRole === 'admin' || userRole === 'superadmin') && activeCompanyId && (
@@ -335,7 +348,7 @@ function WalletContent() {
                 Ricarica Wallet
               </CardTitle>
               <CardDescription>
-                Aggiungi crediti al wallet aziendale (preparazione per integrazione Stripe)
+                Aggiungi crediti al wallet aziendale tramite pagamento sicuro
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -360,7 +373,7 @@ function WalletContent() {
                 {createPaymentIntentMutation.isPending ? 'Creazione...' : 'Ricarica con Stripe'}
               </Button>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                💡 Utilizza Stripe per effettuare ricariche sicure al wallet aziendale.
+                💡 Pagamento sicuro tramite Stripe. 1 credito = 1 euro.
               </p>
             </CardContent>
           </Card>
@@ -527,7 +540,7 @@ function WalletContent() {
       )}
 
       {/* No wallet message */}
-      {!walletLoading && !wallet && activeCompanyId && (
+      {!walletLoading && !wallet && activeCompanyId && userRole !== 'superadmin' && (
         <Card>
           <CardContent className="text-center py-8">
             <Wallet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
