@@ -98,10 +98,32 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent);
-        toast({
-          title: "Pagamento completato",
-          description: `Ricarica di ${amount} crediti completata con successo!`,
-        });
+        
+        // Confirm payment and update wallet balance on backend
+        try {
+          const confirmResponse = await apiRequest('POST', `/api/wallet/${companyId}/confirm-payment`, {
+            paymentIntentId: paymentIntent.id
+          });
+          
+          if (confirmResponse.ok) {
+            const result = await confirmResponse.json();
+            console.log('✅ Wallet balance updated:', result);
+            toast({
+              title: "Ricarica completata",
+              description: `${amount} crediti aggiunti al wallet! Nuovo saldo: ${result.wallet.balance} crediti`,
+            });
+          } else {
+            throw new Error('Errore conferma pagamento');
+          }
+        } catch (confirmError) {
+          console.error('Payment confirmation error:', confirmError);
+          toast({
+            title: "Pagamento completato ma...",
+            description: "Il pagamento è riuscito ma c'è stato un errore nell'aggiornamento del wallet. Contatta il supporto.",
+            variant: "destructive",
+          });
+        }
+        
         onSuccess();
       } else {
         console.log('Payment status:', paymentIntent?.status);
