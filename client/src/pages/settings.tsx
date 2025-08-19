@@ -45,7 +45,22 @@ function SettingsContent() {
 
   const checkStripeConfiguration = async () => {
     try {
-      // Controlla se le chiavi Stripe sono configurate
+      // PRIMA: Controlla le configurazioni salvate nel database
+      const response = await apiRequest('GET', '/api/stripe/config');
+      const result = await response.json();
+      
+      if (result.success && result.configured) {
+        // Carica le configurazioni dal database
+        console.log('✅ Chiavi Stripe caricate dal database');
+        setStripePublicKey(result.publicKey || '');
+        setStripeSecretKey(result.secretKey || '');
+        setIsStripeConfigured(true);
+        console.log('Chiave pubblica:', result.publicKey?.substring(0, 15) + '...');
+        console.log('Chiave segreta:', result.secretKey?.substring(0, 15) + '...');
+        return;
+      }
+      
+      // FALLBACK: Controlla le variabili d'ambiente di Replit
       const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
       
       // Verifica che la chiave pubblica sia effettivamente una chiave pubblica (pk_test_ o pk_live_)
