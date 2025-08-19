@@ -57,14 +57,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return payload.exp > currentTime;
     } catch (e) {
       console.error('Error parsing or validating token:', e);
-      localStorage.removeItem('qlm_token');
+      localStorage.removeItem('token');
       setUser(null);
       return false;
     }
   };
 
   const refreshAuth = async (): Promise<boolean> => {
-    const token = localStorage.getItem('qlm_token');
+    const token = localStorage.getItem('token');
 
     if (!token || !(await checkTokenValidity())) {
       logout();
@@ -107,13 +107,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Define logout function before using it
   const logout = () => {
-    localStorage.removeItem('qlm_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('qlm_token'); // Remove old token key as well
     setUser(null);
+    console.log('User logged out, redirecting to login...');
     setLocation('/login');
   };
 
   const forceReauth = () => {
-    localStorage.removeItem('qlm_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('qlm_token'); // Remove old token key as well
     setUser(null);
     setLoading(false);
     setLocation('/login'); // Ensure redirect on forced reauthentication
@@ -121,7 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('qlm_token');
+      const token = localStorage.getItem('token');
       if (token) {
         const isValid = await checkTokenValidity();
         if (isValid) {
@@ -178,7 +181,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
       console.log('Login response user data:', data.user);
       console.log('User role:', data.user.role, 'Company ID:', data.user.companyId);
-      localStorage.setItem('qlm_token', data.token);
+      localStorage.setItem('token', data.token);
 
       // Ensure companyId is properly set from login response
       const userData = data.user;
