@@ -165,6 +165,42 @@ router.post('/api/stripe/test', authenticateToken, async (req: Request, res: Res
   }
 });
 
+// Get Stripe configuration endpoint
+router.get('/api/stripe/config', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can view Stripe configuration
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può visualizzare la configurazione Stripe" });
+    }
+
+    const config = await storage.getStripeConfiguration();
+    
+    if (!config) {
+      return res.json({ 
+        success: true,
+        publicKey: '',
+        secretKey: '',
+        configured: false
+      });
+    }
+
+    res.json({ 
+      success: true,
+      publicKey: config.publicKey,
+      secretKey: config.secretKey,
+      configured: true
+    });
+  } catch (error: any) {
+    console.error('Get Stripe config error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Errore nel recupero configurazione Stripe: ' + error.message 
+    });
+  }
+});
+
 // Save Stripe configuration endpoint
 router.post('/api/stripe/config', authenticateToken, async (req: Request, res: Response) => {
   try {
