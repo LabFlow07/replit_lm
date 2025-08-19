@@ -25,10 +25,13 @@ const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 console.log('Stripe public key (first 10 chars):', stripePublicKey?.substring(0, 10));
 
 if (!stripePublicKey || !stripePublicKey.startsWith('pk_')) {
-  console.error('Invalid Stripe public key. Must start with pk_test_ or pk_live_');
+  console.error('❌ ERRORE CONFIGURAZIONE STRIPE: La chiave pubblica deve iniziare con pk_test_ o pk_live_');
+  console.error('Chiave corrente:', stripePublicKey?.substring(0, 20) + '...');
+  console.error('Vai su Secrets nel menu laterale e configura VITE_STRIPE_PUBLIC_KEY con la chiave pubblica Stripe');
 }
 
-const stripePromise = loadStripe(stripePublicKey!);
+// Only initialize Stripe if we have a valid public key
+const stripePromise = stripePublicKey?.startsWith('pk_') ? loadStripe(stripePublicKey) : null;
 
 // Stripe Payment Form Component
 function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: { 
@@ -654,6 +657,19 @@ function WalletContent() {
                 onProcessingChange={setIsProcessing}
               />
             </Elements>
+          ) : !stripePromise ? (
+            <div className="p-6 text-center">
+              <div className="text-red-600 mb-4">
+                ⚠️ Configurazione Stripe non valida
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                La chiave pubblica Stripe non è configurata correttamente.
+                Deve iniziare con <code>pk_test_</code> o <code>pk_live_</code>.
+              </p>
+              <p className="text-xs text-gray-500">
+                Vai su Secrets nel menu laterale e configura <code>VITE_STRIPE_PUBLIC_KEY</code>
+              </p>
+            </div>
           ) : (
             <div className="flex items-center justify-center p-6">
               <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
