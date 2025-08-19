@@ -396,11 +396,11 @@ function WalletContent() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 space-y-4">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">💳 Sistema Wallet Aziendale</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <h1 className="text-2xl font-bold tracking-tight">💳 Sistema Wallet Aziendale</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Gestisci crediti aziendali per rinnovi automatici delle licenze (1 credito = 1 euro)
           </p>
         </div>
@@ -408,14 +408,14 @@ function WalletContent() {
 
       {/* Company Selection for Superadmin */}
       {userRole === 'superadmin' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-4 w-4" />
               Seleziona Azienda
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <Select value={selectedCompanyId} onValueChange={(value) => {
               console.log('Company selection changed to:', value);
               setSelectedCompanyId(value);
@@ -437,68 +437,72 @@ function WalletContent() {
 
       {/* Wallet Balance Card */}
       {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
-        <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="h-6 w-6" />
+        <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Wallet className="h-5 w-5" />
               Saldo Wallet Aziendale
             </CardTitle>
-            <CardDescription className="text-blue-100">
+            <CardDescription className="text-blue-100 text-sm">
               Crediti disponibili per rinnovi automatici
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold mb-4">
+          <CardContent className="pt-0">
+            <div className="text-3xl font-bold mb-3">
               {(wallet.balance || 0).toFixed(2)} crediti
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
                 <p className="text-blue-200">Totale Ricariche</p>
-                <p className="font-semibold">{(wallet.totalRecharges || 0).toFixed(2)} crediti</p>
+                <p className="font-semibold">{(wallet.totalRecharges || 0).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-blue-200">Totale Spese</p>
-                <p className="font-semibold">{(wallet.totalSpent || 0).toFixed(2)} crediti</p>
+                <p className="font-semibold">{(wallet.totalSpent || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-blue-200">Ultima Ricarica</p>
+                <p className="font-semibold text-xs">
+                  {wallet.lastRechargeDate ? 
+                    format(new Date(wallet.lastRechargeDate), 'dd/MM/yyyy', { locale: it }) : 
+                    'Mai'
+                  }
+                </p>
               </div>
             </div>
-            {wallet.lastRechargeDate && (
-              <p className="text-blue-200 text-sm mt-2">
-                Ultima ricarica: {format(new Date(wallet.lastRechargeDate), 'dd/MM/yyyy HH:mm', { locale: it })}
-              </p>
-            )}
           </CardContent>
         </Card>
       )}
 
       {/* Message when no company selected for superadmin */}
       {userRole === 'superadmin' && !selectedCompanyId && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Seleziona un'azienda</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+        <Card className="mb-4">
+          <CardContent className="text-center py-6">
+            <Users className="h-8 w-8 mx-auto text-gray-400 mb-3" />
+            <h3 className="text-base font-semibold mb-1">Seleziona un'azienda</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Seleziona un'azienda dal menu sopra per visualizzare il saldo del wallet.
             </p>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Recharge Wallet */}
         {(userRole === 'admin' || userRole === 'superadmin') && activeCompanyId && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CreditCard className="h-4 w-4" />
                 Ricarica Wallet
               </CardTitle>
-              <CardDescription>
-                Aggiungi crediti al wallet aziendale tramite pagamento sicuro
+              <CardDescription className="text-sm">
+                Aggiungi crediti tramite pagamento sicuro
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 pt-0">
               <div>
-                <Label htmlFor="recharge-amount">Importo (crediti)</Label>
+                <Label htmlFor="recharge-amount" className="text-sm">Importo (crediti)</Label>
                 <Input
                   id="recharge-amount"
                   type="number"
@@ -508,16 +512,18 @@ function WalletContent() {
                   onChange={(e) => setRechargeAmount(e.target.value)}
                   placeholder="Es. 100.00"
                   data-testid="input-recharge-amount"
+                  className="mt-1"
                 />
               </div>
               <Button 
                 onClick={handleRecharge} 
                 disabled={createPaymentIntentMutation.isPending || !rechargeAmount}
                 className="w-full"
+                size="sm"
               >
                 {createPaymentIntentMutation.isPending ? 'Creazione...' : 'Ricarica con Stripe'}
               </Button>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 💡 Pagamento sicuro tramite Stripe. 1 credito = 1 euro.
               </p>
             </CardContent>
@@ -527,23 +533,23 @@ function WalletContent() {
         {/* Transfer Credits */}
         {(userRole === 'admin' || userRole === 'superadmin') && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ArrowUpDown className="h-5 w-5" />
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ArrowUpDown className="h-4 w-4" />
                 Trasferisci Crediti
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Trasferisci crediti tra aziende madre e sotto-aziende
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 pt-0">
               <div>
-                <Label htmlFor="from-company">Azienda di origine</Label>
+                <Label htmlFor="from-company" className="text-sm">Azienda di origine</Label>
                 <Select 
                   value={transferData.fromCompanyId} 
                   onValueChange={(value) => setTransferData({...transferData, fromCompanyId: value})}
                 >
-                  <SelectTrigger data-testid="select-from-company">
+                  <SelectTrigger data-testid="select-from-company" className="mt-1">
                     <SelectValue placeholder="Seleziona azienda origine" />
                   </SelectTrigger>
                   <SelectContent>
@@ -556,12 +562,12 @@ function WalletContent() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="to-company">Azienda di destinazione</Label>
+                <Label htmlFor="to-company" className="text-sm">Azienda di destinazione</Label>
                 <Select 
                   value={transferData.toCompanyId} 
                   onValueChange={(value) => setTransferData({...transferData, toCompanyId: value})}
                 >
-                  <SelectTrigger data-testid="select-to-company">
+                  <SelectTrigger data-testid="select-to-company" className="mt-1">
                     <SelectValue placeholder="Seleziona azienda destinazione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -574,7 +580,7 @@ function WalletContent() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="transfer-amount">Importo (crediti)</Label>
+                <Label htmlFor="transfer-amount" className="text-sm">Importo (crediti)</Label>
                 <Input
                   id="transfer-amount"
                   type="number"
@@ -584,12 +590,14 @@ function WalletContent() {
                   onChange={(e) => setTransferData({...transferData, amount: e.target.value})}
                   placeholder="Es. 50.00"
                   data-testid="input-transfer-amount"
+                  className="mt-1"
                 />
               </div>
               <Button 
                 onClick={handleTransfer} 
                 disabled={transferMutation.isPending || !transferData.amount}
                 className="w-full"
+                size="sm"
                 data-testid="button-transfer-credits"
               >
                 {transferMutation.isPending ? 'Trasferimento...' : 'Trasferisci Crediti'}
@@ -601,36 +609,36 @@ function WalletContent() {
 
       {/* Transaction History */}
       {transactions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Storico Transazioni Wallet</CardTitle>
-            <CardDescription>
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Storico Transazioni Wallet</CardTitle>
+            <CardDescription className="text-sm">
               Ultimi movimenti del wallet aziendale
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="pt-0">
+            <div className="space-y-2">
               {transactions.map((transaction: any) => (
                 <div 
                   key={transaction.id} 
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="flex items-center justify-between p-2 border rounded-lg"
                   data-testid={`transaction-${transaction.id}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {getTransactionIcon(transaction.type)}
                     <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="font-medium text-sm">{transaction.description}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
                         {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: it })}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge variant={getTransactionBadgeVariant(transaction.type)}>
+                    <Badge variant={getTransactionBadgeVariant(transaction.type)} className="text-xs">
                       {transaction.type === 'spesa' || transaction.type === 'trasferimento_out' ? '-' : '+'}
-                      {(transaction.amount || 0).toFixed(2)} crediti
+                      {(transaction.amount || 0).toFixed(2)}
                     </Badge>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       Saldo: {(transaction.balanceAfter || 0).toFixed(2)}
                     </p>
                   </div>
@@ -951,7 +959,7 @@ export default function WalletPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <TopBar />
-        <main className="flex-1 p-6" style={{ paddingLeft: '280px', minHeight: '100vh' }}>
+        <main className="flex-1 p-4" style={{ paddingLeft: '280px', minHeight: '100vh' }}>
           <WalletContent />
         </main>
       </div>
