@@ -170,9 +170,9 @@ router.get('/api/stripe/config', authenticateToken, async (req: Request, res: Re
   try {
     const user = (req as any).user;
     
-    // Only superadmin can view Stripe configuration
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo superadmin può visualizzare la configurazione Stripe" });
+    // Allow both superadmin and admin to access Stripe configuration for wallet recharging
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Solo superadmin e admin possono visualizzare la configurazione Stripe" });
     }
 
     const config = await storage.getStripeConfiguration();
