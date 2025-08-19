@@ -25,9 +25,11 @@ const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 console.log('Stripe public key (first 10 chars):', stripePublicKey?.substring(0, 10));
 
 if (!stripePublicKey || !stripePublicKey.startsWith('pk_')) {
-  console.error('❌ ERRORE CONFIGURAZIONE STRIPE: La chiave pubblica deve iniziare con pk_test_ o pk_live_');
-  console.error('Chiave corrente:', stripePublicKey?.substring(0, 20) + '...');
-  console.error('Vai su Secrets nel menu laterale e configura VITE_STRIPE_PUBLIC_KEY con la chiave pubblica Stripe');
+  console.error('❌ PROBLEMA SECRETS REPLIT: VITE_STRIPE_PUBLIC_KEY contiene la chiave segreta invece della pubblica!');
+  console.error('Valore attuale:', stripePublicKey?.substring(0, 20) + '...');
+  console.error('🔧 SOLUZIONE: Vai su Secrets nel menu laterale di Replit e modifica VITE_STRIPE_PUBLIC_KEY');
+  console.error('Devi inserire la PUBLISHABLE KEY che inizia con pk_test_ (NON la Secret Key sk_test_)');
+  console.error('Dashboard Stripe: https://dashboard.stripe.com/apikeys');
 }
 
 // Only initialize Stripe if we have a valid public key
