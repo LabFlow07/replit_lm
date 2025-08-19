@@ -611,8 +611,9 @@ function WalletContent() {
         </Card>
       )}
 
-      {/* All Wallets Overview for Superadmin */}
-      {userRole === 'superadmin' && allWallets.length > 0 && (
+      {/* All Wallets Overview - Excel-style Grid */}
+      {((userRole === 'superadmin' && allWallets.length > 0) || 
+        (userRole === 'admin' && companies.length > 0)) && (
         <Card>
           <CardHeader>
             <CardTitle>Panoramica Tutti i Wallet</CardTitle>
@@ -621,34 +622,135 @@ function WalletContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allWallets.map((item: any) => (
-                <div 
-                  key={item.company.id} 
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                  onClick={() => setSelectedCompanyId(item.company.id)}
-                  data-testid={`wallet-company-${item.company.id}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{item.company.name}</h3>
-                    <Badge variant="outline">{item.company.type}</Badge>
+            <div className="overflow-x-auto">
+              <table className="excel-table w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <th className="text-left p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Azienda
+                    </th>
+                    <th className="text-left p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Tipo
+                    </th>
+                    <th className="text-right p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Saldo Crediti
+                    </th>
+                    <th className="text-right p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Tot. Ricariche
+                    </th>
+                    <th className="text-right p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Tot. Spese
+                    </th>
+                    <th className="text-center p-3 font-semibold bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                      Ultima Ricarica
+                    </th>
+                    <th className="text-center p-3 font-semibold bg-gray-50 dark:bg-gray-800">
+                      Azioni
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(userRole === 'superadmin' ? allWallets : 
+                    companies.map(company => ({
+                      company,
+                      wallet: allWallets.find(w => w.company.id === company.id)?.wallet || {
+                        balance: 0,
+                        totalRecharges: 0,
+                        totalSpent: 0,
+                        lastRechargeDate: null
+                      }
+                    }))
+                  ).map((item: any, index: number) => (
+                    <tr 
+                      key={item.company.id}
+                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors ${
+                        selectedCompanyId === item.company.id ? 'bg-blue-100 dark:bg-blue-900/40' : ''
+                      }`}
+                      onClick={() => setSelectedCompanyId(item.company.id)}
+                      data-testid={`wallet-company-${item.company.id}`}
+                    >
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          <span className="font-medium">{item.company.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800">
+                        <Badge variant={
+                          item.company.type === 'rivenditore' ? 'default' :
+                          item.company.type === 'cliente' ? 'secondary' :
+                          item.company.type === 'sottoazienda' ? 'outline' : 'secondary'
+                        }>
+                          {item.company.type}
+                        </Badge>
+                      </td>
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800 text-right">
+                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                          {(item.wallet.balance || 0).toFixed(2)}
+                        </span>
+                        <span className="text-sm text-gray-500 ml-1">crediti</span>
+                      </td>
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800 text-right">
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                          +{(item.wallet.totalRecharges || 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800 text-right">
+                        <span className="text-red-600 dark:text-red-400 font-medium">
+                          -{(item.wallet.totalSpent || 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="p-3 border-r border-gray-100 dark:border-gray-800 text-center text-sm text-gray-600 dark:text-gray-400">
+                        {item.wallet.lastRechargeDate ? 
+                          format(new Date(item.wallet.lastRechargeDate), 'dd/MM/yyyy', { locale: it }) : 
+                          'Mai'
+                        }
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCompanyId(item.company.id);
+                          }}
+                          className="text-xs"
+                        >
+                          Visualizza
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Summary row */}
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Totale Aziende</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {userRole === 'superadmin' ? allWallets.length : companies.length}
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {(item.wallet.balance || 0).toFixed(2)}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">crediti disponibili</p>
-                  <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
-                    <div>
-                      <p className="text-gray-500">Ricariche</p>
-                      <p className="font-medium">{(item.wallet.totalRecharges || 0).toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Spese</p>
-                      <p className="font-medium">{(item.wallet.totalSpent || 0).toFixed(2)}</p>
-                    </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Crediti Totali Sistema</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {(userRole === 'superadmin' ? allWallets : 
+                        companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { balance: 0 })
+                      ).reduce((sum: number, item: any) => sum + (item.wallet?.balance || item.balance || 0), 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Ricariche Totali</p>
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {(userRole === 'superadmin' ? allWallets : 
+                        companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { totalRecharges: 0 })
+                      ).reduce((sum: number, item: any) => sum + (item.wallet?.totalRecharges || item.totalRecharges || 0), 0).toFixed(2)}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </CardContent>
         </Card>

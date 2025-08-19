@@ -133,6 +133,7 @@
   /* Excel-style table improvements */
   .excel-table {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    border: 1px solid #e2e8f0;
   }
 
   .excel-table th {
@@ -140,15 +141,45 @@
     top: 0;
     background: #f8fafc;
     z-index: 10;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
   }
 
   .excel-table td,
   .excel-table th {
     white-space: nowrap;
+    vertical-align: middle;
   }
 
   .excel-table tbody tr:hover {
     background-color: #f1f5f9 !important;
+  }
+
+  .excel-table tbody tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+
+  .excel-table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+  }
+
+  /* Dark mode styles for excel table */
+  .dark .excel-table th {
+    background: #1f2937;
+  }
+
+  .dark .excel-table tbody tr:nth-child(even) {
+    background-color: #111827;
+  }
+
+  .dark .excel-table tbody tr:nth-child(odd) {
+    background-color: #1f2937;
+  }
+
+  .dark .excel-table tbody tr:hover {
+    background-color: #374151 !important;
   }
 
   /* Responsive adjustments for mobile */
