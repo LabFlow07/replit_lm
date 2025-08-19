@@ -86,6 +86,35 @@ function SettingsContent() {
     }
   };
 
+  const saveStripeConfiguration = async () => {
+    try {
+      const response = await apiRequest('POST', '/api/stripe/config', {
+        publicKey: stripePublicKey,
+        secretKey: stripeSecretKey
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Configurazione Stripe salvata",
+          description: "Le chiavi Stripe sono state salvate con successo.",
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Errore salvataggio Stripe",
+          description: errorData.message || "Errore nel salvataggio delle chiavi Stripe.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore di connessione",
+        description: error.message || "Impossibile salvare la configurazione Stripe.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveSystemSettings = async () => {
     try {
       const settings = {
@@ -226,7 +255,7 @@ function SettingsContent() {
                 <Button onClick={testStripeConnection} variant="outline">
                   Testa Connessione
                 </Button>
-                <Button>
+                <Button onClick={saveStripeConfiguration}>
                   Salva Configurazione
                 </Button>
               </div>

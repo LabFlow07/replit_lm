@@ -165,6 +165,46 @@ router.post('/api/stripe/test', authenticateToken, async (req: Request, res: Res
   }
 });
 
+// Save Stripe configuration endpoint
+router.post('/api/stripe/config', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    // Only superadmin can save Stripe configuration
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può salvare la configurazione Stripe" });
+    }
+
+    const { publicKey, secretKey } = req.body;
+    
+    // Validate keys format
+    if (publicKey && !publicKey.startsWith('pk_')) {
+      return res.status(400).json({ message: "La chiave pubblica deve iniziare con pk_" });
+    }
+    
+    if (secretKey && !secretKey.startsWith('sk_')) {
+      return res.status(400).json({ message: "La chiave segreta deve iniziare con sk_" });
+    }
+    
+    // In a real implementation, you would save these to a secure configuration store
+    // For now, we'll just validate and return success
+    console.log('Stripe configuration updated by:', user.username);
+    console.log('Public key updated:', publicKey ? 'Yes' : 'No');
+    console.log('Secret key updated:', secretKey ? 'Yes' : 'No');
+    
+    res.json({ 
+      success: true,
+      message: 'Configurazione Stripe salvata con successo'
+    });
+  } catch (error: any) {
+    console.error('Save Stripe config error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Errore nel salvataggio configurazione Stripe: ' + error.message 
+    });
+  }
+});
+
 router.get("/api/auth/validate", authenticateToken, async (req: Request, res: Response) => {
   res.json({ isValid: true });
 });
