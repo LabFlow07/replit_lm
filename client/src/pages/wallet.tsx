@@ -334,16 +334,28 @@ function WalletContent() {
 
   const handleViewTransactions = async (companyId: string, companyName: string) => {
     try {
+      console.log('Fetching transactions for company:', companyId, companyName);
       const response = await apiRequest('GET', `/api/wallet/${companyId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setSelectedTransactions(data.transactions || []);
+      console.log('Wallet data received:', data);
+      
+      // Check if transactions are in the data or if we need to get them from a different endpoint
+      const transactions = data.transactions || [];
+      console.log('Transactions found:', transactions.length);
+      
+      setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
       setShowTransactionsModal(true);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       toast({
         title: 'Errore',
-        description: 'Errore nel caricamento delle transazioni',
+        description: `Errore nel caricamento delle transazioni: ${error.message}`,
         variant: 'destructive'
       });
     }
@@ -736,7 +748,7 @@ function WalletContent() {
                           }}
                           className="text-xs"
                         >
-                          Azioni
+                          Dettaglio
                         </Button>
                       </td>
                     </tr>
