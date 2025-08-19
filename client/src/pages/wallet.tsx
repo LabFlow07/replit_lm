@@ -24,10 +24,11 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
 // Stripe Payment Form Component
-function StripePaymentForm({ amount, companyId, onSuccess }: { 
+function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }: { 
   amount: number; 
   companyId: string; 
-  onSuccess: () => void; 
+  onSuccess: () => void;
+  onProcessingChange?: (processing: boolean) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -38,13 +39,16 @@ function StripePaymentForm({ amount, companyId, onSuccess }: {
     e.preventDefault();
 
     if (!stripe || !elements) {
+      console.log('Stripe not ready:', { stripe: !!stripe, elements: !!elements });
       return;
     }
 
     setIsProcessing(true);
+    onProcessingChange?.(true);
+    console.log('Processing payment for amount:', amount);
 
     try {
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/wallet?payment=success`,
@@ -53,19 +57,28 @@ function StripePaymentForm({ amount, companyId, onSuccess }: {
       });
 
       if (error) {
+        console.error('Stripe payment error:', error);
         toast({
           title: "Pagamento fallito",
-          description: error.message,
+          description: error.message || "Errore durante il pagamento",
           variant: "destructive",
         });
-      } else {
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('Payment succeeded:', paymentIntent);
         toast({
           title: "Pagamento completato",
           description: `Ricarica di ${amount} crediti completata con successo!`,
         });
         onSuccess();
+      } else {
+        console.log('Payment status:', paymentIntent?.status);
+        toast({
+          title: "Pagamento in elaborazione",
+          description: "Il pagamento è in elaborazione, aggiorna la pagina tra qualche minuto",
+        });
       }
     } catch (error) {
+      console.error('Payment processing error:', error);
       toast({
         title: "Errore",
         description: "Si è verificato un errore durante il pagamento",
@@ -73,6 +86,7 @@ function StripePaymentForm({ amount, companyId, onSuccess }: {
       });
     } finally {
       setIsProcessing(false);
+      onProcessingChange?.(false);
     }
   };
 
@@ -166,17 +180,22 @@ function WalletContent() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [showStripeForm, setShowStripeForm] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
-    mutationFn: (data: { companyId: string; amount: number }) =>
-      apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount }),
+    mutationFn: async (data: { companyId: string; amount: number }) => {
+      const response = await apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount });
+      return response.json();
+    },
     onSuccess: (response: any) => {
+      console.log('Payment intent created:', response);
       setClientSecret(response.clientSecret);
       setPaymentIntentId(response.paymentIntentId);
       setShowStripeForm(true);
     },
     onError: (error: any) => {
+      console.error('Payment intent creation error:', error);
       toast({
         title: 'Errore creazione pagamento',
         description: error.message || 'Errore durante la creazione del pagamento',
@@ -220,11 +239,14 @@ function WalletContent() {
   };
 
   const handleStripePaymentSuccess = () => {
+    console.log('Payment completed successfully');
     setShowStripeForm(false);
     setClientSecret(null);
     setPaymentIntentId(null);
     setRechargeAmount('');
+    // Refresh wallet data
     queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
+    refetchWallet();
   };
 
   
@@ -585,22 +607,51 @@ function WalletContent() {
       )}
 
       {/* Stripe Payment Dialog */}
-      <Dialog open={showStripeForm} onOpenChange={setShowStripeForm}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={showStripeForm} onOpenChange={(open) => {
+        // Prevent closing during payment processing
+        if (!isProcessing) {
+          setShowStripeForm(open);
+          if (!open) {
+            // Reset state when dialog is closed
+            setClientSecret(null);
+            setPaymentIntentId(null);
+          }
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => {
+          // Prevent closing when clicking outside during payment processing
+          if (isProcessing) {
+            e.preventDefault();
+          }
+        }}>
           <DialogHeader>
             <DialogTitle>Ricarica Wallet con Stripe</DialogTitle>
             <DialogDescription>
               Completa il pagamento per ricaricare {rechargeAmount} crediti
             </DialogDescription>
           </DialogHeader>
-          {clientSecret && (
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
+          {clientSecret && stripePromise ? (
+            <Elements stripe={stripePromise} options={{ 
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#0570de',
+                }
+              }
+            }}>
               <StripePaymentForm 
                 amount={parseFloat(rechargeAmount) || 0} 
                 companyId={activeCompanyId || ''} 
                 onSuccess={handleStripePaymentSuccess}
+                onProcessingChange={setIsProcessing}
               />
             </Elements>
+          ) : (
+            <div className="flex items-center justify-center p-6">
+              <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+              <span className="ml-2">Caricamento modulo pagamento...</span>
+            </div>
           )}
         </DialogContent>
       </Dialog>
