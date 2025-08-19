@@ -407,34 +407,7 @@ function WalletContent() {
           </div>
         </div>
 
-        {/* Company Selection for Superadmin */}
-        {userRole === 'superadmin' && (
-          <Card className="mb-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Seleziona Azienda
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Select value={selectedCompanyId} onValueChange={(value) => {
-                console.log('Company selection changed to:', value);
-                setSelectedCompanyId(value);
-              }}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies && Array.isArray(companies) && companies.map((company: any) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name} ({company.type})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        )}
+        
 
         {/* Wallet Balance Card - Compact */}
         {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
@@ -748,6 +721,38 @@ function WalletContent() {
 
           {/* Tab 3: Acquisto */}
           <TabsContent value="acquisto" className="space-y-4">
+            {/* Company Selection for Superadmin */}
+            {userRole === 'superadmin' && (
+              <Card className="mb-4">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Seleziona Azienda
+                  </CardTitle>
+                  <CardDescription>
+                    Seleziona l'azienda per cui acquistare crediti
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Select value={selectedCompanyId} onValueChange={(value) => {
+                    console.log('Company selection changed to:', value);
+                    setSelectedCompanyId(value);
+                  }}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies && Array.isArray(companies) && companies.map((company: any) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name} ({company.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+            )}
+
             {(userRole === 'admin' || userRole === 'superadmin') && activeCompanyId ? (
               <Card>
                 <CardHeader>
