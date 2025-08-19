@@ -336,7 +336,7 @@ function WalletContent() {
     try {
       console.log('🔍 handleViewTransactions called - Company:', companyName, 'ID:', companyId);
       
-      const response = await apiRequest('GET', `/api/wallet/${companyId}`);
+      const response = await apiRequest('GET', `/api/wallet-with-transactions/${companyId}`);
       console.log('📡 API response status:', response.status);
       
       if (!response.ok) {

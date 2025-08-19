@@ -3212,7 +3212,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     console.log(`✅ SENDING RESPONSE WITH ${transactions.length} TRANSACTIONS - TIMESTAMP: ${timestamp}`);
     
     res.json(responseData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get company wallet error:', error);
     res.status(500).json({ message: "Errore interno del server" });
   }
@@ -3295,6 +3295,41 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
     
   } catch (error: any) {
     console.error('🔧 FORCE CREATE Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW ENDPOINT: Get wallet with transactions (bypass cache)
+router.get("/api/wallet-with-transactions/:companyId", authenticateToken, async (req: Request, res: Response) => {
+  const timestamp = Date.now();
+  console.log(`🎯 NEW WALLET ENDPOINT CALLED - TIMESTAMP: ${timestamp}`);
+  
+  try {
+    const user = (req as any).user;
+    const { companyId } = req.params;
+
+    // Get wallet
+    let wallet = await storage.getCompanyWallet(companyId);
+    if (!wallet) {
+      wallet = await storage.createCompanyWallet(companyId);
+    }
+
+    // Get transactions
+    const transactions = await storage.getWalletTransactions(companyId, 100);
+    
+    console.log(`🔥 WALLET: Balance ${wallet.balance}, TRANSACTIONS: ${transactions.length}`);
+    
+    const response = {
+      ...wallet,
+      transactions: transactions,
+      _timestamp: timestamp
+    };
+    
+    res.setHeader('Cache-Control', 'no-cache');
+    res.json(response);
+    
+  } catch (error: any) {
+    console.error('New wallet endpoint error:', error);
     res.status(500).json({ error: error.message });
   }
 });
