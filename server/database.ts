@@ -100,7 +100,6 @@ class Database {
           name VARCHAR(255) NOT NULL,
           version VARCHAR(50) NOT NULL,
           description TEXT,
-          supported_license_types JSON,
           price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
           discount DECIMAL(5,2) DEFAULT 0.00,
           license_type VARCHAR(50) NOT NULL DEFAULT 'permanente',
@@ -335,6 +334,14 @@ class Database {
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2)`);
       } catch (e) { /* Column already exists */ }
+
+      // Remove supported_license_types column from products table
+      try {
+        await this.query(`ALTER TABLE products DROP COLUMN supported_license_types`);
+        console.log('✅ Rimossa colonna supported_license_types dalla tabella products');
+      } catch (e) { 
+        console.log('⚠️  Colonna supported_license_types già rimossa o non esistente');
+      }
 
       // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields to products
       try {

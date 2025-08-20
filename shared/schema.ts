@@ -47,7 +47,6 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   version: text("version").notNull(),
   description: text("description"),
-  supportedLicenseTypes: json("supported_license_types"), // permanente, demo, abbonamento_mensile, abbonamento_annuale
   // Pricing and configuration (only modifiable by superadmin)
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 5, scale: 2 }).default('0'),

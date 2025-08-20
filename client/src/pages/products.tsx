@@ -47,7 +47,6 @@ export default function ProductsPage() {
     version: '',
     description: '',
     licenseType: '',
-    supportedLicenseTypes: [] as string[],
     price: 0,
     discount: 0,
     maxUsers: 1,
@@ -59,7 +58,6 @@ export default function ProductsPage() {
     version: '',
     description: '',
     licenseType: '',
-    supportedLicenseTypes: [] as string[],
     price: 0,
     discount: 0,
     maxUsers: 1,
@@ -138,7 +136,6 @@ export default function ProductsPage() {
         version: '',
         description: '',
         licenseType: '',
-        supportedLicenseTypes: [],
         price: 0,
         discount: 0,
         maxUsers: 1,
@@ -314,42 +311,7 @@ export default function ProductsPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label>Tipi di Licenza Supportati *</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {['permanente', 'trial', 'abbonamento_mensile', 'abbonamento_annuale'].map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`support-${type}`}
-                          checked={newProduct.supportedLicenseTypes?.includes(type) || false}
-                          onCheckedChange={(checked) => {
-                            const current = newProduct.supportedLicenseTypes || [];
-                            if (checked) {
-                              setNewProduct({
-                                ...newProduct,
-                                supportedLicenseTypes: [...current, type]
-                              });
-                            } else {
-                              setNewProduct({
-                                ...newProduct,
-                                supportedLicenseTypes: current.filter(t => t !== type)
-                              });
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`support-${type}`} className="text-sm">
-                          {type === 'permanente' ? 'Permanente' : 
-                           type === 'trial' ? 'Trial/Demo' :
-                           type === 'abbonamento_mensile' ? 'Abbonamento Mensile' :
-                           'Abbonamento Annuale'}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Seleziona almeno un tipo di licenza che questo prodotto supporta
-                  </p>
-                </div>
+                
 
                 {/* NEW: Product-Level Pricing Configuration */}
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
@@ -578,7 +540,6 @@ export default function ProductsPage() {
                                       version: product.version || '',
                                       description: product.description || '',
                                       licenseType: product.licenseType || '',
-                                      supportedLicenseTypes: product.supportedLicenseTypes || [],
                                       price: product.price || 0,
                                       discount: product.discount || 0,
                                       maxUsers: product.maxUsers || 1,
@@ -696,42 +657,7 @@ export default function ProductsPage() {
               </Select>
             </div>
 
-            <div>
-              <Label>Tipi di Licenza Supportati *</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {['permanente', 'trial', 'abbonamento_mensile', 'abbonamento_annuale'].map((type) => (
-                  <div key={type} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`edit-support-${type}`}
-                      checked={editProduct.supportedLicenseTypes?.includes(type) || false}
-                      onCheckedChange={(checked) => {
-                        const current = editProduct.supportedLicenseTypes || [];
-                        if (checked) {
-                          setEditProduct({
-                            ...editProduct,
-                            supportedLicenseTypes: [...current, type]
-                          });
-                        } else {
-                          setEditProduct({
-                            ...editProduct,
-                            supportedLicenseTypes: current.filter(t => t !== type)
-                          });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`edit-support-${type}`} className="text-sm">
-                      {type === 'permanente' ? 'Permanente' : 
-                       type === 'trial' ? 'Trial/Demo' :
-                       type === 'abbonamento_mensile' ? 'Abbonamento Mensile' :
-                       'Abbonamento Annuale'}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Seleziona almeno un tipo di licenza che questo prodotto supporta
-              </p>
-            </div>
+            
 
             {/* NEW: Product-Level Pricing Configuration for Edit */}
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
