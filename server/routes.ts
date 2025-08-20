@@ -2237,6 +2237,52 @@ router.delete("/api/products/:id", authenticateToken, async (req: Request, res: 
 
 // Transaction deletion is now handled automatically when deleting associated licenses
 
+// Delete single transaction endpoint
+router.delete("/api/transactions/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const transactionId = req.params.id;
+
+    console.log(`Delete transaction request for ID: ${transactionId} by user: ${user.username} (${user.role})`);
+
+    // Only superadmin can delete transactions
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo superadmin può eliminare le transazioni" });
+    }
+
+    const existingTransaction = await storage.getTransactionById(transactionId);
+    if (!existingTransaction) {
+      return res.status(404).json({ message: "Transazione non trovata" });
+    }
+
+    // Check if transaction used wallet credits and refund if necessary
+    if (existingTransaction.status === 'pagato_crediti' && existingTransaction.creditsUsed && parseFloat(existingTransaction.creditsUsed.toString()) > 0) {
+      const companyId = existingTransaction.companyId;
+      if (companyId) {
+        await storage.updateWalletBalance(
+          companyId,
+          parseFloat(existingTransaction.creditsUsed.toString()),
+          `Rimborso per eliminazione transazione ${transactionId}`,
+          'rimborso',
+          user.id
+        );
+        console.log(`💰 Refunded ${existingTransaction.creditsUsed} crediti to company ${companyId} for deleted transaction ${transactionId}`);
+      }
+    }
+
+    await storage.deleteTransaction(transactionId);
+    console.log(`Transaction ${transactionId} deleted successfully`);
+
+    res.json({ 
+      message: "Transazione eliminata con successo",
+      refundProcessed: existingTransaction.status === 'pagato_crediti' && parseFloat(existingTransaction.creditsUsed?.toString() || '0') > 0
+    });
+  } catch (error) {
+    console.error('Delete transaction error:', error);
+    res.status(500).json({ message: "Errore interno del server" });
+  }
+});
+
 // Clear all transactions endpoint for testing purposes
 router.delete("/api/transactions/clear-all", authenticateToken, async (req: Request, res: Response) => {
   try {

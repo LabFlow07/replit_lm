@@ -170,6 +170,28 @@ export function TransactionsPage() {
     }
   });
 
+  // Delete transaction mutation
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      return apiRequest('DELETE', `/api/transactions/${transactionId}`);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Transazione eliminata",
+        description: "La transazione è stata eliminata con successo.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      setSelectedTransaction(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione della transazione.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Now handle conditional returns after all hooks are called
   if (loading) {
     return (
@@ -607,6 +629,22 @@ export function TransactionsPage() {
                                     Genera Link
                                   </Button>
                                 )}
+                                {user?.role === 'superadmin' && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      if (confirm(`Sei sicuro di voler eliminare questa transazione? Questa azione non può essere annullata.`)) {
+                                        deleteTransactionMutation.mutate(transaction.id);
+                                      }
+                                    }}
+                                    disabled={deleteTransactionMutation.isPending}
+                                    data-testid={`button-delete-transaction-${transaction.id}`}
+                                  >
+                                    <i className="fas fa-trash mr-1"></i>
+                                    Elimina
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -786,6 +824,20 @@ export function TransactionsPage() {
                       disabled={generateLinkMutation.isPending}
                     >
                       Genera Link Pagamento
+                    </Button>
+                  )}
+                  {selectedTransaction && user?.role === 'superadmin' && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        if (confirm(`Sei sicuro di voler eliminare questa transazione? Questa azione non può essere annullata.`)) {
+                          deleteTransactionMutation.mutate(selectedTransaction.id);
+                        }
+                      }}
+                      disabled={deleteTransactionMutation.isPending}
+                    >
+                      <i className="fas fa-trash mr-1"></i>
+                      Elimina Transazione
                     </Button>
                   )}
                   <Button onClick={() => setSelectedTransaction(null)}>
