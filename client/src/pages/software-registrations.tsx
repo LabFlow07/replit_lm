@@ -328,6 +328,7 @@ export default function SoftwareRegistrations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [validatingId, setValidatingId] = useState<string | null>(null); // State for validating key
   const { contentMargin } = useSidebar();
   const { user } = useAuth(); // Use the actual user from useAuth hook
@@ -715,12 +716,11 @@ export default function SoftwareRegistrations() {
     setIsClassifyDialogOpen(true);
   };
 
-  // Mock functions for dropdown actions, replace with actual logic
+  // Function to view registration details
   const handleViewRegistration = (id: string) => {
     const registrationToView = safeRegistrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToView || null);
-    // Logic to show registration details (e.g., in a modal or separate view)
-    alert(`Visualizza dettagli per ${id}`);
+    setIsViewDialogOpen(true);
   };
 
   const handleDeleteRegistration = async (id: string) => {
@@ -1403,6 +1403,208 @@ export default function SoftwareRegistrations() {
               </div>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Dettagli Registrazione Software</DialogTitle>
+          </DialogHeader>
+
+          {selectedRegistration && (
+            <div className="space-y-6">
+              {/* Informazioni Base */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Software</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.nomeSoftware}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Versione</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.versione}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Ragione Sociale</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.ragioneSociale}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Partita IVA</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.partitaIva || 'Non specificata'}</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Stato</Label>
+                    <div className="p-2">
+                      {getStatusBadge(selectedRegistration.status)}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Computer Key</Label>
+                    <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
+                      {selectedRegistration.computerKey || 'Non assegnata'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Sistema Operativo</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.sistemaOperativo || 'Non specificato'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Indirizzo IP</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.indirizzoIp || 'Non specificato'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informazioni Assegnazione */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">Informazioni Assegnazione</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
+                    {selectedRegistration.clienteAssegnato ? (() => {
+                      const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                      return (
+                        <div className="p-2 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm font-medium text-green-800">{client?.name || 'Cliente non trovato'}</p>
+                          <p className="text-xs text-green-600">{client?.email || ''}</p>
+                        </div>
+                      );
+                    })() : (
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Azienda</Label>
+                    {selectedRegistration.clienteAssegnato ? (() => {
+                      const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                      const companyId = client?.company_id || client?.companyId;
+                      const company = safeCompanies.find(c => c.id === companyId);
+                      return company ? (
+                        <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-sm font-medium text-blue-800">{company.name}</p>
+                          <p className="text-xs text-blue-600">P.IVA: {company.partitaIva || 'N/A'}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non specificata</p>
+                      );
+                    })() : (
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
+                    {selectedRegistration.prodottoAssegnato ? (() => {
+                      const product = safeProducts.find(p => p.id === selectedRegistration.prodottoAssegnato || p.name === selectedRegistration.prodottoAssegnato);
+                      return product ? (
+                        <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
+                          <p className="text-sm font-medium text-purple-800">{product.name}</p>
+                          <p className="text-xs text-purple-600">v{product.version || 'N/A'}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Prodotto: {selectedRegistration.prodottoAssegnato}</p>
+                      );
+                    })() : (
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
+                    {selectedRegistration.licenzaAssegnata ? (() => {
+                      const license = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                      return license ? (
+                        <div className="p-2 bg-orange-50 border border-orange-200 rounded-md">
+                          <p className="text-xs font-mono text-orange-800">{license.activationKey}</p>
+                          <p className="text-xs text-orange-600">Stato: {license.status}</p>
+                          {license.maxDevices && (
+                            <p className="text-xs text-orange-600">Max dispositivi: {license.maxDevices}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Licenza non trovata</p>
+                      );
+                    })() : (
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Informazioni Temporali e Statistiche */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">Informazioni Temporali e Statistiche</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                      {selectedRegistration.primaRegistrazione ? 
+                        format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) : 
+                        'N/A'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                      {selectedRegistration.ultimaAttivita ? 
+                        format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) : 
+                        'Mai'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Totale Venduto</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md font-medium text-green-600">
+                      {formatCurrency(selectedRegistration.totaleVenduto || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note */}
+              {selectedRegistration.note && (
+                <div className="border-t pt-4">
+                  <Label className="text-sm font-medium text-gray-600">Note</Label>
+                  <div className="mt-2 p-3 bg-gray-50 border rounded-md">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRegistration.note}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Informazioni Tecniche */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">Informazioni Tecniche</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Percorso Installazione</Label>
+                    <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
+                      {selectedRegistration.installationPath || 'Non specificato'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Totale Ordini</Label>
+                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                      {selectedRegistration.totaleOrdini || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                setSelectedRegistration(null);
+              }}
+            >
+              Chiudi
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
         </div>
