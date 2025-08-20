@@ -206,16 +206,22 @@ function WalletContent() {
       return apiRequest('GET', `/api/wallet/${activeCompanyId}`).then(res => res.json());
     },
     enabled: !!user && !!activeCompanyId,
-    retry: 1
+    retry: 1,
+    staleTime: 0, // Always consider data stale
+    cacheTime: 0, // Don't cache the data
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
 
   // Refetch wallet when activeCompanyId changes
   useEffect(() => {
     if (activeCompanyId) {
       console.log('Active company changed to:', activeCompanyId);
+      // Force invalidate and refetch with no cache
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet', activeCompanyId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
       refetchWallet();
     }
-  }, [activeCompanyId, refetchWallet]);
+  }, [activeCompanyId, refetchWallet, queryClient]);
 
   // Extract wallet and transactions from response
   const wallet = walletData || {};
@@ -446,6 +452,27 @@ function WalletContent() {
             <p className="text-muted-foreground">
               Gestisci crediti aziendali per rinnovi automatici delle licenze (1 credito = 1 euro)
             </p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered');
+                queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
+                queryClient.invalidateQueries({ 
+                  predicate: (query) => 
+                    typeof query.queryKey[1] === 'string' && query.queryKey[1].includes('wallet-transactions')
+                });
+                if (activeCompanyId) {
+                  refetchWallet();
+                }
+              }}
+              className="text-sm"
+            >
+              <i className="fas fa-sync-alt mr-2"></i>
+              Aggiorna Dati
+            </Button>
           </div>
         </div>
 

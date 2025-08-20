@@ -180,7 +180,16 @@ export function TransactionsPage() {
         title: "Transazione eliminata",
         description: "La transazione è stata eliminata con successo.",
       });
+      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
+      // Invalidate wallet transactions for all companies
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === '/api/wallet' || 
+          (typeof query.queryKey[1] === 'string' && query.queryKey[1].includes('wallet-transactions'))
+      });
       setSelectedTransaction(null);
     },
     onError: (error: any) => {
