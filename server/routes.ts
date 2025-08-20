@@ -2360,7 +2360,17 @@ router.put("/api/products/:id", authenticateToken, async (req: Request, res: Res
   try {
     const user = (req as any).user;
     const productId = req.params.id;
-    const { name, version, description, supportedLicenseTypes } = req.body;
+    const { 
+      name, 
+      version, 
+      description, 
+      licenseType, 
+      price, 
+      discount, 
+      maxUsers, 
+      maxDevices, 
+      trialDays 
+    } = req.body;
 
     // Only superadmin and admin can update products
     if (user.role !== 'superadmin' && user.role !== 'admin') {
@@ -2372,11 +2382,20 @@ router.put("/api/products/:id", authenticateToken, async (req: Request, res: Res
       return res.status(404).json({ message: "Product not found" });
     }
 
+    console.log('🔧 Updating product with new pricing data:', {
+      name, version, description, licenseType, price, discount, maxUsers, maxDevices, trialDays
+    });
+
     const updatedProduct = await storage.updateProduct(productId, {
       name,
       version,
       description,
-      supportedLicenseTypes
+      licenseType,
+      price: parseFloat(price) || 0,
+      discount: parseFloat(discount) || 0,
+      maxUsers: parseInt(maxUsers) || 1,
+      maxDevices: parseInt(maxDevices) || 1,
+      trialDays: parseInt(trialDays) || 30
     });
 
     res.json(updatedProduct);
