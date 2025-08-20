@@ -2565,10 +2565,10 @@ class DatabaseStorage implements IStorage {
       await this.db.query(`
         UPDATE company_wallets 
         SET balance = ?, 
-            ${type === 'ricarica' ? 'total_recharges = total_recharges + ?, last_recharge_date = ?' : 'total_spent = total_spent + ABS(?)'}, 
+            ${type === 'ricarica' || type === 'rimborso' ? 'total_recharges = total_recharges + ?, last_recharge_date = ?' : 'total_spent = total_spent + ABS(?)'}, 
             updated_at = ?
         WHERE company_id = ?
-      `, type === 'ricarica' 
+      `, (type === 'ricarica' || type === 'rimborso')
         ? [balanceAfter, Math.abs(amount), new Date(), new Date(), companyId]
         : [balanceAfter, Math.abs(amount), new Date(), companyId]
       );
@@ -2577,12 +2577,12 @@ class DatabaseStorage implements IStorage {
       const transactionData = {
         companyId,
         type,
-        amount: Math.abs(amount),
+        amount: Math.abs(amount), // Always show positive amount in wallet history
         balanceBefore,
         balanceAfter,
         description,
         createdBy: createdBy || null,
-        relatedEntityType: null,
+        relatedEntityType: type === 'rimborso' ? 'license_refund' : null,
         relatedEntityId: null,
         fromCompanyId: null,
         toCompanyId: null,

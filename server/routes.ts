@@ -1291,8 +1291,27 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             }
           }
 
-          // Create a new refund transaction in the transactions table if we processed refunds
+          // Create a wallet refund transaction that will appear in wallet history
           if (totalRefunded > 0 && refundCompanyId && license) {
+            // Create the wallet transaction directly for better visibility
+            await storage.createWalletTransaction({
+              companyId: refundCompanyId,
+              type: 'rimborso',
+              amount: totalRefunded,
+              balanceBefore: 0, // Will be calculated by updateWalletBalance
+              balanceAfter: 0, // Will be calculated by updateWalletBalance  
+              description: `Rimborso per rimozione licenza ${license.activationKey} da registrazione software ${partitaIva}`,
+              relatedEntityType: 'license_refund',
+              relatedEntityId: company.idLicenza,
+              fromCompanyId: null,
+              toCompanyId: null,
+              stripePaymentIntentId: null,
+              createdBy: user.id
+            });
+
+            console.log(`💰 Created wallet refund transaction for ${totalRefunded} crediti to company ${refundCompanyId}`);
+            
+            // Also create a main transaction for record keeping
             const refundTransaction = await storage.createTransaction({
               licenseId: company.idLicenza,
               clientId: clienteAssegnato || license.clientId,
