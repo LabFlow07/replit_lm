@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Sidebar from "@/components/layout/sidebar";
+import TopBar from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,21 +89,10 @@ export default function ProductsPage() {
     }
   });
 
-  const { data: licenses = [] } = useQuery({
-    queryKey: ['/api/licenses'],
-    enabled: !!user,
-  });
-
   // Function to get license count for a product
   const getProductLicenseCount = (productId: string) => {
-    return (licenses as any[]).filter((license: any) => license.productId === productId).length;
-  };
-
-  // Function to get clients for a product
-  const getProductClients = (productId: string) => {
-    const productLicenses = (licenses as any[]).filter((license: any) => license.productId === productId);
-    const clients = productLicenses.map((license: any) => license.client?.name).filter(Boolean);
-    return Array.from(new Set(clients)); // Remove duplicates
+    // We'll get this from the product data itself if needed
+    return 0;
   };
 
   const createProductMutation = useMutation({
@@ -247,7 +238,10 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className={`p-6 ${contentMargin}`}>
+    <>
+      <Sidebar />
+      <TopBar />
+      <div className={`p-6 ${contentMargin}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Prodotti</h1>
@@ -375,8 +369,6 @@ export default function ProductsPage() {
                   <TableHead className="font-semibold">Descrizione</TableHead>
                   <TableHead className="font-semibold">Tipi Licenza</TableHead>
                   <TableHead className="font-semibold text-center">Licenze</TableHead>
-                  <TableHead className="font-semibold">Clienti</TableHead>
-                  <TableHead className="font-semibold">Data Creazione</TableHead>
                   <TableHead className="font-semibold text-center">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
@@ -396,7 +388,7 @@ export default function ProductsPage() {
                   ))
                 ) : filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       {products.length === 0 ? (
                         <div>
                           <p className="text-gray-500 mb-4">Nessun prodotto trovato</p>
@@ -421,7 +413,6 @@ export default function ProductsPage() {
                 ) : (
                   filteredProducts.map((product: any) => {
                     const licenseCount = getProductLicenseCount(product.id);
-                    const clients = getProductClients(product.id);
                     
                     return (
                       <TableRow key={product.id} className="hover:bg-gray-50">
@@ -467,31 +458,6 @@ export default function ProductsPage() {
                           <Badge variant={licenseCount > 0 ? "default" : "secondary"}>
                             {licenseCount}
                           </Badge>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="max-w-xs">
-                            {clients.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {clients.slice(0, 2).map((client, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {client}
-                                  </Badge>
-                                ))}
-                                {clients.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{clients.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">Nessun cliente</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell className="text-sm text-gray-500">
-                          {new Date(product.createdAt).toLocaleDateString('it-IT')}
                         </TableCell>
                         
                         <TableCell>
@@ -632,6 +598,7 @@ export default function ProductsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
