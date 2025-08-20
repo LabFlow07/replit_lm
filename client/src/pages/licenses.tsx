@@ -749,17 +749,13 @@ export default function LicensesPage() {
                   body: JSON.stringify({
                     clientId: formData.get('clientId'),
                     productId: formData.get('productId'),
-                    licenseType: formData.get('licenseType'),
-                    maxUsers: parseInt(formData.get('maxUsers') as string) || 1,
-                    maxDevices: parseInt(formData.get('maxDevices') as string) || 1,
-                    price: parseFloat(formData.get('price') as string) || 0,
-                    discount: parseFloat(formData.get('discount') as string) || 0,
                     renewalEnabled: formData.get('renewalEnabled') === 'on',
                     renewalPeriod: formData.get('renewalPeriod') || null,
                     activeModules: ['core'],
                     activationKey: formData.get('activationKey') || undefined,
                     computerKey: formData.get('computerKey') || undefined,
-                    paymentMethod: formData.get('paymentMethod') || 'manuale'
+                    paymentMethod: formData.get('paymentMethod') || 'wallet'
+                    // Note: licenseType, maxUsers, maxDevices, price, discount now inherited from product
                   })
                 });
 
@@ -831,68 +827,17 @@ export default function LicensesPage() {
                 </div>
               </div>
 
-              {/* Seconda Riga: Tipo Licenza, Prezzo, Max Utenti, Max Dispositivi, Sconto */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div>
-                  <Label htmlFor="licenseType" className="text-sm font-medium">Tipo Licenza *</Label>
-                  <Select name="licenseType" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="permanente">Permanente</SelectItem>
-                      <SelectItem value="trial">Trial</SelectItem>
-                      <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                      <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="price" className="text-sm font-medium">Prezzo €</Label>
-                  <Input
-                    id="new-license-price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maxUsers" className="text-sm font-medium">Max Utenti</Label>
-                  <Input
-                    id="new-license-users"
-                    name="maxUsers"
-                    type="number"
-                    defaultValue="1"
-                    min="1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maxDevices" className="text-sm font-medium">Max Dispositivi</Label>
-                  <Input
-                    id="new-license-devices"
-                    name="maxDevices"
-                    type="number"
-                    defaultValue="1"
-                    min="1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="discount" className="text-sm font-medium">Sconto %</Label>
-                  <Input
-                    id="new-license-discount"
-                    name="discount"
-                    type="number"
-                    step="0.01"
-                    defaultValue="0"
-                    min="0"
-                    max="100"
-                  />
-                </div>
+              {/* NEW ARCHITECTURE: Pricing inherited from product */}
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  Configurazione Prezzi e Limiti
+                </h4>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  ✅ La licenza erediterà automaticamente tutte le configurazioni (prezzo, sconto, tipo licenza, limiti utenti/dispositivi) dal prodotto selezionato.
+                  <br />
+                  🔒 Solo i superadmin possono modificare i prezzi e i limiti a livello di prodotto.
+                </p>
               </div>
 
               {/* Metodo di Pagamento */}

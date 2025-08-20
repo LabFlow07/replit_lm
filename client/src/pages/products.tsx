@@ -46,13 +46,25 @@ export default function ProductsPage() {
     name: '',
     version: '',
     description: '',
-    supportedLicenseTypes: [] as string[]
+    supportedLicenseTypes: [] as string[],
+    price: 0,
+    discount: 0,
+    licenseType: '',
+    maxUsers: 1,
+    maxDevices: 1,
+    trialDays: 30
   });
   const [editProduct, setEditProduct] = useState({
     name: '',
     version: '',
     description: '',
-    supportedLicenseTypes: [] as string[]
+    supportedLicenseTypes: [] as string[],
+    price: 0,
+    discount: 0,
+    licenseType: '',
+    maxUsers: 1,
+    maxDevices: 1,
+    trialDays: 30
   });
   
   // Filter states
@@ -125,7 +137,13 @@ export default function ProductsPage() {
         name: '',
         version: '',
         description: '',
-        supportedLicenseTypes: []
+        supportedLicenseTypes: [],
+        price: 0,
+        discount: 0,
+        licenseType: '',
+        maxUsers: 1,
+        maxDevices: 1,
+        trialDays: 30
       });
       toast({
         title: "Prodotto creato",
@@ -256,7 +274,7 @@ export default function ProductsPage() {
                 Nuovo Prodotto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Crea Nuovo Prodotto</DialogTitle>
                 <DialogDescription>
@@ -310,6 +328,92 @@ export default function ProductsPage() {
                         <Label htmlFor={`new-${value}`} className="text-sm">{label}</Label>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* NEW: Product-Level Pricing Configuration */}
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
+                  <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Prezzi e Limiti</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="price">Prezzo (€) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newProduct.price || ''}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="discount">Sconto (€)</Label>
+                      <Input
+                        id="discount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newProduct.discount || ''}
+                        onChange={(e) => setNewProduct({ ...newProduct, discount: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="licenseType">Tipo di Licenza Default *</Label>
+                    <Select onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipo licenza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="permanente">Permanente</SelectItem>
+                        <SelectItem value="trial">Trial/Demo</SelectItem>
+                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="maxUsers">Max Utenti *</Label>
+                      <Input
+                        id="maxUsers"
+                        type="number"
+                        min="1"
+                        value={newProduct.maxUsers || 1}
+                        onChange={(e) => setNewProduct({ ...newProduct, maxUsers: parseInt(e.target.value) || 1 })}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="maxDevices">Max Dispositivi *</Label>
+                      <Input
+                        id="maxDevices"
+                        type="number"
+                        min="1"
+                        value={newProduct.maxDevices || 1}
+                        onChange={(e) => setNewProduct({ ...newProduct, maxDevices: parseInt(e.target.value) || 1 })}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="trialDays">Giorni Trial</Label>
+                      <Input
+                        id="trialDays"
+                        type="number"
+                        min="1"
+                        value={newProduct.trialDays || 30}
+                        onChange={(e) => setNewProduct({ ...newProduct, trialDays: parseInt(e.target.value) || 30 })}
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -473,7 +577,13 @@ export default function ProductsPage() {
                                       name: product.name || '',
                                       version: product.version || '',
                                       description: product.description || '',
-                                      supportedLicenseTypes: product.supportedLicenseTypes || []
+                                      supportedLicenseTypes: product.supportedLicenseTypes || [],
+                                      price: product.price || 0,
+                                      discount: product.discount || 0,
+                                      licenseType: product.licenseType || '',
+                                      maxUsers: product.maxUsers || 1,
+                                      maxDevices: product.maxDevices || 1,
+                                      trialDays: product.trialDays || 30
                                     });
                                     setIsEditModalOpen(true);
                                   }}
@@ -530,7 +640,7 @@ export default function ProductsPage() {
 
       {/* Edit Product Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifica Prodotto</DialogTitle>
             <DialogDescription>
@@ -584,6 +694,92 @@ export default function ProductsPage() {
                     <Label htmlFor={`edit-${value}`} className="text-sm">{label}</Label>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* NEW: Product-Level Pricing Configuration for Edit */}
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Prezzi e Limiti</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-price">Prezzo (€) *</Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editProduct.price || ''}
+                    onChange={(e) => setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-discount">Sconto (€)</Label>
+                  <Input
+                    id="edit-discount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editProduct.discount || ''}
+                    onChange={(e) => setEditProduct({ ...editProduct, discount: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-licenseType">Tipo di Licenza Default *</Label>
+                <Select value={editProduct.licenseType} onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona tipo licenza" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="permanente">Permanente</SelectItem>
+                    <SelectItem value="trial">Trial/Demo</SelectItem>
+                    <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                    <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="edit-maxUsers">Max Utenti *</Label>
+                  <Input
+                    id="edit-maxUsers"
+                    type="number"
+                    min="1"
+                    value={editProduct.maxUsers || 1}
+                    onChange={(e) => setEditProduct({ ...editProduct, maxUsers: parseInt(e.target.value) || 1 })}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-maxDevices">Max Dispositivi *</Label>
+                  <Input
+                    id="edit-maxDevices"
+                    type="number"
+                    min="1"
+                    value={editProduct.maxDevices || 1}
+                    onChange={(e) => setEditProduct({ ...editProduct, maxDevices: parseInt(e.target.value) || 1 })}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-trialDays">Giorni Trial</Label>
+                  <Input
+                    id="edit-trialDays"
+                    type="number"
+                    min="1"
+                    value={editProduct.trialDays || 30}
+                    onChange={(e) => setEditProduct({ ...editProduct, trialDays: parseInt(e.target.value) || 30 })}
+                  />
+                </div>
               </div>
             </div>
             
