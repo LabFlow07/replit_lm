@@ -183,7 +183,8 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
         status: license.status,
         licenseType: license.licenseType,
         renewalEnabled: license.renewalEnabled || false,
-        renewalPeriod: license.renewalPeriod
+        renewalPeriod: license.renewalPeriod,
+        priceType: license.priceType || 'crediti'
       });
       setIsEditing(false);
     }
@@ -202,7 +203,8 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
         maxUsers: parseInt(editedLicense.maxUsers?.toString() || '1'),
         maxDevices: parseInt(editedLicense.maxDevices?.toString() || '1'),
         price: parseFloat(editedLicense.price?.toString() || '0'),
-        discount: parseFloat(editedLicense.discount?.toString() || '0')
+        discount: parseFloat(editedLicense.discount?.toString() || '0'),
+        priceType: editedLicense.priceType || 'crediti'
       };
 
       const response = await fetch(`/api/licenses/${license.id}`, {
@@ -365,6 +367,23 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   <h4 className="font-medium text-gray-900">Prezzo & Limiti</h4>
                 </div>
                 <div className="space-y-2">
+                  {isEditing && (
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Tipo Pagamento</span>
+                      <Select 
+                        value={editedLicense.priceType || license.priceType || 'crediti'} 
+                        onValueChange={(value) => setEditedLicense({...editedLicense, priceType: value})}
+                      >
+                        <SelectTrigger className="h-8 text-sm w-full mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="crediti">Crediti</SelectItem>
+                          <SelectItem value="prezzo">Euro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div>
                     <span className="text-xs text-gray-500 uppercase tracking-wide">Prezzo</span>
                     {isEditing ? (
@@ -380,7 +399,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                             min="0"
                             max="9999999999"
                           />
-                          <span className="text-sm text-gray-600 font-medium">cr</span>
+                          <span className="text-sm text-gray-600 font-medium">
+                            {(editedLicense.priceType || license.priceType) === 'prezzo' ? '€' : 'cr'}
+                          </span>
                         </div>
                         <div className="flex gap-2 items-center">
                           <Input
@@ -398,7 +419,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                       </div>
                     ) : (
                       <p className="text-sm font-medium text-gray-900">
-                        {Math.round(parseFloat((license.price || 0).toString()))} crediti
+                        {license.priceType === 'prezzo' 
+                          ? `€${parseFloat((license.price || 0).toString()).toFixed(2)}` 
+                          : `${Math.round(parseFloat((license.price || 0).toString()))} crediti`}
                         {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
                           <span className="text-green-600 ml-1 text-xs">
                             (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
@@ -609,7 +632,8 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     status: license.status,
                     licenseType: license.licenseType,
                     renewalEnabled: license.renewalEnabled || false,
-                    renewalPeriod: license.renewalPeriod
+                    renewalPeriod: license.renewalPeriod,
+                    priceType: license.priceType || 'crediti'
                   });
                 }}
               >
