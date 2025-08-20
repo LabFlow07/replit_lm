@@ -101,6 +101,12 @@ class Database {
           version VARCHAR(50) NOT NULL,
           description TEXT,
           supported_license_types JSON,
+          price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+          discount DECIMAL(5,2) DEFAULT 0.00,
+          license_type VARCHAR(50) NOT NULL DEFAULT 'permanente',
+          max_users INT DEFAULT 1,
+          max_devices INT DEFAULT 1,
+          trial_days INT DEFAULT 30,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -328,6 +334,26 @@ class Database {
       // Add credits support to transactions table
       try {
         await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2)`);
+      } catch (e) { /* Column already exists */ }
+
+      // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields to products
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN discount DECIMAL(5,2) DEFAULT 0.00`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN license_type VARCHAR(50) NOT NULL DEFAULT 'permanente'`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN max_users INT DEFAULT 1`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN max_devices INT DEFAULT 1`);
+      } catch (e) { /* Column already exists */ }
+      try {
+        await this.query(`ALTER TABLE products ADD COLUMN trial_days INT DEFAULT 30`);
       } catch (e) { /* Column already exists */ }
 
       // 🔧 SYSTEM CONFIG - Create system configuration table

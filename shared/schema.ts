@@ -48,6 +48,13 @@ export const products = pgTable("products", {
   version: text("version").notNull(),
   description: text("description"),
   supportedLicenseTypes: json("supported_license_types"), // permanente, demo, abbonamento_mensile, abbonamento_annuale
+  // Pricing and configuration (only modifiable by superadmin)
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 5, scale: 2 }).default('0'),
+  licenseType: text("license_type").notNull(), // permanente, trial, abbonamento_mensile, abbonamento_annuale
+  maxUsers: integer("max_users").default(1),
+  maxDevices: integer("max_devices").default(1),
+  trialDays: integer("trial_days").default(30), // trial period in days
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -81,20 +88,16 @@ export const licenses = pgTable("licenses", {
   activationKey: text("activation_key").notNull().unique(),
   expiryDate: timestamp("expiry_date"),
   activationDate: timestamp("activation_date"), // when license was activated
-  licenseType: text("license_type").notNull(), // permanente, trial, abbonamento_mensile, abbonamento_annuale
   status: text("status").default('pending'), // attiva, scaduta, sospesa, demo, in_attesa_convalida
-  maxUsers: integer("max_users").default(1),
-  maxDevices: integer("max_devices").default(1),
-  price: decimal("price", { precision: 10, scale: 2 }),
-  discount: decimal("discount", { precision: 5, scale: 2 }).default('0'),
+  computerKey: text("computer_key"), // device-specific key
   activeModules: json("active_modules"),
   assignedCompany: varchar("assigned_company"),
   assignedAgent: varchar("assigned_agent"),
   renewalEnabled: boolean("renewal_enabled").default(false), // automatic renewal enabled
   renewalPeriod: text("renewal_period"), // monthly, yearly - for subscriptions
-  trialDays: integer("trial_days").default(30), // trial period in days
   notes: text("notes"), // additional notes
   createdAt: timestamp("created_at").defaultNow(),
+  // Pricing, license type, max users/devices are now inherited from product
 });
 
 // Company Wallets - Sistema crediti aziendale

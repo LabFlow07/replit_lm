@@ -1730,17 +1730,17 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     const {
       clientId,
       productId,
-      licenseType,
-      maxUsers,
-      maxDevices,
-      price,
-      discount,
       status,
       activeModules,
       renewalEnabled,
       renewalPeriod,
       paymentMethod
     } = req.body;
+
+    // 🔒 ROLE RESTRICTION: Only admin and superadmin can create licenses
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Only admin and superadmin can create licenses" });
+    }
 
     // Validate required fields
     if (!clientId) {
@@ -1764,9 +1764,6 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
         // Admin can create licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
         hasPermission = companyIds.includes(client.companyId);
-      } else {
-        // Other roles can only create licenses for clients in their own company
-        hasPermission = client.companyId === user.companyId;
       }
 
       if (!hasPermission) {
@@ -1774,14 +1771,26 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       }
     }
 
-    // Validate product
+    // Validate product and inherit pricing configuration
     const product = await storage.getProduct(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // 🏗️ INHERIT ALL PRICING FROM PRODUCT (not modifiable at license level)
+    const price = product.price;
+    const discount = product.discount;
+    const licenseType = product.licenseType;
+    const maxUsers = product.maxUsers;
+    const maxDevices = product.maxDevices;
+    const trialDays = product.trialDays;
+
+    console.log(`📦 License inheriting from product "${product.name}":`, {
+      price, discount, licenseType, maxUsers, maxDevices, trialDays
+    });
+
     // Calculate final amount
-    const finalAmount = Math.max(0, (price || 0) - (discount || 0));
+    const finalAmount = Math.max(0, price - discount);
 
     // Handle automatic wallet payment (default is 'crediti')
     const shouldUseWallet = (paymentMethod === 'wallet' || paymentMethod === 'crediti' || !paymentMethod) && finalAmount > 0;
@@ -1803,19 +1812,15 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     const licenseData = {
       clientId,
       productId,
-      licenseType,
-      maxUsers: maxUsers || 1,
-      maxDevices: maxDevices || 1,
-      price: price || 0,
-      discount: discount || 0,
       status: status || 'in_attesa_convalida',
       activeModules: activeModules || ['core'],
-      assignedCompany: client.company_id || client.companyId,
+      assignedCompany: client.companyId,
       assignedAgent: user.id,
       activationKey: req.body.activationKey || undefined,
       computerKey: req.body.computerKey || undefined,
       renewalEnabled: renewalEnabled || false,
       renewalPeriod: renewalPeriod || null
+      // Note: licenseType, maxUsers, maxDevices, price, discount are now inherited from product
     };
 
     console.log('Creating license with data:', licenseData);

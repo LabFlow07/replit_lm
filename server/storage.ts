@@ -379,7 +379,13 @@ class DatabaseStorage implements IStorage {
     const rows = await this.db.query('SELECT * FROM products ORDER BY name');
     return rows.map(row => ({
       ...row,
-      supportedLicenseTypes: JSON.parse(row.supported_license_types || '[]')
+      supportedLicenseTypes: JSON.parse(row.supported_license_types || '[]'),
+      price: parseFloat(row.price || '0'),
+      discount: parseFloat(row.discount || '0'),
+      maxUsers: parseInt(row.max_users || '1'),
+      maxDevices: parseInt(row.max_devices || '1'),
+      trialDays: parseInt(row.trial_days || '30'),
+      licenseType: row.license_type
     }));
   }
 
@@ -440,9 +446,21 @@ class DatabaseStorage implements IStorage {
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
     const id = randomUUID();
     await this.db.query(`
-      INSERT INTO products (id, name, version, description, supported_license_types)
-      VALUES (?, ?, ?, ?, ?)
-    `, [id, insertProduct.name, insertProduct.version, insertProduct.description, JSON.stringify(insertProduct.supportedLicenseTypes)]);
+      INSERT INTO products (id, name, version, description, supported_license_types, price, discount, license_type, max_users, max_devices, trial_days)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, 
+      insertProduct.name, 
+      insertProduct.version, 
+      insertProduct.description, 
+      JSON.stringify(insertProduct.supportedLicenseTypes),
+      insertProduct.price || 0,
+      insertProduct.discount || 0,
+      insertProduct.licenseType || 'permanente',
+      insertProduct.maxUsers || 1,
+      insertProduct.maxDevices || 1,
+      insertProduct.trialDays || 30
+    ]);
 
     return { ...insertProduct, id, createdAt: new Date() };
   }
@@ -659,6 +677,30 @@ class DatabaseStorage implements IStorage {
       updateFields.push('supported_license_types = ?');
       updateValues.push(JSON.stringify(updates.supportedLicenseTypes));
     }
+    if (updates.price !== undefined) {
+      updateFields.push('price = ?');
+      updateValues.push(updates.price);
+    }
+    if (updates.discount !== undefined) {
+      updateFields.push('discount = ?');
+      updateValues.push(updates.discount);
+    }
+    if (updates.licenseType) {
+      updateFields.push('license_type = ?');
+      updateValues.push(updates.licenseType);
+    }
+    if (updates.maxUsers !== undefined) {
+      updateFields.push('max_users = ?');
+      updateValues.push(updates.maxUsers);
+    }
+    if (updates.maxDevices !== undefined) {
+      updateFields.push('max_devices = ?');
+      updateValues.push(updates.maxDevices);
+    }
+    if (updates.trialDays !== undefined) {
+      updateFields.push('trial_days = ?');
+      updateValues.push(updates.trialDays);
+    }
 
     updateValues.push(id);
 
@@ -669,7 +711,13 @@ class DatabaseStorage implements IStorage {
     const updatedProduct = await this.getProductById(id);
     return {
       ...updatedProduct,
-      supportedLicenseTypes: JSON.parse(updatedProduct.supported_license_types || '[]')
+      supportedLicenseTypes: JSON.parse(updatedProduct.supported_license_types || '[]'),
+      price: parseFloat(updatedProduct.price || '0'),
+      discount: parseFloat(updatedProduct.discount || '0'),
+      maxUsers: parseInt(updatedProduct.max_users || '1'),
+      maxDevices: parseInt(updatedProduct.max_devices || '1'),
+      trialDays: parseInt(updatedProduct.trial_days || '30'),
+      licenseType: updatedProduct.license_type
     };
   }
 

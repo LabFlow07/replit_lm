@@ -12,6 +12,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**August 20, 2025 - MAJOR ARCHITECTURAL MIGRATION: Product-Level Pricing System**
+- **COMPLETED: Moved pricing configuration from license to product level**
+  - Added price, discount, license_type, max_users, max_devices, trial_days fields to products table
+  - Updated products schema and storage methods to handle new pricing fields
+  - Modified license creation to inherit ALL pricing from products (not modifiable at license level)
+  - **ROLE RESTRICTION IMPLEMENTED:** Only admin and superadmin can create licenses (clients cannot)
+  - License creation now automatically inherits product configuration: price, discount, type, limits
+  - Database migrations successfully applied for new product pricing fields
+  - **BUSINESS LOGIC:** Product pricing is centrally managed by superadmin, companies inherit fixed pricing
+- **ARCHITECTURAL BENEFITS:**
+  - Centralized pricing control (only superadmin can modify product pricing)
+  - Consistent pricing across all licenses for same product
+  - Simplified license creation process (fewer fields to manage)
+  - Better price governance and audit trail
+  - Companies cannot manipulate pricing at license level
+
 **August 19, 2025 - Wallet System Implementation Progress**
 - **COMPLETED: Company wallet system with credit-based license renewals and Stripe integration**
   - Implemented complete backend wallet infrastructure with REST API endpoints
