@@ -49,7 +49,6 @@ export default function ProductsPage() {
     supportedLicenseTypes: [] as string[],
     price: 0,
     discount: 0,
-    licenseType: '',
     maxUsers: 1,
     maxDevices: 1,
     trialDays: 30
@@ -61,7 +60,6 @@ export default function ProductsPage() {
     supportedLicenseTypes: [] as string[],
     price: 0,
     discount: 0,
-    licenseType: '',
     maxUsers: 1,
     maxDevices: 1,
     trialDays: 30
@@ -140,7 +138,6 @@ export default function ProductsPage() {
         supportedLicenseTypes: [],
         price: 0,
         discount: 0,
-        licenseType: '',
         maxUsers: 1,
         maxDevices: 1,
         trialDays: 30
@@ -364,20 +361,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="licenseType">Tipo di Licenza Default *</Label>
-                    <Select onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipo licenza" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="permanente">Permanente</SelectItem>
-                        <SelectItem value="trial">Trial/Demo</SelectItem>
-                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
 
                   <div className="grid grid-cols-3 gap-4">
                     <div>
@@ -580,7 +564,6 @@ export default function ProductsPage() {
                                       supportedLicenseTypes: product.supportedLicenseTypes || [],
                                       price: product.price || 0,
                                       discount: product.discount || 0,
-                                      licenseType: product.licenseType || '',
                                       maxUsers: product.maxUsers || 1,
                                       maxDevices: product.maxDevices || 1,
                                       trialDays: product.trialDays || 30
@@ -730,20 +713,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="edit-licenseType">Tipo di Licenza Default *</Label>
-                <Select value={editProduct.licenseType} onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona tipo licenza" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="permanente">Permanente</SelectItem>
-                    <SelectItem value="trial">Trial/Demo</SelectItem>
-                    <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                    <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
