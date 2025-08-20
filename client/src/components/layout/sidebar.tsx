@@ -27,11 +27,17 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number): Navi
     { id: 'transactions', label: 'Transazioni', icon: 'fas fa-chart-line', route: '/transactions' },
   ];
 
-  // User management and wallet with role-based permissions
+  // Add wallet after transactions for admin/superadmin
   if (userRole === 'superadmin' || userRole === 'admin') {
     baseItems.push(
-      { id: 'users', label: 'Gestione Utenti', icon: 'fas fa-user-cog', route: '/users' },
-      { id: 'wallet', label: 'Wallet Aziendale', icon: 'fas fa-wallet', route: '/wallet' }
+      { id: 'wallet', label: 'Wallet Aziende', icon: 'fas fa-wallet', route: '/wallet' }
+    );
+  }
+
+  // User management with role-based permissions
+  if (userRole === 'superadmin' || userRole === 'admin') {
+    baseItems.push(
+      { id: 'users', label: 'Gestione Utenti', icon: 'fas fa-user-cog', route: '/users' }
     );
   }
 
