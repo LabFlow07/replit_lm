@@ -26,7 +26,7 @@ const getStripeConfiguration = async () => {
   try {
     const response = await apiRequest('GET', '/api/stripe/config');
     const result = await response.json();
-    
+
     if (result.success && result.configured && result.publicKey?.startsWith('pk_')) {
       console.log('✅ Using Stripe config from database');
       return result.publicKey;
@@ -34,14 +34,14 @@ const getStripeConfiguration = async () => {
   } catch (error) {
     console.log('Database config not available, trying environment variables');
   }
-  
+
   // Fallback to environment variables
   const envKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
   if (envKey?.startsWith('pk_')) {
     console.log('✅ Using Stripe config from environment');
     return envKey;
   }
-  
+
   console.error('❌ No valid Stripe configuration found');
   return null;
 };
@@ -99,13 +99,13 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent);
-        
+
         // Confirm payment and update wallet balance on backend
         try {
           const confirmResponse = await apiRequest('POST', `/api/wallet/${companyId}/confirm-payment`, {
             paymentIntentId: paymentIntent.id
           });
-          
+
           if (confirmResponse.ok) {
             const result = await confirmResponse.json();
             console.log('✅ Wallet balance updated:', result);
@@ -124,7 +124,7 @@ function StripePaymentForm({ amount, companyId, onSuccess, onProcessingChange }:
             variant: "destructive",
           });
         }
-        
+
         onSuccess();
       } else {
         console.log('Payment status:', paymentIntent?.status);
@@ -172,6 +172,11 @@ function WalletContent() {
     amount: ''
   });
 
+  // State for filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState("");
+
   // Get user data from auth context
   const userCompanyId = user?.companyId;
   const userRole = user?.role;
@@ -185,7 +190,7 @@ function WalletContent() {
 
   // Determine active company ID based on user role
   const activeCompanyId = userRole === 'superadmin' ? selectedCompanyId : userCompanyId;
-  
+
   // Debug logging
   console.log('Wallet Debug:', {
     userRole,
@@ -215,7 +220,7 @@ function WalletContent() {
   // Extract wallet and transactions from response
   const wallet = walletData || {};
   const transactions = walletData?.transactions || [];
-  
+
   // Debug logging for wallet data
   console.log('Wallet Data Debug:', {
     walletData,
@@ -226,11 +231,35 @@ function WalletContent() {
   });
 
   // Fetch all wallets for superadmin and admin (for their company hierarchy)
-  const { data: allWallets = [] } = useQuery({
+  const { data: allWalletsData = [], isLoading: allWalletsLoading } = useQuery({
     queryKey: ['/api/wallets'],
     enabled: !!user && (userRole === 'superadmin' || userRole === 'admin'),
     retry: 1
   });
+
+  // Filter wallets based on search, type and client
+  const filteredWallets = useMemo(() => {
+    if (!allWalletsData) return [];
+
+    return allWalletsData.filter((wallet: any) => {
+      const company = wallet.company || {};
+      const nameMatch = company.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const typeMatch = typeFilter === "all" || company.type === typeFilter;
+
+      // Filtro per cliente collegato - cerchiamo nei clients associati
+      let clientMatch = true;
+      if (clientFilter) {
+        const hasMatchingClient = wallet.clients?.some((client: any) => 
+          client.name?.toLowerCase().includes(clientFilter.toLowerCase()) ||
+          client.email?.toLowerCase().includes(clientFilter.toLowerCase())
+        );
+        clientMatch = hasMatchingClient || false;
+      }
+
+      return nameMatch && typeMatch && clientMatch;
+    });
+  }, [allWalletsData, searchTerm, typeFilter, clientFilter]);
+
 
   // State for Stripe payment
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -244,19 +273,17 @@ function WalletContent() {
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
-    mutationFn: async (data: { companyId: string; amount: number }) => {
-      const response = await apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount });
-      return response.json();
-    },
+    mutationFn: (data: { companyId: string; amount: number }) =>
+      apiRequest('POST', `/api/wallet/${data.companyId}/create-payment-intent`, { amount: data.amount }),
     onSuccess: async (response: any) => {
       console.log('Payment intent created:', response);
       setClientSecret(response.clientSecret);
       setPaymentIntentId(response.paymentIntentId);
-      
+
       // Load Stripe configuration dynamically when opening payment form
       const stripePromise = await getStripePromise();
       setDynamicStripePromise(stripePromise);
-      
+
       setShowStripeForm(true);
     },
     onError: (error: any) => {
@@ -269,7 +296,7 @@ function WalletContent() {
     }
   });
 
-  
+
 
   // Transfer credits mutation
   const transferMutation = useMutation({
@@ -314,7 +341,7 @@ function WalletContent() {
     refetchWallet();
   };
 
-  
+
 
   const handleTransfer = () => {
     const amount = parseFloat(transferData.amount);
@@ -336,20 +363,20 @@ function WalletContent() {
   const handleViewTransactions = async (companyId: string, companyName: string) => {
     try {
       console.log('🔍 Caricamento transazioni per:', companyName);
-      
+
       const response = await apiRequest('GET', `/api/company/${companyId}/wallet-transactions`);
-      
+
       if (!response.ok) {
         throw new Error(`Errore HTTP: ${response.status}`);
       }
-      
+
       const transactions = await response.json();
       console.log('📊 Transazioni caricate:', transactions.length);
-      
+
       setSelectedTransactions(transactions);
       setSelectedCompanyName(companyName);
       setShowTransactionsModal(true);
-      
+
     } catch (error) {
       console.error('❌ Errore caricamento transazioni:', error);
       toast({
@@ -407,7 +434,45 @@ function WalletContent() {
           </div>
         </div>
 
-        
+        {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Cerca Azienda</Label>
+              <Input
+                placeholder="Cerca per nome azienda..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Tipo</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tutti i tipi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i tipi</SelectItem>
+                  <SelectItem value="rivenditore">Rivenditore</SelectItem>
+                  <SelectItem value="cliente">Cliente</SelectItem>
+                  <SelectItem value="sottoazienda">Sotto-azienda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Cliente Collegato</Label>
+              <Input
+                placeholder="Cerca per nome cliente..."
+                value={clientFilter}
+                onChange={(e) => setClientFilter(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
         {/* Wallet Balance Card - Compact */}
         {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
@@ -509,7 +574,7 @@ function WalletContent() {
             )}
 
             {/* All Wallets Overview - Compact Table */}
-            {((userRole === 'superadmin' && allWallets.length > 0) || 
+            {((userRole === 'superadmin' && allWalletsData.length > 0) || 
               (userRole === 'admin' && companies.length > 0)) && (
               <Card>
                 <CardHeader className="pb-3">
@@ -522,27 +587,18 @@ function WalletContent() {
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2 font-semibold">Azienda</th>
-                          <th className="text-left p-2 font-semibold">Tipo</th>
-                          <th className="text-right p-2 font-semibold">Saldo</th>
-                          <th className="text-right p-2 font-semibold">Ricariche</th>
-                          <th className="text-right p-2 font-semibold">Spese</th>
-                          <th className="text-center p-2 font-semibold">Azioni</th>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 font-medium text-sm border-r min-w-[200px]">Azienda</th>
+                          <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Tipo</th>
+                          <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Cliente</th>
+                          <th className="text-right p-3 font-medium text-sm border-r min-w-[120px]">Saldo</th>
+                          <th className="text-right p-3 font-medium text-sm border-r min-w-[120px]">Ricariche</th>
+                          <th className="text-right p-3 font-medium text-sm border-r min-w-[120px]">Spese</th>
+                          <th className="text-center p-3 font-medium text-sm min-w-[100px]">Azioni</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(userRole === 'superadmin' ? allWallets : 
-                          companies.map(company => ({
-                            company,
-                            wallet: allWallets.find(w => w.company.id === company.id)?.wallet || {
-                              balance: 0,
-                              totalRecharges: 0,
-                              totalSpent: 0,
-                              lastRechargeDate: null
-                            }
-                          }))
-                        ).map((item: any) => (
+                        {filteredWallets.map((item: any) => (
                           <tr 
                             key={item.company.id}
                             className={`border-b hover:bg-muted/50 cursor-pointer transition-colors ${
@@ -551,29 +607,56 @@ function WalletContent() {
                             onClick={() => setSelectedCompanyId(item.company.id)}
                             data-testid={`wallet-company-${item.company.id}`}
                           >
-                            <td className="p-2">
+                            <td className="p-3 border-r">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                                 <span className="font-medium text-sm">{item.company.name}</span>
                               </div>
                             </td>
-                            <td className="p-2">
-                              <Badge variant="outline" className="text-xs">
-                                {item.company.type}
+                            <td className="p-3 border-r">
+                              <Badge 
+                                variant={item.company.type === 'rivenditore' ? 'default' : 
+                                       item.company.type === 'cliente' ? 'secondary' : 'outline'}
+                              >
+                                {item.company.type === 'rivenditore' ? 'Rivenditore' :
+                                 item.company.type === 'cliente' ? 'Cliente' :
+                                 item.company.type === 'sottoazienda' ? 'Sotto-azienda' :
+                                 item.company.type}
                               </Badge>
                             </td>
-                            <td className="p-2 text-right">
+                            <td className="p-3 border-r">
+                              <div className="text-sm">
+                                {item.clients && item.clients.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {item.clients.slice(0, 2).map((client: any, idx: number) => (
+                                      <div key={idx} className="flex items-center gap-1">
+                                        <Users className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-xs">{client.name}</span>
+                                      </div>
+                                    ))}
+                                    {item.clients.length > 2 && (
+                                      <div className="text-xs text-muted-foreground">
+                                        +{item.clients.length - 2} altri
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Nessun cliente</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
                               <span className="font-bold text-blue-600">
                                 {(item.wallet.balance || 0).toFixed(2)}
                               </span>
                             </td>
-                            <td className="p-2 text-right text-green-600 text-sm">
+                            <td className="p-3 text-right text-green-600 text-sm">
                               +{(item.wallet.totalRecharges || 0).toFixed(2)}
                             </td>
-                            <td className="p-2 text-right text-red-600 text-sm">
+                            <td className="p-3 text-right text-red-600 text-sm">
                               -{(item.wallet.totalSpent || 0).toFixed(2)}
                             </td>
-                            <td className="p-2 text-center">
+                            <td className="p-3 text-center">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -590,30 +673,26 @@ function WalletContent() {
                         ))}
                       </tbody>
                     </table>
-                    
+
                     {/* Summary */}
                     <div className="mt-4 p-3 bg-muted rounded-lg">
                       <div className="grid grid-cols-3 gap-4 text-center text-sm">
                         <div>
                           <p className="text-muted-foreground">Totale Aziende</p>
                           <p className="text-xl font-bold text-blue-600">
-                            {userRole === 'superadmin' ? allWallets.length : companies.length}
+                            {filteredWallets.length}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Crediti Sistema</p>
                           <p className="text-xl font-bold text-green-600">
-                            {(userRole === 'superadmin' ? allWallets : 
-                              companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { balance: 0 })
-                            ).reduce((sum: number, item: any) => sum + (item.wallet?.balance || item.balance || 0), 0).toFixed(2)}
+                            {filteredWallets.reduce((sum: number, item: any) => sum + (item.wallet.balance || 0), 0).toFixed(2)}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Ricariche Totali</p>
                           <p className="text-xl font-bold text-orange-600">
-                            {(userRole === 'superadmin' ? allWallets : 
-                              companies.map(company => allWallets.find(w => w.company.id === company.id)?.wallet || { totalRecharges: 0 })
-                            ).reduce((sum: number, item: any) => sum + (item.wallet?.totalRecharges || item.totalRecharges || 0), 0).toFixed(2)}
+                            {filteredWallets.reduce((sum: number, item: any) => sum + (item.wallet.totalRecharges || 0), 0).toFixed(2)}
                           </p>
                         </div>
                       </div>
