@@ -180,48 +180,72 @@ class Database {
         )
       `);
 
-      // Add new columns to existing transactions table if they don't exist
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN client_id VARCHAR(36)`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN company_id VARCHAR(36)`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN discount DECIMAL(10,2) DEFAULT 0.00`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN final_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN payment_link TEXT`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN payment_date TIMESTAMP NULL`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN modified_by VARCHAR(36)`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2) DEFAULT 0.00`);
-      } catch (e) { /* Column already exists */ }
+      // Check and add columns to transactions table only if they don't exist
+      const transactionColumns = ['client_id', 'company_id', 'discount', 'final_amount', 'payment_link', 'payment_date', 'updated_at', 'modified_by', 'credits_used'];
+      for (const column of transactionColumns) {
+        try {
+          const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'transactions' AND COLUMN_NAME = ?`, [column]);
+          if (columnExists.length === 0) {
+            switch (column) {
+              case 'client_id':
+                await this.query(`ALTER TABLE transactions ADD COLUMN client_id VARCHAR(36)`);
+                break;
+              case 'company_id':
+                await this.query(`ALTER TABLE transactions ADD COLUMN company_id VARCHAR(36)`);
+                break;
+              case 'discount':
+                await this.query(`ALTER TABLE transactions ADD COLUMN discount DECIMAL(10,2) DEFAULT 0.00`);
+                break;
+              case 'final_amount':
+                await this.query(`ALTER TABLE transactions ADD COLUMN final_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+                break;
+              case 'payment_link':
+                await this.query(`ALTER TABLE transactions ADD COLUMN payment_link TEXT`);
+                break;
+              case 'payment_date':
+                await this.query(`ALTER TABLE transactions ADD COLUMN payment_date TIMESTAMP NULL`);
+                break;
+              case 'updated_at':
+                await this.query(`ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
+                break;
+              case 'modified_by':
+                await this.query(`ALTER TABLE transactions ADD COLUMN modified_by VARCHAR(36)`);
+                break;
+              case 'credits_used':
+                await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2) DEFAULT 0.00`);
+                break;
+            }
+          }
+        } catch (e) { 
+          console.log(`Error checking/adding column ${column}:`, e.message);
+        }
+      }
 
-      // Add new columns to existing licenses table if they don't exist
-      try {
-        await this.query(`ALTER TABLE licenses ADD COLUMN renewal_enabled BOOLEAN DEFAULT FALSE`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE licenses ADD COLUMN renewal_period VARCHAR(20)`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE licenses ADD COLUMN trial_days INT DEFAULT 30`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE licenses ADD COLUMN notes TEXT`);
-      } catch (e) { /* Column already exists */ }
+      // Check and add columns to licenses table only if they don't exist
+      const licenseColumns = ['renewal_enabled', 'renewal_period', 'trial_days', 'notes'];
+      for (const column of licenseColumns) {
+        try {
+          const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'licenses' AND COLUMN_NAME = ?`, [column]);
+          if (columnExists.length === 0) {
+            switch (column) {
+              case 'renewal_enabled':
+                await this.query(`ALTER TABLE licenses ADD COLUMN renewal_enabled BOOLEAN DEFAULT FALSE`);
+                break;
+              case 'renewal_period':
+                await this.query(`ALTER TABLE licenses ADD COLUMN renewal_period VARCHAR(20)`);
+                break;
+              case 'trial_days':
+                await this.query(`ALTER TABLE licenses ADD COLUMN trial_days INT DEFAULT 30`);
+                break;
+              case 'notes':
+                await this.query(`ALTER TABLE licenses ADD COLUMN notes TEXT`);
+                break;
+            }
+          }
+        } catch (e) { 
+          console.log(`Error checking/adding license column ${column}:`, e.message);
+        }
+      }
 
       await this.query(`
         CREATE TABLE IF NOT EXISTS activation_logs (
@@ -330,10 +354,7 @@ class Database {
         )
       `);
 
-      // Add credits support to transactions table
-      try {
-        await this.query(`ALTER TABLE transactions ADD COLUMN credits_used DECIMAL(10,2)`);
-      } catch (e) { /* Column already exists */ }
+      // Credits support already handled above in the column check loop
 
       // Remove supported_license_types column from products table
       try {
@@ -344,24 +365,36 @@ class Database {
       }
 
       // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields to products
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN discount DECIMAL(5,2) DEFAULT 0.00`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN license_type VARCHAR(50) NOT NULL DEFAULT 'permanente'`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN max_users INT DEFAULT 1`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN max_devices INT DEFAULT 1`);
-      } catch (e) { /* Column already exists */ }
-      try {
-        await this.query(`ALTER TABLE products ADD COLUMN trial_days INT DEFAULT 30`);
-      } catch (e) { /* Column already exists */ }
+      const productColumns = ['price', 'discount', 'license_type', 'max_users', 'max_devices', 'trial_days'];
+      for (const column of productColumns) {
+        try {
+          const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND COLUMN_NAME = ?`, [column]);
+          if (columnExists.length === 0) {
+            switch (column) {
+              case 'price':
+                await this.query(`ALTER TABLE products ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+                break;
+              case 'discount':
+                await this.query(`ALTER TABLE products ADD COLUMN discount DECIMAL(5,2) DEFAULT 0.00`);
+                break;
+              case 'license_type':
+                await this.query(`ALTER TABLE products ADD COLUMN license_type VARCHAR(50) NOT NULL DEFAULT 'permanente'`);
+                break;
+              case 'max_users':
+                await this.query(`ALTER TABLE products ADD COLUMN max_users INT DEFAULT 1`);
+                break;
+              case 'max_devices':
+                await this.query(`ALTER TABLE products ADD COLUMN max_devices INT DEFAULT 1`);
+                break;
+              case 'trial_days':
+                await this.query(`ALTER TABLE products ADD COLUMN trial_days INT DEFAULT 30`);
+                break;
+            }
+          }
+        } catch (e) { 
+          console.log(`Error checking/adding product column ${column}:`, e.message);
+        }
+      }
 
       // 🔧 SYSTEM CONFIG - Create system configuration table
       await this.query(`
