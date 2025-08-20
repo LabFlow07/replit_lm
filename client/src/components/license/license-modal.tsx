@@ -22,6 +22,7 @@ interface DeviceRegistration {
   status: string;
   primaRegistrazione: string;
   ultimaAttivita: string;
+  licenzaAssegnata?: string;
 }
 
 interface DeviceKeysSectionProps {
@@ -44,7 +45,7 @@ function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
       }
       const data = await response.json();
       // Filtra solo le registrazioni con questa licenza e che hanno computer_key
-      return data.filter((reg: DeviceRegistration) => 
+      return data.filter((reg: any) => 
         reg.licenzaAssegnata === licenseId && 
         reg.computerKey && 
         reg.computerKey.trim() !== ''
@@ -295,15 +296,15 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
             <div className="space-y-1">
               <div className="flex justify-between items-start">
                 <span className="text-xs text-gray-600">Nome:</span>
-                <span className="text-xs font-medium text-gray-900 text-right">{license.client?.name || license.clientName || 'N/A'}</span>
+                <span className="text-xs font-medium text-gray-900 text-right">{license.client?.name || 'N/A'}</span>
               </div>
               <div className="flex justify-between items-start">
                 <span className="text-xs text-gray-600">Email:</span>
-                <span className="text-xs text-gray-900 text-right">{license.client?.email || license.clientEmail || 'N/A'}</span>
+                <span className="text-xs text-gray-900 text-right">{license.client?.email || 'N/A'}</span>
               </div>
               <div className="flex justify-between items-start">
                 <span className="text-xs text-gray-600">Azienda:</span>
-                <span className="text-xs font-medium text-gray-900 text-right">{license.company?.name || license.companyName || 'N/A'}</span>
+                <span className="text-xs font-medium text-gray-900 text-right">{license.company?.name || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -498,7 +499,6 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
               </div>
             </div>
           </div>
-        </div>
 
         {/* Moduli Attivi - Compatto */}
         <div className="bg-white border rounded-lg p-3 mb-4">

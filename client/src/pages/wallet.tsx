@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
@@ -197,7 +197,7 @@ function WalletContent() {
     selectedCompanyId,
     userCompanyId,
     activeCompanyId,
-    companiesCount: companies?.length
+    companiesCount: Array.isArray(companies) ? companies.length : 0
   });
   const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useQuery({
     queryKey: ['/api/wallet', activeCompanyId],
@@ -239,7 +239,7 @@ function WalletContent() {
 
   // Filter wallets based on search, type and client
   const filteredWallets = useMemo(() => {
-    if (!allWalletsData) return [];
+    if (!Array.isArray(allWalletsData)) return [];
 
     return allWalletsData.filter((wallet: any) => {
       const company = wallet.company || {};
@@ -409,30 +409,30 @@ function WalletContent() {
 
   // Filter companies for transfer (exclude parent companies from being destinations)
   const getTransferableCompanies = (isDestination: boolean) => {
-    if (!companies) return [];
+    if (!Array.isArray(companies)) return [];
     
     if (userRole === 'admin' && userCompanyId) {
       // Admin can only transfer from their company to sub-companies
       if (isDestination) {
         // Show only direct sub-companies (sottoaziende) and clients of the admin's company
-        return companies.filter((c: any) => 
+        return (companies as any[]).filter((c: any) => 
           c.parent_id === userCompanyId || c.parentId === userCompanyId
         );
       } else {
         // Show only their company as source
-        return companies.filter((c: any) => c.id === userCompanyId);
+        return (companies as any[]).filter((c: any) => c.id === userCompanyId);
       }
     }
     
     if (userRole === 'superadmin') {
       if (isDestination && transferData.fromCompanyId) {
         // For superadmin, destination can be sub-companies of the selected source company
-        return companies.filter((c: any) => 
+        return (companies as any[]).filter((c: any) => 
           c.parent_id === transferData.fromCompanyId || c.parentId === transferData.fromCompanyId
         );
       }
       // For source selection, show all companies
-      return companies;
+      return companies as any[];
     }
     
     return [];
@@ -589,8 +589,8 @@ function WalletContent() {
             )}
 
             {/* All Wallets Overview - Compact Table */}
-            {((userRole === 'superadmin' && allWalletsData.length > 0) || 
-              (userRole === 'admin' && companies.length > 0)) && (
+            {((userRole === 'superadmin' && Array.isArray(allWalletsData) && allWalletsData.length > 0) || 
+              (userRole === 'admin' && Array.isArray(companies) && companies.length > 0)) && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle>Panoramica Tutti i Wallet</CardTitle>
@@ -836,11 +836,11 @@ function WalletContent() {
                       <SelectValue placeholder="Seleziona azienda per visualizzare il wallet" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companies && Array.isArray(companies) && companies.map((company: any) => (
+                      {companies && Array.isArray(companies) ? (companies as any[]).map((company: any) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name} ({company.type})
                         </SelectItem>
-                      ))}
+                      )) : null}
                     </SelectContent>
                   </Select>
                 </CardContent>

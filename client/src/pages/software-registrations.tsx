@@ -38,6 +38,7 @@ interface SoftwareRegistration {
   clienteAssegnato?: string;
   licenzaAssegnata?: string;
   prodottoAssegnato?: string; // Added to match the dialog
+  aziendaAssegnata?: string; // Added for company assignment
   note?: string;
   primaRegistrazione: string;
   ultimaAttivita: string;
@@ -895,9 +896,9 @@ export default function SoftwareRegistrations() {
                       <td className="p-3 border-r">
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="text-xs font-mono">
-                            {registration.productVersion || registration.versione || registration.version || 'N/A'}
+                            {registration.versione || registration.version || 'N/A'}
                           </Badge>
-                          {registration.productVersion && registration.versione && registration.productVersion !== registration.versione && (
+                          {registration.version && registration.versione && registration.version !== registration.versione && (
                             <Badge variant="secondary" className="text-xs font-mono">
                               Rilevata: {registration.versione}
                             </Badge>
@@ -937,22 +938,28 @@ export default function SoftwareRegistrations() {
                       <td className="p-3 border-r text-sm">
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'dd/MM/yyyy', { locale: it })}
+                            {(registration.primaRegistrazione || registration.registrationDate) ? 
+                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'dd/MM/yyyy', { locale: it }) : 
+                              'N/A'
+                            }
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(registration.primaRegistrazione || registration.registrationDate), 'HH:mm', { locale: it })}
+                            {(registration.primaRegistrazione || registration.registrationDate) ? 
+                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'HH:mm', { locale: it }) : 
+                              'N/A'
+                            }
                           </span>
                         </div>
                       </td>
 
                       <td className="p-3 border-r text-sm">
-                        {registration.ultimaAttivita || registration.lastSeen ? (
+                        {(registration.ultimaAttivita || registration.lastSeen) ? (
                           <div className="flex flex-col">
                             <span className="font-medium">
-                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'dd/MM/yyyy', { locale: it })}
+                              {format(new Date(registration.ultimaAttivita || registration.lastSeen!), 'dd/MM/yyyy', { locale: it })}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(registration.ultimaAttivita || registration.lastSeen), 'HH:mm', { locale: it })}
+                              {format(new Date(registration.ultimaAttivita || registration.lastSeen!), 'HH:mm', { locale: it })}
                             </span>
                           </div>
                         ) : (
@@ -1009,7 +1016,7 @@ export default function SoftwareRegistrations() {
                                   }
                                 }
                               }}
-                              disabled={registration.status === 'classificato' && registration.licenzaAssegnata}
+                              disabled={Boolean(registration.status === 'classificato' && registration.licenzaAssegnata)}
                               className={`h-8 w-8 p-0 ${
                                 registration.status === 'classificato' && registration.licenzaAssegnata
                                   ? 'text-gray-400 cursor-not-allowed'
@@ -1147,7 +1154,7 @@ export default function SoftwareRegistrations() {
                     // Filter licenses for the selected client from the selected company
                     const clientLicenses = safeLicenses.filter((license: License) => {
                       // Check if license belongs to the selected client
-                      const licenseClientId = license.client?.id || license.clientId;
+                      const licenseClientId = license.client?.id;
                       if (licenseClientId !== selectedClientId) {
                         return false;
                       }
