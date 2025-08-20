@@ -46,7 +46,7 @@ export default function ProductsPage() {
     name: '',
     version: '',
     description: '',
-    supportedLicenseTypes: [] as string[],
+    licenseType: '',
     price: 0,
     discount: 0,
     maxUsers: 1,
@@ -57,7 +57,7 @@ export default function ProductsPage() {
     name: '',
     version: '',
     description: '',
-    supportedLicenseTypes: [] as string[],
+    licenseType: '',
     price: 0,
     discount: 0,
     maxUsers: 1,
@@ -135,7 +135,7 @@ export default function ProductsPage() {
         name: '',
         version: '',
         description: '',
-        supportedLicenseTypes: [],
+        licenseType: '',
         price: 0,
         discount: 0,
         maxUsers: 1,
@@ -205,7 +205,7 @@ export default function ProductsPage() {
       product.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesLicenseType = licenseTypeFilter === "all" || 
-      (product.supportedLicenseTypes && product.supportedLicenseTypes.includes(licenseTypeFilter));
+      (product.licenseType === licenseTypeFilter);
 
     return matchesSearch && matchesLicenseType;
   });
@@ -225,23 +225,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleLicenseTypeChange = (licenseType: string, checked: boolean, isEdit: boolean = false) => {
-    if (isEdit) {
-      setEditProduct(prev => ({
-        ...prev,
-        supportedLicenseTypes: checked 
-          ? [...prev.supportedLicenseTypes, licenseType]
-          : prev.supportedLicenseTypes.filter(type => type !== licenseType)
-      }));
-    } else {
-      setNewProduct(prev => ({
-        ...prev,
-        supportedLicenseTypes: checked 
-          ? [...prev.supportedLicenseTypes, licenseType]
-          : prev.supportedLicenseTypes.filter(type => type !== licenseType)
-      }));
-    }
-  };
+
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Caricamento...</div>;
@@ -313,19 +297,18 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                  <Label>Tipi di Licenza Supportati *</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {Object.entries(licenseTypeLabels).map(([value, label]) => (
-                      <div key={value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`new-${value}`}
-                          checked={newProduct.supportedLicenseTypes.includes(value)}
-                          onCheckedChange={(checked) => handleLicenseTypeChange(value, checked as boolean)}
-                        />
-                        <Label htmlFor={`new-${value}`} className="text-sm">{label}</Label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="licenseType">Tipo di Licenza *</Label>
+                  <Select value={newProduct.licenseType} onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona tipo licenza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial/Demo</SelectItem>
+                      <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                      <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* NEW: Product-Level Pricing Configuration */}
@@ -528,18 +511,11 @@ export default function ProductsPage() {
                         </TableCell>
                         
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {product.supportedLicenseTypes?.map((type: string) => (
-                              <Badge 
-                                key={type} 
-                                className={`text-xs ${licenseTypeColors[type] || 'bg-gray-100 text-gray-800'}`}
-                              >
-                                {licenseTypeLabels[type] || type}
-                              </Badge>
-                            )) || (
-                              <span className="text-gray-400 italic text-sm">Nessun tipo</span>
-                            )}
-                          </div>
+                          <Badge 
+                            className={`text-xs ${licenseTypeColors[product.licenseType] || 'bg-gray-100 text-gray-800'}`}
+                          >
+                            {licenseTypeLabels[product.licenseType] || product.licenseType || 'Non definito'}
+                          </Badge>
                         </TableCell>
                         
                         <TableCell className="text-center">
@@ -561,7 +537,7 @@ export default function ProductsPage() {
                                       name: product.name || '',
                                       version: product.version || '',
                                       description: product.description || '',
-                                      supportedLicenseTypes: product.supportedLicenseTypes || [],
+                                      licenseType: product.licenseType || '',
                                       price: product.price || 0,
                                       discount: product.discount || 0,
                                       maxUsers: product.maxUsers || 1,
@@ -665,19 +641,18 @@ export default function ProductsPage() {
             </div>
             
             <div>
-              <Label>Tipi di Licenza Supportati *</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {Object.entries(licenseTypeLabels).map(([value, label]) => (
-                  <div key={value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`edit-${value}`}
-                      checked={editProduct.supportedLicenseTypes.includes(value)}
-                      onCheckedChange={(checked) => handleLicenseTypeChange(value, checked as boolean, true)}
-                    />
-                    <Label htmlFor={`edit-${value}`} className="text-sm">{label}</Label>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="edit-licenseType">Tipo di Licenza *</Label>
+              <Select value={editProduct.licenseType} onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona tipo licenza" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="permanente">Permanente</SelectItem>
+                  <SelectItem value="trial">Trial/Demo</SelectItem>
+                  <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                  <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* NEW: Product-Level Pricing Configuration for Edit */}
