@@ -410,17 +410,32 @@ function WalletContent() {
   // Filter companies for transfer (exclude parent companies from being destinations)
   const getTransferableCompanies = (isDestination: boolean) => {
     if (!companies) return [];
+    
     if (userRole === 'admin' && userCompanyId) {
       // Admin can only transfer from their company to sub-companies
       if (isDestination) {
-        // Show sub-companies only
-        return companies.filter((c: any) => c.parent_id === userCompanyId);
+        // Show only direct sub-companies (sottoaziende) and clients of the admin's company
+        return companies.filter((c: any) => 
+          c.parent_id === userCompanyId || c.parentId === userCompanyId
+        );
       } else {
         // Show only their company as source
         return companies.filter((c: any) => c.id === userCompanyId);
       }
     }
-    return companies;
+    
+    if (userRole === 'superadmin') {
+      if (isDestination && transferData.fromCompanyId) {
+        // For superadmin, destination can be sub-companies of the selected source company
+        return companies.filter((c: any) => 
+          c.parent_id === transferData.fromCompanyId || c.parentId === transferData.fromCompanyId
+        );
+      }
+      // For source selection, show all companies
+      return companies;
+    }
+    
+    return [];
   };
 
   return (
