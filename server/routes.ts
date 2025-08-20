@@ -1763,10 +1763,14 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       if (user.role === 'admin') {
         // Admin can create licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
-        hasPermission = companyIds.includes(client.companyId);
+        const clientCompanyId = client.companyId || client.company_id;
+        console.log(`🔐 Admin permission check: User company ${user.companyId}, Client company ${clientCompanyId}, Hierarchy: [${companyIds.join(', ')}]`);
+        hasPermission = companyIds.includes(clientCompanyId);
+        console.log(`🔐 Permission result: ${hasPermission}`);
       }
 
       if (!hasPermission) {
+        console.log(`❌ License creation denied for admin ${user.username}: client ${client.id} (company ${client.companyId || client.company_id}) not in hierarchy`);
         return res.status(403).json({ message: "Not authorized to create license for this client" });
       }
     }
