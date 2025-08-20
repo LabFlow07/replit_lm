@@ -20,7 +20,7 @@ const getNavigationItems = (userRole: string, activeLicensesCount: number): Navi
   const baseItems: NavigationItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard', route: '/dashboard' },
     { id: 'licenses', label: 'Licenze', icon: 'fas fa-key', badge: activeLicensesCount > 0 ? activeLicensesCount.toString() : undefined, route: '/licenses' },
-    { id: 'software-registrations', label: 'Qlm Register', icon: 'fas fa-desktop', route: '/software-registrations' },
+    { id: 'software-registrations', label: 'LmRegister', icon: 'fas fa-desktop', route: '/software-registrations' },
     { id: 'companies', label: 'Aziende', icon: 'fas fa-building', route: '/companies' },
     { id: 'clients', label: 'Clienti', icon: 'fas fa-users', route: '/clients' },
     { id: 'products', label: 'Prodotti', icon: 'fas fa-box', route: '/products' },
@@ -122,8 +122,8 @@ export default function Sidebar() {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Qlm Platform</h1>
-                <p className="text-sm text-gray-500">Quality License Manager</p>
+                <h1 className="text-xl font-bold text-gray-900">LmPlatform</h1>
+                <p className="text-sm text-gray-500">License Manager</p>
               </div>
             </div>
           )}
@@ -191,7 +191,7 @@ export default function Sidebar() {
                   {user?.name}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {user?.company?.name || 'QLM Platform'}
+                  {user?.company?.name || 'LmPlatform'}
                 </p>
               </div>
               <Button
