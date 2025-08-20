@@ -1359,6 +1359,21 @@ router.post("/api/licenses/from-registration", authenticateToken, async (req: Re
       }
     }
 
+    // For licenses created from software registrations, automatically use wallet payment if price > 0
+    const finalAmount = Math.max(0, (price || 0));
+    
+    // Check wallet balance if price > 0
+    if (finalAmount > 0) {
+      const companyId = client.company_id || client.companyId;
+      const wallet = await storage.getCompanyWallet(companyId);
+      if (!wallet || wallet.balance < finalAmount) {
+        return res.status(400).json({ 
+          message: `Saldo wallet insufficiente per la classificazione. Richiesto: ${finalAmount} crediti, Disponibile: ${wallet ? wallet.balance : 0} crediti` 
+        });
+      }
+      console.log(`💳 Wallet payment for software registration: ${finalAmount} crediti from company ${companyId}`);
+    }
+
     const licenseData = {
       clientId,
       productId,
@@ -1377,6 +1392,19 @@ router.post("/api/licenses/from-registration", authenticateToken, async (req: Re
 
     console.log('Creating license from registration with data:', licenseData);
     const license = await storage.createLicense(licenseData);
+
+    // Deduct wallet credits if price > 0
+    if (finalAmount > 0) {
+      const companyId = client.company_id || client.companyId;
+      const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
+      
+      if (!success) {
+        // If wallet charge fails, delete the created license
+        await storage.deleteLicense(license.id);
+        return res.status(400).json({ message: "Errore durante il pagamento con wallet per la classificazione" });
+      }
+      console.log(`💳 Wallet payment successful for registration license: ${license.id}, Amount ${finalAmount} crediti`);
+    }
 
     // Update registration status to "licenziato"
     await storage.updateSoftwareRegistration(registrationId, {
@@ -1564,7 +1592,8 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       status,
       activeModules,
       renewalEnabled,
-      renewalPeriod
+      renewalPeriod,
+      paymentMethod
     } = req.body;
 
     // Validate required fields
@@ -1605,6 +1634,24 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // Calculate final amount
+    const finalAmount = Math.max(0, (price || 0) - (discount || 0));
+    
+    // Handle wallet payment method
+    if (paymentMethod === 'wallet' && finalAmount > 0) {
+      const companyId = client.company_id || client.companyId;
+      
+      // Check if company has sufficient wallet balance
+      const wallet = await storage.getCompanyWallet(companyId);
+      if (!wallet || wallet.balance < finalAmount) {
+        return res.status(400).json({ 
+          message: `Saldo wallet insufficiente. Richiesto: ${finalAmount} crediti, Disponibile: ${wallet ? wallet.balance : 0} crediti` 
+        });
+      }
+      
+      console.log(`💳 Wallet payment requested: ${finalAmount} crediti from company ${companyId}`);
+    }
+
     const licenseData = {
       clientId,
       productId,
@@ -1625,6 +1672,23 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
 
     console.log('Creating license with data:', licenseData);
     const license = await storage.createLicense(licenseData);
+
+    // If wallet payment was selected and amount > 0, deduct credits
+    if (paymentMethod === 'wallet' && finalAmount > 0) {
+      const companyId = client.company_id || client.companyId;
+      const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
+      
+      if (success) {
+        console.log(`💳 Wallet payment successful: License ${license.id}, Company ${companyId}, Amount ${finalAmount} crediti`);
+        // Update license status to 'attiva' since payment is completed
+        await storage.updateLicense(license.id, { status: 'attiva' });
+        license.status = 'attiva';
+      } else {
+        // If wallet charge fails, delete the created license
+        await storage.deleteLicense(license.id);
+        return res.status(400).json({ message: "Errore durante il pagamento con wallet" });
+      }
+    }
 
     console.log('License created successfully:', license.id);
     res.json(license);

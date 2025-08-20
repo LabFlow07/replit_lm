@@ -758,20 +758,33 @@ export default function LicensesPage() {
                     renewalPeriod: formData.get('renewalPeriod') || null,
                     activeModules: ['core'],
                     activationKey: formData.get('activationKey') || undefined,
-                    computerKey: formData.get('computerKey') || undefined
+                    computerKey: formData.get('computerKey') || undefined,
+                    paymentMethod: formData.get('paymentMethod') || 'manuale'
                   })
                 });
 
                 if (response.ok) {
                   setIsNewLicenseModalOpen(false);
                   queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+                  // Also invalidate wallet queries to refresh balances
+                  queryClient.invalidateQueries({ queryKey: ['/api/wallets'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
                   alert('Licenza creata con successo!');
                   // Reset form
                   const form = e.target as HTMLFormElement;
                   form.reset();
                 } else {
-                  console.error('Failed to create license');
-                  alert('Errore nella creazione della licenza');
+                  const errorData = await response.json().catch(() => ({}));
+                  console.error('Failed to create license:', errorData);
+                  
+                  // Show specific error message for wallet insufficient funds
+                  if (errorData.message && errorData.message.includes('Saldo wallet insufficiente')) {
+                    alert(`❌ ${errorData.message}`);
+                  } else if (errorData.message) {
+                    alert(`Errore: ${errorData.message}`);
+                  } else {
+                    alert('Errore nella creazione della licenza');
+                  }
                 }
               } catch (error) {
                 console.error('Error creating license:', error);
@@ -879,6 +892,29 @@ export default function LicensesPage() {
                     min="0"
                     max="100"
                   />
+                </div>
+              </div>
+
+              {/* Metodo di Pagamento */}
+              <div className="space-y-3">
+                <h4 className="text-md font-semibold text-gray-900 border-b pb-2">
+                  <i className="fas fa-credit-card mr-2"></i>
+                  Metodo di Pagamento
+                </h4>
+                <div>
+                  <Label htmlFor="paymentMethod" className="text-sm font-medium">Metodo *</Label>
+                  <Select name="paymentMethod" defaultValue="manuale">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona metodo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manuale">💳 Pagamento Manuale</SelectItem>
+                      <SelectItem value="wallet">🏦 Crediti Wallet Aziendale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Wallet: pagamento automatico con crediti aziendali | Manuale: richiede pagamento esterno
+                  </p>
                 </div>
               </div>
 
