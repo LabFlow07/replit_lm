@@ -1266,17 +1266,34 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           for (const transaction of transactions) {
             console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed || transaction.credits_used}, finalAmount=${transaction.finalAmount || transaction.final_amount}`);
             
-            // Check for credits to refund - look at both creditsUsed field and final_amount for paid transactions
+            // Check for credits to refund - look at multiple fields for paid transactions
             let creditsToRefund = 0;
             
-            if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
-              creditsToRefund = parseFloat(transaction.creditsUsed.toString());
-            } else if (transaction.status === 'pagato_crediti' && transaction.credits_used && parseFloat(transaction.credits_used.toString()) > 0) {
-              creditsToRefund = parseFloat(transaction.credits_used.toString());
-            } else if ((transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') && transaction.finalAmount && parseFloat(transaction.finalAmount.toString()) > 0) {
-              creditsToRefund = parseFloat(transaction.finalAmount.toString());
-            } else if ((transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') && transaction.final_amount && parseFloat(transaction.final_amount.toString()) > 0) {
-              creditsToRefund = parseFloat(transaction.final_amount.toString());
+            // For transactions paid with credits, try to find the refund amount from multiple sources
+            if (transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') {
+              // Priority 1: creditsUsed field (exact credits used)
+              if (transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
+                creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+                console.log(`💰 Found creditsUsed: ${creditsToRefund}`);
+              } else if (transaction.credits_used && parseFloat(transaction.credits_used.toString()) > 0) {
+                creditsToRefund = parseFloat(transaction.credits_used.toString());
+                console.log(`💰 Found credits_used: ${creditsToRefund}`);
+              }
+              // Priority 2: finalAmount field (transaction total)
+              else if (transaction.finalAmount && parseFloat(transaction.finalAmount.toString()) > 0) {
+                creditsToRefund = parseFloat(transaction.finalAmount.toString());
+                console.log(`💰 Using finalAmount as refund: ${creditsToRefund}`);
+              } else if (transaction.final_amount && parseFloat(transaction.final_amount.toString()) > 0) {
+                creditsToRefund = parseFloat(transaction.final_amount.toString());
+                console.log(`💰 Using final_amount as refund: ${creditsToRefund}`);
+              }
+              // Priority 3: amount field minus discount (calculated total)
+              else if (transaction.amount && parseFloat(transaction.amount.toString()) > 0) {
+                const amount = parseFloat(transaction.amount.toString());
+                const discount = parseFloat(transaction.discount?.toString() || '0');
+                creditsToRefund = Math.max(0, amount - discount);
+                console.log(`💰 Calculated refund from amount-discount: ${creditsToRefund}`);
+              }
             }
 
             if (creditsToRefund > 0) {
@@ -1301,7 +1318,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
                 totalRefunded += creditsToRefund;
                 refundCompanyId = companyId;
-                console.log(`✅ Refunded ${creditsToRefunded} crediti to company ${companyId} for removed license ${company.idLicenza}`);
+                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
             } else {
               console.log(`ℹ️ No credits to refund for transaction ${transaction.id} - status: ${transaction.status}, amount: ${transaction.finalAmount || transaction.final_amount}`);
