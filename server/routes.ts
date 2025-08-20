@@ -1260,17 +1260,17 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           for (const transaction of transactions) {
             if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
               const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
-              
+
               // Find the company ID for refund (could be in transaction or from client)
               let companyId = transaction.companyId;
               if (!companyId && clienteAssegnato) {
                 const client = await storage.getClientById(clienteAssegnato);
                 companyId = client?.companyId || client?.company_id;
               }
-              
+
               if (companyId) {
                 console.log(`💰 Processing refund: ${creditsToRefund} crediti to company ${companyId}`);
-                
+
                 await storage.updateWalletBalance(
                   companyId,
                   creditsToRefund,
@@ -1278,7 +1278,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
                   'rimborso',
                   user.id
                 );
-                
+
                 totalRefunded += creditsToRefund;
                 console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
@@ -1288,7 +1288,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           // Now delete the transactions after processing refunds
           await storage.deleteTransactionsByLicense(company.idLicenza);
           console.log(`🗑️ Deleted ${transactions.length} transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
-          
+
         } catch (error) {
           console.error('Error processing refunds and deleting transactions:', error);
         }
@@ -1929,15 +1929,15 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
     let totalRefunded = 0;
     for (const transaction of transactions) {
       console.log(`🔍 Transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed}`);
-      
+
       if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
         // Refund credits to company wallet
         const companyId = transaction.companyId || existingLicense.client?.companyId || existingLicense.assignedCompany;
         const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
-        
+
         if (companyId) {
           console.log(`💰 Refunding ${creditsToRefund} crediti to company ${companyId} for deleted license`);
-          
+
           await storage.updateWalletBalance(
             companyId,
             creditsToRefund,
@@ -1945,7 +1945,7 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
             'rimborso',
             user.id
           );
-          
+
           totalRefunded += creditsToRefund;
           console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for deleted license ${licenseId}`);
         } else {
@@ -2003,15 +2003,15 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
 
     for (const transaction of transactions) {
       console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed}`);
-      
+
       if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
         // Refund credits to company wallet
         const companyId = transaction.companyId || existingLicense.client?.companyId || existingLicense.assignedCompany;
         const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
-        
+
         if (companyId) {
           console.log(`💰 Refunding ${creditsToRefund} crediti to company ${companyId} for transaction ${transaction.id}`);
-          
+
           await storage.updateWalletBalance(
             companyId,
             creditsToRefund,
@@ -2019,7 +2019,7 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
             'rimborso',
             user.id
           );
-          
+
           totalRefunded += creditsToRefund;
           refundsProcessed++;
           console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for unassigned license ${licenseId}`);
@@ -2378,51 +2378,64 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
     const user = (req as any).user;
     const transactionId = req.params.id;
 
-    console.log(`Delete transaction request for ID: ${transactionId} by user: ${user.username} (${user.role})`);
-
     // Only superadmin can delete transactions
     if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo superadmin può eliminare le transazioni" });
+      return res.status(403).json({ message: "Only superadmin can delete transactions" });
     }
 
-    const existingTransaction = await storage.getTransactionById(transactionId);
-    if (!existingTransaction) {
-      return res.status(404).json({ message: "Transazione non trovata" });
+    // Get the transaction to check for wallet payments that need refunds
+    const transaction = await storage.getTransaction(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
     }
 
-    // Check if transaction used wallet credits and refund if necessary
-    if (existingTransaction.status === 'pagato_crediti' && existingTransaction.creditsUsed && parseFloat(existingTransaction.creditsUsed.toString()) > 0) {
-      const companyId = existingTransaction.companyId;
+    console.log(`🔍 Processing transaction deletion: ${transactionId}`);
+    console.log(`📊 Transaction details:`, {
+      id: transaction.id,
+      status: transaction.status,
+      creditsUsed: transaction.creditsUsed,
+      companyId: transaction.companyId,
+      finalAmount: transaction.final_amount
+    });
+
+    // Process refund if this was a credit payment
+    let refundAmount = 0;
+    let updatedWallet = null;
+
+    if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
+      const companyId = transaction.companyId;
+      const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+
       if (companyId) {
-        await storage.updateWalletBalance(
+        console.log(`💰 Refunding ${creditsToRefund} crediti to company ${companyId} for deleted transaction`);
+
+        updatedWallet = await storage.updateWalletBalance(
           companyId,
-          parseFloat(existingTransaction.creditsUsed.toString()),
+          creditsToRefund,
           `Rimborso per eliminazione transazione ${transactionId}`,
           'rimborso',
           user.id
         );
-        console.log(`💰 Refunded ${existingTransaction.creditsUsed} crediti to company ${companyId} for deleted transaction ${transactionId}`);
-        
-        // Also delete the original wallet transaction that debited the credits
-        try {
-          await storage.deleteWalletTransactionByLicense(existingTransaction.licenseId);
-          console.log(`🗑️ Deleted wallet transaction for license ${existingTransaction.licenseId}`);
-        } catch (error) {
-          console.error('Error deleting wallet transaction:', error);
-        }
+
+        refundAmount = creditsToRefund;
+        console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId}. New balance: ${updatedWallet?.balance || 'unknown'}`);
       }
     }
 
+    // Delete the transaction
     await storage.deleteTransaction(transactionId);
-    console.log(`Transaction ${transactionId} deleted successfully`);
+    console.log(`🗑️ Transaction ${transactionId} deleted successfully with ${refundAmount > 0 ? `${refundAmount} crediti refunded` : 'no refund needed'}`);
 
     res.json({ 
-      message: "Transazione eliminata con successo",
-      refundProcessed: existingTransaction.status === 'pagato_crediti' && parseFloat(existingTransaction.creditsUsed?.toString() || '0') > 0
+      message: "Transaction deleted successfully",
+      refundProcessed: refundAmount > 0,
+      refundAmount: refundAmount,
+      updatedWallet: updatedWallet,
+      deletedTransactionId: transactionId
     });
   } catch (error) {
     console.error('Delete transaction error:', error);
-    res.status(500).json({ message: "Errore interno del server" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -3278,7 +3291,7 @@ router.post("/api/wallet/:companyId/create-payment-intent", authenticateToken, a
     const { companyId } = req.params;
     const { amount } = req.body;
 
-    // Only admin of the company can recharge their wallet
+    // Only admin can recharge their wallet
     if (user.role !== 'admin' && user.role !== 'superadmin') {
       return res.status(403).json({ message: "Solo gli admin possono ricaricare il wallet" });
     }

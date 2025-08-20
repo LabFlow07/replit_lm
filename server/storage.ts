@@ -1399,7 +1399,9 @@ class DatabaseStorage implements IStorage {
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      created_at: row.created_at
+      created_at: row.created_at,
+      creditsUsed: parseFloat(row.credits_used || '0'), // Add this field for refund processing
+      modifiedBy: row.modified_by
     };
   }
 
