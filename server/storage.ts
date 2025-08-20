@@ -916,29 +916,8 @@ class DatabaseStorage implements IStorage {
       insertLicense.renewalPeriod || null
     ]);
 
-    // Ottieni informazioni del client per la transazione
-    const client = await this.getClientById(insertLicense.clientId);
-    const clientCompanyId = client?.companyId || client?.company_id;
-
-    // Crea SEMPRE una transazione (anche per prezzo 0)
-    const transactionAmount = parseFloat(insertLicense.price?.toString() || '0');
-    const discountAmount = parseFloat(insertLicense.discount?.toString() || '0');
-    const finalAmount = transactionAmount - discountAmount;
-
-    await this.createTransaction({
-      licenseId: id,
-      clientId: insertLicense.clientId,
-      companyId: clientCompanyId || null,
-      type: transactionAmount > 0 ? 'attivazione' : 'gratuita',
-      amount: transactionAmount.toString(),
-      discount: discountAmount.toString(),
-      finalAmount: finalAmount.toString(),
-      paymentMethod: transactionAmount > 0 ? 'manuale' : 'gratis',
-      status: transactionAmount > 0 ? 'in_attesa' : 'gratis',
-      notes: transactionAmount > 0 
-        ? 'Transazione creata automaticamente - in attesa pagamento' 
-        : 'Licenza gratuita - nessun pagamento richiesto'
-    });
+    // NON creare automaticamente la transazione durante la creazione della licenza
+    // La transazione verrà creata solo durante l'assegnazione/attivazione della licenza
 
     return { 
       ...insertLicense, 

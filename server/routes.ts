@@ -1253,7 +1253,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
         // Get the license details for transaction creation
         const license = await storage.getLicense(company.idLicenza);
-        
+
         // Get transactions to process refunds FIRST, then delete them
         try {
           const transactions = await storage.getTransactionsByLicense(company.idLicenza);
@@ -1261,14 +1261,14 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
           let totalRefunded = 0;
           let refundCompanyId = null;
-          
+
           // STEP 1: Process all refunds BEFORE deleting transactions
           for (const transaction of transactions) {
             console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed || transaction.credits_used}, finalAmount=${transaction.finalAmount || transaction.final_amount}`);
-            
+
             // Check for credits to refund - look at multiple fields for paid transactions
             let creditsToRefund = 0;
-            
+
             // For transactions paid with credits, try to find the refund amount from multiple sources
             if (transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') {
               // Priority 1: creditsUsed field (exact credits used)
@@ -1796,22 +1796,8 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     // Calculate final amount
     const finalAmount = Math.max(0, price - discount);
 
-    // Handle automatic wallet payment (default is 'crediti')
-    const shouldUseWallet = (paymentMethod === 'wallet' || paymentMethod === 'crediti' || !paymentMethod) && finalAmount > 0;
-
-    if (shouldUseWallet) {
-      const companyId = client.company_id || client.companyId;
-
-      // Check if company has sufficient wallet balance
-      const wallet = await storage.getCompanyWallet(companyId);
-      if (!wallet || parseFloat(wallet.balance?.toString() || '0') < finalAmount) {
-        return res.status(400).json({ 
-          message: `Saldo wallet insufficiente. Richiesto: ${finalAmount} crediti, Disponibile: ${wallet ? wallet.balance : 0} crediti` 
-        });
-      }
-
-      console.log(`💳 Automatic wallet payment: ${finalAmount} crediti from company ${companyId}`);
-    }
+    // Non effettuare controlli wallet durante la creazione - solo durante l'assegnazione
+    console.log(`📋 Licenza creata - pagamento e transazioni verranno gestiti durante l'assegnazione`);
 
     const licenseData = {
       clientId,
@@ -1837,66 +1823,7 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     const license = await storage.createLicense(licenseData);
 
     // If automatic wallet payment and amount > 0, deduct credits and create transactions
-    if (shouldUseWallet) {
-      const companyId = client.company_id || client.companyId;
-
-      // Deduct credits from wallet and create wallet transaction
-      const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
-
-      if (success) {
-        console.log(`💳 Automatic wallet payment successful: License ${license.id}, Company ${companyId}, Amount ${finalAmount} crediti`);
-
-        // Create main transaction record (paid status)
-        const transactionData = {
-          id: nanoid(),
-          licenseId: license.id,
-          clientId: client.id,
-          companyId: client.companyId,
-          type: 'attivazione',
-          amount: (price || 0).toString(),
-          discount: (discount || 0).toString(),
-          finalAmount: finalAmount.toString(),
-          paymentMethod: 'crediti',
-          status: 'pagato_crediti',
-          creditsUsed: finalAmount,
-          paymentDate: new Date(),
-          modifiedBy: user.id,
-          notes: `Pagamento automatico con crediti per licenza ${license.activationKey}`
-        };
-
-        const transaction = await storage.createTransaction(transactionData);
-        console.log(`📋 Transaction created: ${transaction.id} for license ${license.id}`);
-
-        // Update license status to 'attiva' since payment is completed
-        await storage.updateLicense(license.id, { status: 'attiva' });
-        license.status = 'attiva';
-
-      } else {
-        // If wallet charge fails, delete the created license
-        await storage.deleteLicense(license.id);
-        return res.status(400).json({ message: "Errore durante il pagamento automatico con crediti" });
-      }
-    } else if (finalAmount > 0) {
-      // Create unpaid transaction for non-wallet payments
-      const transactionData = {
-        id: nanoid(),
-        licenseId: license.id,
-        clientId: client.id,
-        companyId: client.companyId,
-        type: 'attivazione',
-        amount: (price || 0).toString(),
-        discount: (discount || 0).toString(),
-        finalAmount: finalAmount.toString(),
-        paymentMethod: paymentMethod || 'bonifico',
-        status: 'in_attesa',
-        creditsUsed: 0,
-        modifiedBy: user.id,
-        notes: `Transazione in attesa per licenza ${license.activationKey}`
-      };
-
-      const transaction = await storage.createTransaction(transactionData);
-      console.log(`📋 Unpaid transaction created: ${transaction.id} for license ${license.id}`);
-    }
+    // This logic is now deferred to the license assignment/classification step
 
     console.log('License created successfully:', license.id);
     res.json(license);
@@ -3519,12 +3446,7 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
 
     console.log(`💳 Test wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
 
-    res.json({ 
-      message: "Ricarica completata con successo",
-      wallet,
-      amount: amount,
-      paymentMethod
-    });
+    res.json(wallet);
   } catch (error) {
     console.error('Recharge wallet error:', error);
     res.status(500).json({ message: "Internal server error" });
