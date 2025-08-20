@@ -1058,59 +1058,70 @@ export default function SoftwareRegistrations() {
                       </td>
 
                       <td className="p-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user?.role === 'superadmin' && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedRegistration(registration);
-                                  setIsClassifyDialogOpen(true);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Classifica
-                              </DropdownMenuItem>
-                            )}
+                        <div className="flex items-center gap-2">
+                          {/* Icona Visualizza - sempre visibile */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleViewRegistration(registration.id)}
+                            title="Visualizza dettagli"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
 
-                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedRegistration(registration);
-                                  setIsClassifyDialogOpen(true);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <Key className="h-4 w-4 mr-2" />
-                                Convalida Computer Key
-                              </DropdownMenuItem>
-                            )}
-
-                            <DropdownMenuItem
-                              onClick={() => handleViewRegistration(registration.id)}
-                              className="cursor-pointer"
+                          {/* Icona Computer Key - solo per admin/superadmin e se non c'è già la chiave */}
+                          {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-8 w-8 p-0 ${registration.computerKey ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={() => {
+                                if (!registration.computerKey) {
+                                  handleValidateKey(registration);
+                                }
+                              }}
+                              disabled={!!registration.computerKey}
+                              title={registration.computerKey ? "Computer Key già presente" : "Convalida Computer Key"}
                             >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Visualizza
-                            </DropdownMenuItem>
+                              <Key className="h-4 w-4" />
+                            </Button>
+                          )}
 
-                            {user?.role === 'superadmin' && (
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteRegistration(registration.id)}
-                                className="cursor-pointer text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Elimina
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          {/* Menu dropdown per altre azioni */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {user?.role === 'superadmin' && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedRegistration(registration);
+                                    setIsClassifyDialogOpen(true);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Classifica
+                                </DropdownMenuItem>
+                              )}
+
+                              {user?.role === 'superadmin' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteRegistration(registration.id)}
+                                  className="cursor-pointer text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   ))}
