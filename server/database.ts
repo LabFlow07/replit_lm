@@ -216,7 +216,7 @@ class Database {
                 break;
             }
           }
-        } catch (e) { 
+        } catch (e: any) { 
           console.log(`Error checking/adding column ${column}:`, e.message);
         }
       }
@@ -242,7 +242,7 @@ class Database {
                 break;
             }
           }
-        } catch (e) { 
+        } catch (e: any) { 
           console.log(`Error checking/adding license column ${column}:`, e.message);
         }
       }
@@ -365,7 +365,7 @@ class Database {
         } else {
           console.log('⚠️  Colonna supported_license_types già rimossa o non esistente');
         }
-      } catch (e) { 
+      } catch (e: any) { 
         console.log('⚠️  Errore controllo/rimozione colonna supported_license_types:', e.message);
       }
 
@@ -396,7 +396,7 @@ class Database {
                 break;
             }
           }
-        } catch (e) { 
+        } catch (e: any) { 
           console.log(`Error checking/adding product column ${column}:`, e.message);
         }
       }

@@ -18,7 +18,7 @@ import Sidebar from '@/components/layout/sidebar';
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/hooks/use-auth"; // Import useAuth hook
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
-import { toast } from "@/components/ui/use-toast"; // Import toast
+import { useToast } from "@/hooks/use-toast";
 
 // Mock user for role checking, replace with actual auth context in a real app
 // const user = {
@@ -270,7 +270,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     setIsOpen(true);
     if (!e.target.value) {
       setSelectedClient(null);
-      onCompanySelect(''); // Clear selection if input is cleared
+      onClientSelect(''); // Clear selection if input is cleared
     }
   };
 
@@ -322,6 +322,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
 export default function SoftwareRegistrations() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [searchInput, setSearchInput] = useState(''); // State for the input field
   const [searchTerm, setSearchTerm] = useState(''); // State for the actual search term after user action
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -331,7 +332,7 @@ export default function SoftwareRegistrations() {
   const { contentMargin } = useSidebar();
   const { user } = useAuth(); // Use the actual user from useAuth hook
 
-  const { register, handleSubmit, reset, setValue, watch, isSubmitting } = useForm<any>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm<any>({
     defaultValues: {
       authorizeDevice: false // Default value for the checkbox
     }
