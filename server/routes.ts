@@ -1138,11 +1138,11 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         idLicenza: licenzaAssegnata
       });
 
-      // Generate automatic transaction and process wallet payment for license assignment
+      // Generate automatic transaction and process payment for license assignment
         try {
           // Ottieni informazioni del client per la transazione
           const client = await storage.getClientById(clienteAssegnato);
-          const clientCompanyId = client?.companyId || client?.company_id;
+          const clientCompanyId = client?.companyId || client?.companyId;
 
           // Calcola l'importo finale
           const transactionAmount = parseFloat(license.price?.toString() || '0');
@@ -2680,130 +2680,6 @@ router.delete("/api/software/registrazioni/:id", authenticateToken, async (req: 
   }
 });
 
-// License validation endpoint for software clients
-router.post("/api/software/validate", async (req: Request, res: Response) => {
-  try {
-    const {
-      partitaIva,
-      nomeSoftware,
-      computerKey,
-      machineInfo
-    } = req.body;
-
-    // Input validation
-    if (!partitaIva || !nomeSoftware || !computerKey) {
-      return res.status(400).json({ 
-        success: false,
-        deviceAuthorized: false,
-        message: "Campi obbligatori: partitaIva, nomeSoftware, computerKey" 
-      });
-    }
-
-    // Get company registration
-    const testaReg = await storage.getTestaRegAziendaByPartitaIva(partitaIva);
-    if (!testaReg) {
-      return res.json({
-        success: false,
-        deviceAuthorized: false,
-        licenseValidityDays: 0,
-        message: "Azienda non registrata nel sistema"
-      });
-    }
-
-    // Check if license is assigned
-    if (!testaReg.idLicenza) {
-      return res.json({
-        success: false,
-        deviceAuthorized: false,
-        licenseValidityDays: 0,
-        message: "Nessuna licenza assegnata per questa azienda"
-      });
-    }
-
-    // Get license details
-    const license = await storage.getLicense(testaReg.idLicenza);
-    if (!license) {
-      return res.json({
-        success: false,
-        deviceAuthorized: false,
-        licenseValidityDays: 0,
-        message: "Licenza non trovata"
-      });
-    }
-
-    // Check license status
-    if (license.status !== 'attiva') {
-      return res.json({
-        success: false,
-        deviceAuthorized: false,
-        licenseValidityDays: 0,
-        message: `Licenza non attiva (stato: ${license.status})`
-      });
-    }
-
-    // Check device authorization
-    const device = await storage.getDettRegAziendaByComputerKey(computerKey);
-    if (!device || device.computerKey !== computerKey || device.partitaIva !== partitaIva) {
-      return res.json({
-        success: false,
-        deviceAuthorized: false,
-        licenseValidityDays: 0,
-        message: "Dispositivo non autorizzato per questa licenza"
-      });
-    }
-
-    // Calculate remaining validity days
-    let validityDays = -1; // Default for permanent licenses
-    if (license.expiryDate) {
-      const expiryDate = new Date(license.expiryDate);
-      const today = new Date();
-      const timeDiff = expiryDate.getTime() - today.getTime();
-      validityDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-      // Check if license is expired
-      if (validityDays <= 0) {
-        return res.json({
-          success: false,
-          deviceAuthorized: false,
-          licenseValidityDays: 0,
-          message: "Licenza scaduta"
-        });
-      }
-    }
-
-    // Update last access for device
-    await storage.updateDettRegAzienda(device.id, {
-      dataUltimoAccesso: new Date().toISOString().replace('T', ' ').split('.')[0]
-    });
-
-    // Return success response
-    const response = {
-      success: true,
-      deviceAuthorized: true,
-      licenseValidityDays: validityDays,
-      licenseType: license.licenseType,
-      maxDevices: license.maxDevices,
-      maxUsers: license.maxUsers,
-      activationKey: license.activationKey,
-      message: validityDays > 0 
-        ? `Licenza valida per ${validityDays} giorni`
-        : "Licenza permanente valida"
-    };
-
-    console.log(`License validation successful for ${partitaIva} - ${computerKey}: ${validityDays} days remaining`);
-    res.json(response);
-
-  } catch (error) {
-    console.error('License validation error:', error);
-    res.status(500).json({ 
-      success: false,
-      deviceAuthorized: false,
-      licenseValidityDays: 0,
-      message: "Errore interno del server durante la validazione" 
-    });
-  }
-});
-
 // Software registration endpoint (anonymous - for client software registrations)
 router.post("/api/software/register", async (req: Request, res: Response) => {
   try {
@@ -2938,7 +2814,7 @@ router.get("/api/debug-users", async (req: Request, res: Response) => {
   }
 });
 
-// Initialize admin user if not exists
+// Init admin user if not exists
 router.post("/api/init-admin", async (req: Request, res: Response) => {
   try {
     // Delete all admin users first
@@ -3417,14 +3293,13 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
     const { companyId } = req.params;
     const { amount, paymentMethod = 'test' } = req.body;
 
-    // Only admin of the company can recharge their wallet
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo gli admin possono ricaricare il wallet" });
-    }
-
-    // Admin can only recharge their own company wallet
-    if (user.role === 'admin' && user.companyId !== companyId) {
-      return res.status(403).json({ message: "Puoi ricaricare solo il wallet della tua azienda" });
+    // Only admin can recharge their own company wallet
+    if (user.role !== 'superadmin') {
+      if (user.role === 'admin' && user.companyId !== companyId) {
+        return res.status(403).json({ message: "Puoi ricaricare solo il wallet della tua azienda" });
+      } else if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Solo gli admin possono ricaricare i wallet" });
+      }
     }
 
     if (!amount || amount <= 0) {
@@ -3440,10 +3315,10 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
       user.id
     );
 
-    console.log(`💳 Test wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
+    console.log(`💳 Test wallet recharged: Company ${companyId}, Amount ${amount} crediti, New balance: ${wallet.balance}`);
 
     res.json(wallet);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Recharge wallet error:', error);
     res.status(500).json({ message: "Internal server error" });
   }

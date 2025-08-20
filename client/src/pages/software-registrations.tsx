@@ -11,20 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Edit, Trash2, Key } from "lucide-react";
+import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Edit, Trash2, Key, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/hooks/use-auth"; // Import useAuth hook
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
+import { toast } from "@/components/ui/use-toast"; // Import toast
 
 // Mock user for role checking, replace with actual auth context in a real app
 // const user = {
 //   role: 'superadmin' // or 'admin', 'user', etc.
 // };
 // Use the actual user from useAuth hook
-const { user } = useAuth();
+// const { user } = useAuth();
 
 
 interface SoftwareRegistration {
@@ -100,12 +101,31 @@ interface CompanySearchInputProps {
   companies: Company[];
   onCompanySelect: (companyId: string) => void;
   placeholder?: string;
+  initialCompanyId?: string | null; // Prop for initial company selection
 }
 
-function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca azienda..." }: CompanySearchInputProps) {
+function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca azienda...", initialCompanyId }: CompanySearchInputProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+  // Set initial company if provided and not already selected
+  useEffect(() => {
+    if (initialCompanyId && !selectedCompany) {
+      const company = companies.find(c => c.id === initialCompanyId);
+      if (company) {
+        setSelectedCompany(company);
+        setSearchTerm(company.name || '');
+        onCompanySelect(company.id);
+      }
+    } else if (!initialCompanyId) {
+      // Clear selection if initialCompanyId is null or undefined
+      setSelectedCompany(null);
+      setSearchTerm('');
+      onCompanySelect('');
+    }
+  }, [initialCompanyId, companies, onCompanySelect, selectedCompany]);
+
 
   // Filtra le aziende in base al termine di ricerca
   // Safe arrays
@@ -210,6 +230,13 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     return company ? company.name : 'N/A';
   };
 
+  // Reset search term and selected client when companyId changes
+  useEffect(() => {
+    setSearchTerm("");
+    setSelectedClient(null);
+    onClientSelect(''); // Also clear the selected client ID when company changes
+  }, [companyId, onClientSelect]);
+
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
     // Filtra RIGOROSAMENTE per azienda - deve corrispondere esattamente
@@ -243,19 +270,9 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     setIsOpen(true);
     if (!e.target.value) {
       setSelectedClient(null);
-      onClientSelect('');
+      onCompanySelect(''); // Clear selection if input is cleared
     }
   };
-
-  // Reset quando cambia l'azienda
-  useEffect(() => {
-    if (companyId !== (selectedClient?.companyId || selectedClient?.company_id)) {
-      setSearchTerm("");
-      setSelectedClient(null);
-      setIsOpen(false);
-      onClientSelect('');
-    }
-  }, [companyId]);
 
   return (
     <div className="relative client-search-container">
@@ -310,7 +327,9 @@ export default function SoftwareRegistrations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
+  const [validatingId, setValidatingId] = useState<string | null>(null); // State for validating key
   const { contentMargin } = useSidebar();
+  const { user } = useAuth(); // Use the actual user from useAuth hook
 
   const { register, handleSubmit, reset, setValue, watch, isSubmitting } = useForm<any>({
     defaultValues: {
@@ -554,6 +573,59 @@ export default function SoftwareRegistrations() {
       alert(`Errore nella classificazione: ${error.message}`);
     }
   });
+
+  // Handle computer key validation
+  const handleValidateKey = async (registration: any) => {
+    if (!registration.computerKey) {
+      toast({
+        title: "Errore",
+        description: "Computer key mancante",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidatingId(registration.id);
+
+    try {
+      const response = await fetch('/api/software-registrations/validate-key', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          registrationId: registration.id,
+          computerKey: registration.computerKey
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Errore nella validazione');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "Successo",
+        description: "Computer key convalidata con successo",
+      });
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+
+    } catch (error: any) {
+      console.error('Validation error:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la convalida della computer key",
+        variant: "destructive",
+      });
+    } finally {
+      setValidatingId(null);
+    }
+  };
 
   const onClassifySubmit = (data: any) => {
     classifyMutation.mutate(data);
@@ -1095,7 +1167,6 @@ export default function SoftwareRegistrations() {
                       setValue('prodottoAssegnato', null);
                     }}
                     placeholder="Cerca azienda per nome o P.IVA..."
-                    // Set initial company based on selected registration's client's company
                     initialCompanyId={selectedRegistration?.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.company_id || safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.companyId : undefined}
                   />
                 </div>

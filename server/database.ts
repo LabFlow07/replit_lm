@@ -356,12 +356,17 @@ class Database {
 
       // Credits support already handled above in the column check loop
 
-      // Remove supported_license_types column from products table
+      // Check if supported_license_types column exists before dropping it
       try {
-        await this.query(`ALTER TABLE products DROP COLUMN supported_license_types`);
-        console.log('✅ Rimossa colonna supported_license_types dalla tabella products');
+        const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND COLUMN_NAME = 'supported_license_types'`);
+        if (columnExists.length > 0) {
+          await this.query(`ALTER TABLE products DROP COLUMN supported_license_types`);
+          console.log('✅ Rimossa colonna supported_license_types dalla tabella products');
+        } else {
+          console.log('⚠️  Colonna supported_license_types già rimossa o non esistente');
+        }
       } catch (e) { 
-        console.log('⚠️  Colonna supported_license_types già rimossa o non esistente');
+        console.log('⚠️  Errore controllo/rimozione colonna supported_license_types:', e.message);
       }
 
       // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields to products
