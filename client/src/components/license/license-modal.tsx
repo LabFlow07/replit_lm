@@ -341,38 +341,39 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   </span>
                 )}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-600">Prezzo:</span>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600 mt-1">Prezzo:</span>
                 {isEditing ? (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex gap-1 items-center">
+                  <div className="flex flex-col gap-2 w-32">
+                    <div className="flex gap-2 items-center">
                       <Input
                         type="number"
                         step="1"
                         value={editedLicense.price || license.price || 0}
                         onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-6 text-xs w-16"
+                        className="h-8 text-sm w-24 font-mono"
                         placeholder="0"
                         min="0"
+                        max="9999999999"
                       />
-                      <span className="text-xs text-gray-600">cr</span>
+                      <span className="text-sm text-gray-600 font-medium">cr</span>
                     </div>
-                    <div className="flex gap-1 items-center">
+                    <div className="flex gap-2 items-center">
                       <Input
                         type="number"
                         step="0.01"
                         value={editedLicense.discount || license.discount || 0}
                         onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-6 text-xs w-16"
-                        placeholder="0"
+                        className="h-8 text-sm w-24 font-mono"
+                        placeholder="0.00"
                         max="100"
                         min="0"
                       />
-                      <span className="text-xs text-gray-600">%</span>
+                      <span className="text-sm text-gray-600 font-medium">%</span>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-xs font-medium text-gray-900 text-right">
+                  <span className="text-sm font-medium text-gray-900 text-right">
                     {Math.round(parseFloat((license.price || 0).toString()))} crediti
                     {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
                       <span className="text-green-600 ml-1">
@@ -380,7 +381,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                       </span>
                     )}
                   </span>
-                )}
+                )}</div>
               </div>
             </div>
           </div>
