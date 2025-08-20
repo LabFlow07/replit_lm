@@ -449,46 +449,6 @@ function WalletContent() {
           </div>
         </div>
 
-        {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Cerca Azienda</Label>
-              <Input
-                placeholder="Cerca per nome azienda..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Tipo</Label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tutti i tipi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti i tipi</SelectItem>
-                  <SelectItem value="rivenditore">Rivenditore</SelectItem>
-                  <SelectItem value="cliente">Cliente</SelectItem>
-                  <SelectItem value="sottoazienda">Sotto-azienda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Cliente Collegato</Label>
-              <Input
-                placeholder="Cerca per nome cliente..."
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
         {/* Wallet Balance Card - Compact */}
         {activeCompanyId && walletData && wallet && wallet.balance !== undefined && (
           <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white mb-6">
@@ -546,6 +506,46 @@ function WalletContent() {
 
           {/* Tab 1: Panoramica */}
           <TabsContent value="panoramica" className="space-y-4">
+            {/* Filters - Only visible in Panoramica tab */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Cerca Azienda</Label>
+                    <Input
+                      placeholder="Cerca per nome azienda..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Tipo</Label>
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tutti i tipi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti i tipi</SelectItem>
+                        <SelectItem value="rivenditore">Rivenditore</SelectItem>
+                        <SelectItem value="cliente">Cliente</SelectItem>
+                        <SelectItem value="sottoazienda">Sotto-azienda</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Cliente Collegato</Label>
+                    <Input
+                      placeholder="Cerca per nome cliente..."
+                      value={clientFilter}
+                      onChange={(e) => setClientFilter(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Transaction History - Compact */}
             {transactions.length > 0 && (
               <Card>
