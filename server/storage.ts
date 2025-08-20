@@ -661,11 +661,13 @@ class DatabaseStorage implements IStorage {
     const updateFields = [];
     const updateValues = [];
 
-    if (updates.name) {
+    console.log('🔧 updateProduct called with updates:', updates);
+
+    if (updates.name !== undefined) {
       updateFields.push('name = ?');
       updateValues.push(updates.name);
     }
-    if (updates.version) {
+    if (updates.version !== undefined) {
       updateFields.push('version = ?');
       updateValues.push(updates.version);
     }
@@ -673,7 +675,6 @@ class DatabaseStorage implements IStorage {
       updateFields.push('description = ?');
       updateValues.push(updates.description);
     }
-    
     if (updates.price !== undefined) {
       updateFields.push('price = ?');
       updateValues.push(updates.price);
@@ -682,7 +683,7 @@ class DatabaseStorage implements IStorage {
       updateFields.push('discount = ?');
       updateValues.push(updates.discount);
     }
-    if (updates.licenseType) {
+    if (updates.licenseType !== undefined) {
       updateFields.push('license_type = ?');
       updateValues.push(updates.licenseType);
     }
@@ -699,13 +700,22 @@ class DatabaseStorage implements IStorage {
       updateValues.push(updates.trialDays);
     }
 
+    if (updateFields.length === 0) {
+      console.log('⚠️ No fields to update');
+      throw new Error('No fields to update');
+    }
+
     updateValues.push(id);
 
-    await this.db.query(`
-      UPDATE products SET ${updateFields.join(', ')} WHERE id = ?
-    `, updateValues);
+    const query = `UPDATE products SET ${updateFields.join(', ')} WHERE id = ?`;
+    console.log('🔍 Executing query:', query);
+    console.log('📝 With values:', updateValues);
+
+    await this.db.query(query, updateValues);
 
     const updatedProduct = await this.getProductById(id);
+    console.log('✅ Product updated in database:', updatedProduct);
+    
     return {
       ...updatedProduct,
       price: parseFloat(updatedProduct.price || '0'),
