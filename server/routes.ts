@@ -2402,6 +2402,14 @@ router.delete("/api/transactions/:id", authenticateToken, async (req: Request, r
           user.id
         );
         console.log(`💰 Refunded ${existingTransaction.creditsUsed} crediti to company ${companyId} for deleted transaction ${transactionId}`);
+        
+        // Also delete the original wallet transaction that debited the credits
+        try {
+          await storage.deleteWalletTransactionByLicense(existingTransaction.licenseId);
+          console.log(`🗑️ Deleted wallet transaction for license ${existingTransaction.licenseId}`);
+        } catch (error) {
+          console.error('Error deleting wallet transaction:', error);
+        }
       }
     }
 

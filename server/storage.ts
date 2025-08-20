@@ -804,13 +804,13 @@ class DatabaseStorage implements IStorage {
     // 🚫 NON calcolare automaticamente la data di scadenza durante la creazione
     // La data di scadenza viene calcolata SOLO durante l'attivazione della licenza
     let expiryDate = insertLicense.expiryDate || null;
-    
+
     // SOLO se la licenza viene creata GIÀ con computerKey (attivazione immediata)
     // allora calcola la data di scadenza, altrimenti rimane NULL
     if (insertLicense.computerKey && insertLicense.activationKey) {
       console.log('🔄 Licenza creata con attivazione immediata - calcolo data scadenza');
       const baseDate = new Date();
-      
+
       if (insertLicense.licenseType === 'abbonamento_mensile') {
         expiryDate = new Date(baseDate);
         expiryDate.setMonth(expiryDate.getMonth() + 1);
@@ -897,7 +897,7 @@ class DatabaseStorage implements IStorage {
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
     console.log(`updateLicense called for license ${id} with updates:`, updates);
-    
+
     const fieldMapping: { [key: string]: string } = {
       'maxUsers': 'max_users',
       'maxDevices': 'max_devices',
@@ -944,7 +944,7 @@ class DatabaseStorage implements IStorage {
     const query = `UPDATE licenses SET ${setClause} WHERE id = ?`;
     console.log(`Executing query: ${query}`);
     console.log(`With values:`, [...values, id]);
-    
+
     await this.db.query(query, [...values, id]);
     console.log(`License ${id} updated successfully in database`);
   }
@@ -1526,21 +1526,21 @@ class DatabaseStorage implements IStorage {
         clientId: row.client_id,
         productId: row.product_id,
         activationKey: row.activation_key,
-        computerKey: row.computer_key,
-        activationDate: row.activation_date,
-        expiryDate: row.expiry_date,
-        licenseType: row.license_type,
+        computerKey: row.computerKey,
+        activationDate: row.activationDate,
+        expiryDate: row.expiryDate,
+        licenseType: row.licenseType,
         status: row.status,
-        maxUsers: row.max_users,
-        maxDevices: row.max_devices,
+        maxUsers: row.maxUsers,
+        maxDevices: row.maxDevices,
         price: row.price,
         discount: row.discount,
         activeModules: JSON.parse(row.active_modules || '[]'),
-        assignedCompany: row.assigned_company,
-        assignedAgent: row.assigned_agent,
-        renewalEnabled: row.renewal_enabled,
-        renewalPeriod: row.renewal_period,
-        createdAt: row.created_at,
+        assignedCompany: row.assignedCompany,
+        assignedAgent: row.assignedAgent,
+        renewalEnabled: row.renewalEnabled,
+        renewalPeriod: row.renewalPeriod,
+        createdAt: row.createdAt,
         client: {
           id: row.client_id,
           name: row.client_name,
@@ -1977,16 +1977,16 @@ class DatabaseStorage implements IStorage {
       status: row.status,
       maxUsers: row.max_users,
       maxDevices: row.max_devices,
-      expiryDate: row.expiry_date,
-      activationDate: row.activation_date,
-      computerKey: row.computer_key,
+      expiryDate: row.expiryDate,
+      activationDate: row.activationDate,
+      computerKey: row.computerKey,
       deviceInfo: row.device_info ? JSON.parse(row.device_info) : null,
       price: parseFloat(row.price || '0'),
       discount: parseFloat(row.discount || '0'),
       activeModules: JSON.parse(row.active_modules || '[]'),
-      assignedCompany: row.assigned_company,
-      assignedAgent: row.assigned_agent,
-      createdAt: row.created_at,
+      assignedCompany: row.assignedCompany,
+      assignedAgent: row.assignedAgent,
+      createdAt: row.createdAt,
       client: {
         id: row.client_id,
         name: row.client_name,
@@ -2468,9 +2468,9 @@ class DatabaseStorage implements IStorage {
       'SELECT * FROM company_wallets WHERE company_id = ?',
       [companyId]
     );
-    
+
     if (rows.length === 0) return null;
-    
+
     const row = rows[0];
     return {
       id: row.id,
@@ -2488,7 +2488,7 @@ class DatabaseStorage implements IStorage {
   async createCompanyWallet(companyId: string): Promise<CompanyWallet> {
     const walletId = randomUUID();
     const now = new Date();
-    
+
     await this.db.query(`
       INSERT INTO company_wallets (
         id, company_id, balance, total_recharges, total_spent, 
@@ -2514,7 +2514,7 @@ class DatabaseStorage implements IStorage {
     createdBy?: string | null;
   }): Promise<void> {
     const transactionId = randomUUID();
-    
+
     await this.db.query(`
       INSERT INTO wallet_transactions (
         id, company_id, type, amount, balance_before, balance_after, 
@@ -2538,7 +2538,7 @@ class DatabaseStorage implements IStorage {
       data.createdBy || null,
       new Date()
     ]);
-    
+
     console.log(`💾 Wallet transaction saved: ${data.type} ${data.amount} crediti for company ${data.companyId}`);
   }
 
@@ -2586,11 +2586,11 @@ class DatabaseStorage implements IStorage {
         toCompanyId: null,
         stripePaymentIntentId: null
       };
-      
+
       await this.createWalletTransaction(transactionData);
 
       console.log(`💳 Wallet updated: Company ${companyId}, ${type} ${amount} crediti, saldo: ${balanceBefore} → ${balanceAfter}`);
-      
+
       return await this.getCompanyWallet(companyId) as CompanyWallet;
     } catch (error) {
       console.error('Error updating wallet balance:', error);
@@ -2615,7 +2615,7 @@ class DatabaseStorage implements IStorage {
     // Verifica gerarchia aziendale
     const fromCompany = await this.getCompany(fromCompanyId);
     const toCompany = await this.getCompany(toCompanyId);
-    
+
     if (!fromCompany || !toCompany) {
       throw new Error('Azienda non trovata');
     }
@@ -2661,15 +2661,15 @@ class DatabaseStorage implements IStorage {
 
   async getWalletTransactions(companyId: string, limit: number = 50): Promise<WalletTransaction[]> {
     console.log(`🔍 getWalletTransactions: Searching for company_id = ${companyId}, limit = ${limit}`);
-    
+
     // First, let's check if the table exists and has any data
     const totalRowsQuery = await this.db.query('SELECT COUNT(*) as total FROM wallet_transactions');
     console.log(`🔍 Total wallet_transactions in database: ${totalRowsQuery[0]?.total || 0}`);
-    
+
     // Check if there are any transactions for this specific company
     const companyRowsQuery = await this.db.query('SELECT COUNT(*) as total FROM wallet_transactions WHERE company_id = ?', [companyId]);
     console.log(`🔍 Transactions for company ${companyId}: ${companyRowsQuery[0]?.total || 0}`);
-    
+
     const rows = await this.db.query(`
       SELECT 
         id,
@@ -2828,7 +2828,7 @@ class DatabaseStorage implements IStorage {
           [randomUUID(), 'stripe_secret_key', secretKey, userId, userId]
         );
       }
-      
+
       console.log('✅ Stripe configuration saved to database successfully');
     } catch (error) {
       console.error('❌ Database error saving Stripe config:', error);
@@ -2848,7 +2848,7 @@ class DatabaseStorage implements IStorage {
       }
 
       const config: {publicKey: string; secretKey: string} = { publicKey: '', secretKey: '' };
-      
+
       for (const row of rows) {
         if (row.config_key === 'stripe_public_key') {
           config.publicKey = row.config_value;
