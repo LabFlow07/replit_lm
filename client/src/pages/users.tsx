@@ -385,80 +385,123 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Users List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Utenti ({filteredUsers.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      {/* Users Grid */}
+      {filteredUsers.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nessun utente trovato</h3>
+            <p className="text-muted-foreground">
+              Non ci sono utenti che corrispondono ai criteri di ricerca.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[180px]">Nome Utente</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[120px]">Username</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[200px]">Email</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[100px]">Ruolo</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[150px]">Azienda</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[80px]">Stato</th>
+                    <th className="text-left p-3 font-medium text-sm border-r min-w-[130px]">Data Creazione</th>
+                    <th className="text-center p-3 font-medium text-sm min-w-[100px]">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center">
+                        <div className="flex justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((userItem: User) => (
+                      <tr key={userItem.id} className="border-b hover:bg-muted/25 transition-colors" data-testid={`user-row-${userItem.id}`}>
+                        <td className="p-3 border-r">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                              <Users className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="font-medium" data-testid={`text-user-name-${userItem.id}`}>
+                              {userItem.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3 border-r">
+                          <span className="text-sm font-mono">@{userItem.username}</span>
+                        </td>
+                        <td className="p-3 border-r">
+                          <span className="text-sm" data-testid={`text-user-email-${userItem.id}`}>
+                            {userItem.email}
+                          </span>
+                        </td>
+                        <td className="p-3 border-r">
+                          <Badge variant={getRoleBadgeVariant(userItem.role)} data-testid={`badge-role-${userItem.id}`}>
+                            {getRoleLabel(userItem.role)}
+                          </Badge>
+                        </td>
+                        <td className="p-3 border-r">
+                          {userItem.company ? (
+                            <div className="flex items-center gap-1">
+                              <Building className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{userItem.company.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 border-r">
+                          <Badge variant={userItem.isActive ? 'default' : 'outline'} data-testid={`badge-status-${userItem.id}`}>
+                            {userItem.isActive ? 'Attivo' : 'Inattivo'}
+                          </Badge>
+                        </td>
+                        <td className="p-3 border-r">
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(userItem.createdAt).toLocaleDateString('it-IT')}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingUser(userItem)}
+                              data-testid={`button-edit-${userItem.id}`}
+                              title="Modifica utente"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {user.id !== userItem.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteUser(userItem.id)}
+                                className="text-destructive hover:text-destructive"
+                                data-testid={`button-delete-${userItem.id}`}
+                                title="Elimina utente"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nessun utente trovato.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredUsers.map((userItem: User) => (
-                <div key={userItem.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`user-card-${userItem.id}`}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold" data-testid={`text-user-name-${userItem.id}`}>{userItem.name}</h3>
-                        <Badge variant={getRoleBadgeVariant(userItem.role)} data-testid={`badge-role-${userItem.id}`}>
-                          {getRoleLabel(userItem.role)}
-                        </Badge>
-                        {!userItem.isActive && (
-                          <Badge variant="outline" data-testid={`badge-inactive-${userItem.id}`}>Inattivo</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-user-email-${userItem.id}`}>
-                        {userItem.email} • @{userItem.username}
-                      </p>
-                      {userItem.company && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Building className="h-3 w-3" />
-                          {userItem.company.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingUser(userItem)}
-                      data-testid={`button-edit-${userItem.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    {user.id !== userItem.id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteUser(userItem.id)}
-                        className="text-destructive hover:text-destructive"
-                        data-testid={`button-delete-${userItem.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit User Modal */}
       {editingUser && (
