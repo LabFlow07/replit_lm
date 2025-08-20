@@ -1263,9 +1263,22 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           let refundCompanyId = null;
           
           for (const transaction of transactions) {
+            console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed || transaction.credits_used}, finalAmount=${transaction.finalAmount || transaction.final_amount}`);
+            
+            // Check for credits to refund - look at both creditsUsed field and final_amount for paid transactions
+            let creditsToRefund = 0;
+            
             if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
-              const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+              creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+            } else if (transaction.status === 'pagato_crediti' && transaction.credits_used && parseFloat(transaction.credits_used.toString()) > 0) {
+              creditsToRefund = parseFloat(transaction.credits_used.toString());
+            } else if ((transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') && transaction.finalAmount && parseFloat(transaction.finalAmount.toString()) > 0) {
+              creditsToRefund = parseFloat(transaction.finalAmount.toString());
+            } else if ((transaction.status === 'pagato_crediti' || transaction.paymentMethod === 'crediti') && transaction.final_amount && parseFloat(transaction.final_amount.toString()) > 0) {
+              creditsToRefund = parseFloat(transaction.final_amount.toString());
+            }
 
+            if (creditsToRefund > 0) {
               // Find the company ID for refund (could be in transaction or from client)
               let companyId = transaction.companyId;
               if (!companyId && clienteAssegnato) {
@@ -1289,6 +1302,8 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
                 refundCompanyId = companyId;
                 console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
+            } else {
+              console.log(`ℹ️ No credits to refund for transaction ${transaction.id} - status: ${transaction.status}, amount: ${transaction.finalAmount || transaction.final_amount}`);
             }
           }
 
