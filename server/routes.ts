@@ -1276,6 +1276,12 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
               if (companyId) {
                 console.log(`💰 Processing refund: ${creditsToRefund} crediti to company ${companyId}`);
 
+                // Get current wallet balance before refund
+                const currentWallet = await storage.getCompanyWallet(companyId);
+                const balanceBefore = currentWallet?.balance || 0;
+                const balanceAfter = balanceBefore + creditsToRefund;
+
+                // Update wallet balance
                 await storage.updateWalletBalance(
                   companyId,
                   creditsToRefund,
@@ -1286,49 +1292,9 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
                 totalRefunded += creditsToRefund;
                 refundCompanyId = companyId;
-                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
+                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}. Balance: ${balanceBefore} → ${balanceAfter}`);
               }
             }
-          }
-
-          // Create a wallet refund transaction that will appear in wallet history
-          if (totalRefunded > 0 && refundCompanyId && license) {
-            // Create the wallet transaction directly for better visibility
-            await storage.createWalletTransaction({
-              companyId: refundCompanyId,
-              type: 'rimborso',
-              amount: totalRefunded,
-              balanceBefore: 0, // Will be calculated by updateWalletBalance
-              balanceAfter: 0, // Will be calculated by updateWalletBalance  
-              description: `Rimborso per rimozione licenza ${license.activationKey} da registrazione software ${partitaIva}`,
-              relatedEntityType: 'license_refund',
-              relatedEntityId: company.idLicenza,
-              fromCompanyId: null,
-              toCompanyId: null,
-              stripePaymentIntentId: null,
-              createdBy: user.id
-            });
-
-            console.log(`💰 Created wallet refund transaction for ${totalRefunded} crediti to company ${refundCompanyId}`);
-            
-            // Also create a main transaction for record keeping
-            const refundTransaction = await storage.createTransaction({
-              licenseId: company.idLicenza,
-              clientId: clienteAssegnato || license.clientId,
-              companyId: refundCompanyId,
-              type: 'rimborso',
-              amount: totalRefunded.toString(),
-              discount: '0',
-              finalAmount: totalRefunded.toString(),
-              paymentMethod: 'crediti',
-              status: 'rimborsato',
-              creditsUsed: -totalRefunded, // Negative because it's a refund
-              paymentDate: new Date(),
-              modifiedBy: user.id,
-              notes: `Rimborso per rimozione assegnazione licenza ${license.activationKey} da registrazione software ${partitaIva}`
-            });
-            
-            console.log(`📋 Created refund transaction: ${refundTransaction.id} for ${totalRefunded} crediti`);
           }
 
           // Now delete the original transactions after processing refunds
