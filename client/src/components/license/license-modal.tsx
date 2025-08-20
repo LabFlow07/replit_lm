@@ -163,7 +163,7 @@ interface LicenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit?: () => void;
-  isEditMode: boolean;
+  isEditMode?: boolean;
   canEdit?: boolean;
 }
 
@@ -193,13 +193,24 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
 
     try {
       const token = localStorage.getItem('token');
+      
+      // Prepara i dati per l'aggiornamento
+      const updateData = {
+        ...editedLicense,
+        // Assicurati che i valori numerici siano corretti
+        maxUsers: parseInt(editedLicense.maxUsers?.toString() || '1'),
+        maxDevices: parseInt(editedLicense.maxDevices?.toString() || '1'),
+        price: parseFloat(editedLicense.price?.toString() || '0'),
+        discount: parseFloat(editedLicense.discount?.toString() || '0')
+      };
+
       const response = await fetch(`/api/licenses/${license.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editedLicense)
+        body: JSON.stringify(updateData)
       });
 
       if (response.ok) {
@@ -342,25 +353,32 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                 <div>
                   <p className="text-sm font-medium text-gray-700">Prezzo</p>
                   {isEditing ? (
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        step="1"
-                        value={editedLicense.price || license.price || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-8 text-sm"
-                        placeholder="0"
-                      />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={editedLicense.discount || license.discount || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-8 text-sm w-20"
-                        placeholder="% sconto"
-                        max="100"
-                        min="0"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="number"
+                          step="1"
+                          value={editedLicense.price || license.price || 0}
+                          onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                          className="h-8 text-sm flex-1"
+                          placeholder="0"
+                          min="0"
+                        />
+                        <span className="text-sm text-gray-600 whitespace-nowrap">crediti</span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editedLicense.discount || license.discount || 0}
+                          onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                          className="h-8 text-sm flex-1"
+                          placeholder="0"
+                          max="100"
+                          min="0"
+                        />
+                        <span className="text-sm text-gray-600">% sconto</span>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-900 font-semibold">
