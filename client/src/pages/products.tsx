@@ -535,30 +535,30 @@ export default function ProductsPage() {
                           <div className="flex justify-center space-x-1">
                             {(user.role === 'superadmin' || user.role === 'admin') && (
                               <>
-                                {user.role === 'superadmin' && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditProduct({
-                                        name: product.name,
-                                        version: product.version,
-                                        description: product.description || '',
-                                        licenseType: product.licenseType,
-                                        price: product.price || 0,
-                                        discount: product.discount || 0,
-                                        maxUsers: product.maxUsers || 1,
-                                        maxDevices: product.maxDevices || 1,
-                                        trialDays: product.trialDays || 30
-                                      });
-                                      setSelectedProduct(product);
-                                      setIsEditModalOpen(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800"
-                                  >
-                                    <i className="fas fa-edit text-sm"></i>
-                                  </Button>
-                                )}
+                                {/* View button - available for both superadmin and admin */}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditProduct({
+                                      name: product.name,
+                                      version: product.version,
+                                      description: product.description || '',
+                                      licenseType: product.licenseType,
+                                      price: product.price || 0,
+                                      discount: product.discount || 0,
+                                      maxUsers: product.maxUsers || 1,
+                                      maxDevices: product.maxDevices || 1,
+                                      trialDays: product.trialDays || 30
+                                    });
+                                    setSelectedProduct(product);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title={user.role === 'superadmin' ? "Modifica prodotto" : "Visualizza dettagli prodotto"}
+                                >
+                                  <i className={`fas ${user.role === 'superadmin' ? 'fa-edit' : 'fa-eye'} text-sm`}></i>
+                                </Button>
 
                                 {user.role === 'superadmin' && (
                                   <Button 
@@ -588,6 +588,7 @@ export default function ProductsPage() {
                                         }
                                       }
                                     }}
+                                    title="Elimina prodotto"
                                   >
                                     <i className="fas fa-trash text-sm"></i>
                                   </Button>
@@ -610,9 +611,13 @@ export default function ProductsPage() {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifica Prodotto</DialogTitle>
+            <DialogTitle>
+              {user.role === 'superadmin' ? 'Modifica Prodotto' : 'Dettagli Prodotto'}
+            </DialogTitle>
             <DialogDescription>
-              Modifica i dettagli del prodotto selezionato
+              {user.role === 'superadmin' 
+                ? 'Modifica i dettagli del prodotto selezionato' 
+                : 'Visualizza i dettagli del prodotto selezionato'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
@@ -624,6 +629,7 @@ export default function ProductsPage() {
                 onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
                 placeholder="es. AutoCAD Professional"
                 required
+                disabled={user.role !== 'superadmin'}
               />
             </div>
 
@@ -635,6 +641,7 @@ export default function ProductsPage() {
                 onChange={(e) => setEditProduct({ ...editProduct, version: e.target.value })}
                 placeholder="es. 2024.1"
                 required
+                disabled={user.role !== 'superadmin'}
               />
             </div>
 
@@ -646,12 +653,17 @@ export default function ProductsPage() {
                 onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })}
                 placeholder="Descrizione del prodotto..."
                 rows={3}
+                disabled={user.role !== 'superadmin'}
               />
             </div>
 
             <div>
               <Label htmlFor="edit-licenseType">Tipo di Licenza *</Label>
-              <Select value={editProduct.licenseType} onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}>
+              <Select 
+                value={editProduct.licenseType} 
+                onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}
+                disabled={user.role !== 'superadmin'}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona tipo licenza" />
                 </SelectTrigger>
@@ -682,6 +694,7 @@ export default function ProductsPage() {
                     onChange={(e) => setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })}
                     placeholder="0.00"
                     required
+                    disabled={user.role !== 'superadmin'}
                   />
                 </div>
 
@@ -695,6 +708,7 @@ export default function ProductsPage() {
                     value={editProduct.discount || ''}
                     onChange={(e) => setEditProduct({ ...editProduct, discount: parseFloat(e.target.value) || 0 })}
                     placeholder="0.00"
+                    disabled={user.role !== 'superadmin'}
                   />
                 </div>
               </div>
@@ -711,6 +725,7 @@ export default function ProductsPage() {
                     value={editProduct.maxUsers || 1}
                     onChange={(e) => setEditProduct({ ...editProduct, maxUsers: parseInt(e.target.value) || 1 })}
                     required
+                    disabled={user.role !== 'superadmin'}
                   />
                 </div>
 
@@ -723,6 +738,7 @@ export default function ProductsPage() {
                     value={editProduct.maxDevices || 1}
                     onChange={(e) => setEditProduct({ ...editProduct, maxDevices: parseInt(e.target.value) || 1 })}
                     required
+                    disabled={user.role !== 'superadmin'}
                   />
                 </div>
 
@@ -734,6 +750,7 @@ export default function ProductsPage() {
                     min="1"
                     value={editProduct.trialDays || 30}
                     onChange={(e) => setEditProduct({ ...editProduct, trialDays: parseInt(e.target.value) || 30 })}
+                    disabled={user.role !== 'superadmin'}
                   />
                 </div>
               </div>
@@ -741,11 +758,13 @@ export default function ProductsPage() {
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
-                Annulla
+                {user.role === 'superadmin' ? 'Annulla' : 'Chiudi'}
               </Button>
-              <Button type="submit" disabled={updateProductMutation.isPending}>
-                {updateProductMutation.isPending ? 'Aggiornamento...' : 'Aggiorna Prodotto'}
-              </Button>
+              {user.role === 'superadmin' && (
+                <Button type="submit" disabled={updateProductMutation.isPending}>
+                  {updateProductMutation.isPending ? 'Aggiornamento...' : 'Aggiorna Prodotto'}
+                </Button>
+              )}
             </div>
           </form>
         </DialogContent>
