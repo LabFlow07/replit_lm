@@ -252,7 +252,7 @@ export default function ProductsPage() {
           <p className="text-gray-600">Gestisci i prodotti software e le loro configurazioni</p>
         </div>
 
-        {(user.role === 'superadmin' || user.role === 'admin') && (
+        {user.role === 'superadmin' && (
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-blue-700">
@@ -535,7 +535,7 @@ export default function ProductsPage() {
                           <div className="flex justify-center space-x-1">
                             {(user.role === 'superadmin' || user.role === 'admin') && (
                               <>
-                                {/* View button - available for both superadmin and admin */}
+                                {/* View/Edit button - view only for admin, edit for superadmin */}
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
@@ -560,6 +560,7 @@ export default function ProductsPage() {
                                   <i className={`fas ${user.role === 'superadmin' ? 'fa-edit' : 'fa-eye'} text-sm`}></i>
                                 </Button>
 
+                                {/* Delete button - only for superadmin */}
                                 {user.role === 'superadmin' && (
                                   <Button 
                                     variant="ghost" 
@@ -577,14 +578,26 @@ export default function ProductsPage() {
                                           });
 
                                           if (response.ok) {
-                                            window.location.reload();
+                                            queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+                                            toast({
+                                              title: "Prodotto eliminato",
+                                              description: "Il prodotto è stato eliminato con successo.",
+                                            });
                                           } else {
                                             const error = await response.json();
-                                            alert(`Errore nell'eliminazione: ${error.message}`);
+                                            toast({
+                                              title: "Errore",
+                                              description: `Errore nell'eliminazione: ${error.message}`,
+                                              variant: "destructive",
+                                            });
                                           }
                                         } catch (error) {
                                           console.error('Error deleting product:', error);
-                                          alert('Errore di connessione durante l\'eliminazione del prodotto');
+                                          toast({
+                                            title: "Errore",
+                                            description: "Errore di connessione durante l'eliminazione del prodotto",
+                                            variant: "destructive",
+                                          });
                                         }
                                       }
                                     }}
