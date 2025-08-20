@@ -808,6 +808,37 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
         )) {
           companies.push(company);
         }
+
+        // Also check if there are any clients in the hierarchy that match this registration
+        // This helps when software is registered under a company name but we have the client in our hierarchy
+        try {
+          const clientsInHierarchy = await storage.getClientsByCompanyHierarchy(user.companyId);
+          const clientCompanyNames = clientsInHierarchy
+            .map(client => client.contactInfo?.company?.toLowerCase())
+            .filter(name => name);
+          
+          if (registrationCompanyName && clientCompanyNames.some(name => 
+            name.includes(registrationCompanyName) || registrationCompanyName.includes(name)
+          )) {
+            companies.push(company);
+          }
+        } catch (error) {
+          console.error('Error checking client companies:', error);
+        }
+
+        // TEMPORARY DEBUG: For admin users, also include registrations that might be missed
+        // Remove this after debugging
+        if (user.role === 'admin' && user.username === 'shadow') {
+          console.log(`🔍 DEBUG: Checking registration for ${company.nomeAzienda}`);
+          console.log(`🔍 DEBUG: License assigned: ${company.idLicenza ? 'Yes' : 'No'}`);
+          console.log(`🔍 DEBUG: Hierarchy companies: ${hierarchyCompanyNames.join(', ')}`);
+          
+          // Include all registrations for shadow admin temporarily
+          if (!companies.includes(company)) {
+            console.log(`🔍 DEBUG: Adding registration for debugging: ${company.nomeAzienda}`);
+            companies.push(company);
+          }
+        }
       }
 
       console.log('Admin: filtered to', companies.length, 'company registrations in hierarchy');
