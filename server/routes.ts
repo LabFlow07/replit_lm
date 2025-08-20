@@ -1782,12 +1782,12 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     }
 
     // 🏗️ INHERIT ALL PRICING FROM PRODUCT (not modifiable at license level)
-    const price = product.price;
-    const discount = product.discount;
-    const licenseType = product.licenseType;
-    const maxUsers = product.maxUsers;
-    const maxDevices = product.maxDevices;
-    const trialDays = product.trialDays;
+    const price = product.price || 0;
+    const discount = product.discount || 0;
+    const licenseType = product.licenseType || product.license_type || 'permanente';
+    const maxUsers = product.maxUsers || product.max_users || 1;
+    const maxDevices = product.maxDevices || product.max_devices || 1;
+    const trialDays = product.trialDays || product.trial_days || 30;
 
     console.log(`📦 License inheriting from product "${product.name}":`, {
       price, discount, licenseType, maxUsers, maxDevices, trialDays
@@ -1823,8 +1823,14 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       activationKey: req.body.activationKey || undefined,
       computerKey: req.body.computerKey || undefined,
       renewalEnabled: renewalEnabled || false,
-      renewalPeriod: renewalPeriod || null
-      // Note: licenseType, maxUsers, maxDevices, price, discount are now inherited from product
+      renewalPeriod: renewalPeriod || null,
+      // Inherit pricing configuration from product
+      licenseType: licenseType,
+      maxUsers: maxUsers,
+      maxDevices: maxDevices,
+      price: price,
+      discount: discount,
+      trialDays: trialDays
     };
 
     console.log('Creating license with data:', licenseData);

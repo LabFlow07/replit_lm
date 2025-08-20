@@ -903,16 +903,16 @@ class DatabaseStorage implements IStorage {
       insertLicense.computerKey || null, 
       activationDate, 
       expiryDate,
-      insertLicense.licenseType, 
+      insertLicense.licenseType || 'permanente', 
       finalStatus, 
       insertLicense.maxUsers || 1,
       insertLicense.maxDevices || 1, 
-      insertLicense.price || 0, 
-      insertLicense.discount || 0,
-      JSON.stringify(insertLicense.activeModules || []), 
+      parseFloat(insertLicense.price?.toString() || '0'), 
+      parseFloat(insertLicense.discount?.toString() || '0'),
+      JSON.stringify(insertLicense.activeModules || ['core']), 
       insertLicense.assignedCompany || null,
       insertLicense.assignedAgent || null,
-      insertLicense.renewalEnabled || false,
+      insertLicense.renewalEnabled ? 1 : 0,
       insertLicense.renewalPeriod || null
     ]);
 
