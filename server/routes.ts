@@ -1251,12 +1251,46 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       if (company && company.idLicenza) {
         console.log(`Removing license assignment ${company.idLicenza} from registration ${registrationId}`);
 
-        // Delete associated transactions when removing license assignment
+        // Get transactions to process refunds BEFORE deleting them
         try {
+          const transactions = await storage.getTransactionsByLicense(company.idLicenza);
+          console.log(`🔍 Found ${transactions.length} transactions for license ${company.idLicenza}`);
+
+          let totalRefunded = 0;
+          for (const transaction of transactions) {
+            if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
+              const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+              
+              // Find the company ID for refund (could be in transaction or from client)
+              let companyId = transaction.companyId;
+              if (!companyId && clienteAssegnato) {
+                const client = await storage.getClientById(clienteAssegnato);
+                companyId = client?.companyId || client?.company_id;
+              }
+              
+              if (companyId) {
+                console.log(`💰 Processing refund: ${creditsToRefund} crediti to company ${companyId}`);
+                
+                await storage.updateWalletBalance(
+                  companyId,
+                  creditsToRefund,
+                  `Rimborso per rimozione licenza da registrazione software ${partitaIva}`,
+                  'rimborso',
+                  user.id
+                );
+                
+                totalRefunded += creditsToRefund;
+                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
+              }
+            }
+          }
+
+          // Now delete the transactions after processing refunds
           await storage.deleteTransactionsByLicense(company.idLicenza);
-          console.log(`Deleted transactions for license ${company.idLicenza}`);
+          console.log(`🗑️ Deleted ${transactions.length} transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
+          
         } catch (error) {
-          console.error('Error deleting transactions:', error);
+          console.error('Error processing refunds and deleting transactions:', error);
         }
 
         // Suspend the license and reset activation/expiry dates
@@ -1282,7 +1316,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           }
         }
 
-        console.log(`License assignment, transactions, and all computer keys removed from company ${partitaIva}`);
+        console.log(`License assignment, transactions (with refunds), and all computer keys removed from company ${partitaIva}`);
       }
     }
 
@@ -1890,23 +1924,37 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
 
     // Get transactions to check for wallet payments that need refunds
     const transactions = await storage.getTransactionsByLicense(licenseId);
+    console.log(`🔍 Processing ${transactions.length} transactions for license deletion ${licenseId}`);
 
+    let totalRefunded = 0;
     for (const transaction of transactions) {
-      if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && transaction.creditsUsed > 0) {
+      console.log(`🔍 Transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed}`);
+      
+      if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
         // Refund credits to company wallet
-        const companyId = transaction.companyId || existingLicense.client.companyId;
+        const companyId = transaction.companyId || existingLicense.client?.companyId || existingLicense.assignedCompany;
+        const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+        
         if (companyId) {
+          console.log(`💰 Refunding ${creditsToRefund} crediti to company ${companyId} for deleted license`);
+          
           await storage.updateWalletBalance(
             companyId,
-            parseFloat(transaction.creditsUsed.toString()),
+            creditsToRefund,
             `Rimborso per eliminazione licenza ${existingLicense.activationKey}`,
             'rimborso',
             user.id
           );
-          console.log(`💰 Refunded ${transaction.creditsUsed} crediti to company ${companyId} for deleted license ${licenseId}`);
+          
+          totalRefunded += creditsToRefund;
+          console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for deleted license ${licenseId}`);
+        } else {
+          console.log(`❌ No company ID found for refund - transaction ${transaction.id}`);
         }
       }
     }
+
+    console.log(`💰 Total refunded for license deletion: ${totalRefunded} crediti`);
 
     // Delete associated transactions
     await storage.deleteTransactionsByLicense(licenseId);
@@ -1948,27 +1996,42 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
 
     // Get transactions to check for wallet payments that need refunds
     const transactions = await storage.getTransactionsByLicense(licenseId);
+    console.log(`🔍 Found ${transactions.length} transactions for license ${licenseId}`);
+
+    let totalRefunded = 0;
+    let refundsProcessed = 0;
 
     for (const transaction of transactions) {
+      console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed}`);
+      
       if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
         // Refund credits to company wallet
-        const companyId = transaction.companyId || existingLicense.client.companyId;
+        const companyId = transaction.companyId || existingLicense.client?.companyId || existingLicense.assignedCompany;
+        const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
+        
         if (companyId) {
+          console.log(`💰 Refunding ${creditsToRefund} crediti to company ${companyId} for transaction ${transaction.id}`);
+          
           await storage.updateWalletBalance(
             companyId,
-            parseFloat(transaction.creditsUsed.toString()),
+            creditsToRefund,
             `Rimborso per rimozione assegnazione licenza ${existingLicense.activationKey}`,
             'rimborso',
             user.id
           );
-          console.log(`💰 Refunded ${transaction.creditsUsed} crediti to company ${companyId} for unassigned license ${licenseId}`);
+          
+          totalRefunded += creditsToRefund;
+          refundsProcessed++;
+          console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for unassigned license ${licenseId}`);
+        } else {
+          console.log(`❌ No company ID found for refund - transaction ${transaction.id}`);
         }
       }
     }
 
-    // Delete associated transactions
+    // Delete associated transactions AFTER processing refunds
     await storage.deleteTransactionsByLicense(licenseId);
-    console.log(`🗑️ Deleted transactions for license assignment removal: ${licenseId}`);
+    console.log(`🗑️ Deleted ${transactions.length} transactions for license assignment removal: ${licenseId}`);
 
     // Reset license to unassigned state (reset dates and status)
     const resetData = {
@@ -1985,7 +2048,9 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
 
     res.json({ 
       message: "License assignment removed successfully", 
-      refundsProcessed: transactions.filter(t => t.status === 'pagato_crediti').length > 0,
+      refundsProcessed: refundsProcessed > 0,
+      totalRefunded: totalRefunded,
+      transactionsProcessed: transactions.length,
       license: { ...existingLicense, ...resetData }
     });
   } catch (error) {
