@@ -29,7 +29,7 @@ export default function Login() {
       await login(username, password);
       toast({
         title: "Login effettuato",
-        description: "Benvenuto nella piattaforma QLM",
+        description: "Benvenuto nella piattaforma LMP",
       });
     } catch (error: any) {
       toast({
@@ -50,7 +50,7 @@ export default function Login() {
             <i className="fas fa-key text-white text-xl"></i>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            QLM Platform
+            LM Platform
           </CardTitle>
           <p className="text-sm text-gray-600">
             Accedi alla piattaforma di gestione licenze
