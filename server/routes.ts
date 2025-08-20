@@ -770,77 +770,32 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
       companies = await storage.getAllTestaRegAzienda();
       console.log('Superadmin: fetched all', companies.length, 'company registrations');
     } else if (user.role === 'admin' && user.companyId) {
-      console.log('🔍 ADMIN USER DETECTED - Applying company hierarchy filtering');
       // Admin can only see registrations from their company hierarchy
       const companyHierarchy = await storage.getCompanyHierarchy(user.companyId);
       console.log('Admin: company hierarchy for', user.companyId, ':', companyHierarchy);
 
-      // Get all registrations and filter by company hierarchy  
+      // Get all registrations and filter strictly by company hierarchy  
       const allCompanies = await storage.getAllTestaRegAzienda();
       companies = [];
 
       for (const company of allCompanies) {
-        // Check if this registration should be visible to this admin
-        // We need to check if the company registration belongs to a client in the admin's company hierarchy
+        let shouldInclude = false;
 
-        // First, try to find if there's a direct license assignment
+        // Only include if there's a direct license assignment to companies in hierarchy
         if (company.idLicenza) {
           const license = await storage.getLicense(company.idLicenza);
-          if (license && license.assignedCompany && companyHierarchy.includes(license.assignedCompany)) {
-            companies.push(company);
-            continue;
+          if (license && license.client) {
+            const clientCompanyId = license.client.company_id || license.client.companyId;
+            if (clientCompanyId && companyHierarchy.includes(clientCompanyId)) {
+              shouldInclude = true;
+            }
           }
         }
 
-        // If no license assigned, check if the registration company name matches any company in the hierarchy
-        // Get the company names from the hierarchy
-        const hierarchyCompanies = await Promise.all(
-          companyHierarchy.map(id => storage.getCompany(id))
-        );
-        const hierarchyCompanyNames = hierarchyCompanies
-          .filter(c => c)
-          .map(c => c.name.toLowerCase());
-
-        // Check if registration company name matches any in the hierarchy
-        const registrationCompanyName = company.nomeAzienda?.toLowerCase();
-        if (registrationCompanyName && hierarchyCompanyNames.some(name => 
-          name.includes(registrationCompanyName) || registrationCompanyName.includes(name)
-        )) {
+        if (shouldInclude) {
           companies.push(company);
         }
-
-        // Also check if there are any clients in the hierarchy that match this registration
-        // This helps when software is registered under a company name but we have the client in our hierarchy
-        try {
-          const clientsInHierarchy = await storage.getClientsByCompanyHierarchy(user.companyId);
-          const clientCompanyNames = clientsInHierarchy
-            .map(client => client.contactInfo?.company?.toLowerCase())
-            .filter(name => name);
-          
-          if (registrationCompanyName && clientCompanyNames.some(name => 
-            name.includes(registrationCompanyName) || registrationCompanyName.includes(name)
-          )) {
-            companies.push(company);
-          }
-        } catch (error) {
-          console.error('Error checking client companies:', error);
-        }
-
-        // TEMPORARY DEBUG: For admin users, also include registrations that might be missed
-        // Remove this after debugging
-        if (user.role === 'admin' && user.username === 'shadow') {
-          console.log(`🔍 DEBUG: Checking registration for ${company.nomeAzienda}`);
-          console.log(`🔍 DEBUG: License assigned: ${company.idLicenza ? 'Yes' : 'No'}`);
-          console.log(`🔍 DEBUG: Hierarchy companies: ${hierarchyCompanyNames.join(', ')}`);
-          
-          // Include all registrations for shadow admin temporarily
-          if (!companies.includes(company)) {
-            console.log(`🔍 DEBUG: Adding registration for debugging: ${company.nomeAzienda}`);
-            companies.push(company);
-          }
-        }
       }
-
       console.log('Admin: filtered to', companies.length, 'company registrations in hierarchy');
     } else {
       // Other roles get empty results for now
@@ -3795,61 +3750,6 @@ router.get("/api/wallet/:companyId/debug-transactions", authenticateToken, async
   } catch (error: any) {
     console.error('🔧 DEBUG: Error:', error);
     res.status(500).json({ error: error.message });
-  }
-});
-
-// Force creation of historical transaction for companies with balance but no transactions
-router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo superadmin può creare transazioni storiche" });
-    }
-
-    const { companyId } = req.params;
-    const wallet = await storage.getCompanyWallet(companyId);
-
-    if (!wallet) {
-      return res.status(404).json({ message: "Wallet non trovato" });
-    }
-
-    const existingTransactions = await storage.getWalletTransactions(companyId, 10);
-
-    if (wallet.balance && parseFloat(wallet.balance.toString()) > 0 && existingTransactions.length === 0) {
-      console.log(`🔧 FORCE Creating historical transaction for company ${companyId} with balance ${wallet.balance}`);
-
-      await storage.createWalletTransaction({
-        companyId: companyId,
-        type: 'ricarica',
-        amount: parseFloat(wallet.balance.toString()),
-        balanceBefore: 0,
-        balanceAfter: parseFloat(wallet.balance.toString()),
-        description: 'Ricarica storica - saldo esistente importato nel sistema',
-        relatedEntityType: 'historical',
-        relatedEntityId: null,
-        fromCompanyId: null,
-        toCompanyId: null,
-        stripePaymentIntentId: null,
-        createdBy: 'system'
-      });
-
-      const newTransactions = await storage.getWalletTransactions(companyId, 10);
-      console.log(`✅ Historical transaction created! New count: ${newTransactions.length}`);
-
-      return res.json({ 
-        success: true, 
-        message: `Transazione storica creata per ${parseFloat(wallet.balance.toString())} crediti`,
-        transactionsCount: newTransactions.length
-      });
-    } else {
-      return res.json({ 
-        success: false, 
-        message: `Nessuna transazione da creare. Balance: ${parseFloat(wallet.balance?.toString() || '0')}, Transactions: ${existingTransactions.length}`
-      });
-    }
-  } catch (error) {
-    console.error('Fix historical transaction error:', error);
-    res.status(500).json({ message: "Errore nella creazione della transazione storica" });
   }
 });
 
