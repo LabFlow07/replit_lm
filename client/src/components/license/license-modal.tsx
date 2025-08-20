@@ -288,159 +288,199 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
           </p>
         </div>
 
-        {/* Layout compatto a griglia */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-          {/* Cliente */}
-          <div className="bg-white border rounded-lg p-3">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Cliente</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Nome:</span>
-                <span className="text-xs font-medium text-gray-900 text-right">{license.client?.name || 'N/A'}</span>
+        {/* Layout migliorato organizzato */}
+        <div className="space-y-6">
+          {/* Sezione Informazioni Generali - Layout orizzontale */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <i className="fas fa-info-circle text-blue-600 mr-2"></i>
+              Informazioni Generali
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Cliente */}
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <i className="fas fa-user text-blue-500 mr-2"></i>
+                  <h4 className="font-medium text-gray-900">Cliente</h4>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Nome</span>
+                    <p className="text-sm font-medium text-gray-900">{license.client?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Email</span>
+                    <p className="text-sm text-gray-700">{license.client?.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Azienda</span>
+                    <p className="text-sm font-medium text-gray-900">{license.company?.name || 'N/A'}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Email:</span>
-                <span className="text-xs text-gray-900 text-right">{license.client?.email || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Azienda:</span>
-                <span className="text-xs font-medium text-gray-900 text-right">{license.company?.name || 'N/A'}</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Prodotto */}
-          <div className="bg-white border rounded-lg p-3">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Prodotto</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Software:</span>
-                <span className="text-xs font-medium text-gray-900 text-right">
-                  {license.product?.name} {license.product?.version}
-                </span>
+              {/* Prodotto */}
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <i className="fas fa-box text-green-500 mr-2"></i>
+                  <h4 className="font-medium text-gray-900">Prodotto</h4>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Software</span>
+                    <p className="text-sm font-medium text-gray-900">
+                      {license.product?.name} {license.product?.version}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Tipologia</span>
+                    {isEditing ? (
+                      <Select 
+                        value={editedLicense.licenseType || license.licenseType} 
+                        onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
+                      >
+                        <SelectTrigger className="h-8 text-sm w-full mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="permanente">Permanente</SelectItem>
+                          <SelectItem value="trial">Trial</SelectItem>
+                          <SelectItem value="abbonamento_mensile">Mensile</SelectItem>
+                          <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm text-gray-700">
+                        {getLicenseTypeLabel(license.licenseType)}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-600">Tipologia:</span>
-                {isEditing ? (
-                  <Select 
-                    value={editedLicense.licenseType || license.licenseType} 
-                    onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
-                  >
-                    <SelectTrigger className="h-6 text-xs w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="permanente">Permanente</SelectItem>
-                      <SelectItem value="trial">Trial</SelectItem>
-                      <SelectItem value="abbonamento_mensile">Mensile</SelectItem>
-                      <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="text-xs text-gray-900 text-right">
-                    {getLicenseTypeLabel(license.licenseType)}
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600 mt-1">Prezzo:</span>
-                {isEditing ? (
-                  <div className="flex flex-col gap-2 w-32">
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        type="number"
-                        step="1"
-                        value={editedLicense.price || license.price || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-8 text-sm w-24 font-mono"
-                        placeholder="0"
-                        min="0"
-                        max="9999999999"
-                      />
-                      <span className="text-sm text-gray-600 font-medium">cr</span>
+
+              {/* Prezzo e Limiti */}
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <i className="fas fa-tags text-purple-500 mr-2"></i>
+                  <h4 className="font-medium text-gray-900">Prezzo & Limiti</h4>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Prezzo</span>
+                    {isEditing ? (
+                      <div className="space-y-2 mt-1">
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="number"
+                            step="1"
+                            value={editedLicense.price || license.price || 0}
+                            onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                            className="h-8 text-sm font-mono flex-1"
+                            placeholder="0"
+                            min="0"
+                            max="9999999999"
+                          />
+                          <span className="text-sm text-gray-600 font-medium">cr</span>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editedLicense.discount || license.discount || 0}
+                            onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                            className="h-8 text-sm font-mono flex-1"
+                            placeholder="0.00"
+                            max="100"
+                            min="0"
+                          />
+                          <span className="text-sm text-gray-600 font-medium">%</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900">
+                        {Math.round(parseFloat((license.price || 0).toString()))} crediti
+                        {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
+                          <span className="text-green-600 ml-1 text-xs">
+                            (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Utenti</span>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editedLicense.maxUsers || 1}
+                          onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
+                          className="h-7 text-sm w-full mt-1"
+                          min="1"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium text-gray-900">{license.maxUsers || 1}</p>
+                      )}
                     </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={editedLicense.discount || license.discount || 0}
-                        onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                        className="h-8 text-sm w-24 font-mono"
-                        placeholder="0.00"
-                        max="100"
-                        min="0"
-                      />
-                      <span className="text-sm text-gray-600 font-medium">%</span>
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Dispositivi</span>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editedLicense.maxDevices || 1}
+                          onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
+                          className="h-7 text-sm w-full mt-1"
+                          min="1"
+                        />
+                      ) : (
+                        <p className="text-sm font-medium text-gray-900">{license.maxDevices || 1}</p>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <span className="text-sm font-medium text-gray-900 text-right">
-                    {Math.round(parseFloat((license.price || 0).toString()))} crediti
-                    {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
-                      <span className="text-green-600 ml-1">
-                        (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
-                      </span>
-                    )}
-                  </span>
-                )}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Limiti & Date */}
-          <div className="bg-white border rounded-lg p-3">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Limiti & Date</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-600">Utenti:</span>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={editedLicense.maxUsers || 1}
-                    onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
-                    className="h-6 text-xs w-16"
-                    min="1"
-                  />
-                ) : (
-                  <span className="text-xs font-medium text-gray-900">{license.maxUsers || 1}</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-600">Dispositivi:</span>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={editedLicense.maxDevices || 1}
-                    onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
-                    className="h-6 text-xs w-16"
-                    min="1"
-                  />
-                ) : (
-                  <span className="text-xs font-medium text-gray-900">{license.maxDevices || 1}</span>
-                )}
-              </div>
-              <Separator className="my-1" />
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Creata il:</span>
-                <span className="text-xs text-gray-900 text-right">
+          {/* Sezione Date e Status */}
+          <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <i className="fas fa-calendar-alt text-green-600 mr-2"></i>
+              Date e Status
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-1">
+                  <i className="fas fa-plus-circle text-blue-500 text-sm mr-2"></i>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Creata il</span>
+                </div>
+                <p className="text-sm font-medium text-gray-900">
                   {license.createdAt 
                     ? new Date(license.createdAt).toLocaleDateString('it-IT')
                     : 'N/A'
                   }
-                </span>
+                </p>
               </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Attivata il:</span>
-                <span className="text-xs text-gray-900 text-right">
+
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-1">
+                  <i className="fas fa-play-circle text-green-500 text-sm mr-2"></i>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Attivata il</span>
+                </div>
+                <p className="text-sm font-medium text-gray-900">
                   {license.activationDate 
                     ? new Date(license.activationDate).toLocaleDateString('it-IT')
                     : 'Non attivata'
                   }
-                </span>
+                </p>
               </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-gray-600">Scade il:</span>
-                <span className={`text-xs font-medium text-right ${
+
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-1">
+                  <i className="fas fa-stop-circle text-red-500 text-sm mr-2"></i>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Scade il</span>
+                </div>
+                <p className={`text-sm font-medium ${
                   license.expiryDate ? (
                     new Date(license.expiryDate) < new Date() ? 'text-red-600' :
                     new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
@@ -451,27 +491,31 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     ? new Date(license.expiryDate).toLocaleDateString('it-IT')
                     : (license.licenseType === 'permanente' ? 'Permanente' : 'N/A')
                   }
-                </span>
+                </p>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-600">Rinnovo Auto:</span>
+
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center mb-1">
+                  <i className="fas fa-sync-alt text-purple-500 text-sm mr-2"></i>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Rinnovo Auto</span>
+                </div>
                 {isEditing ? (
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-1">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={editedLicense.renewalEnabled || false}
                         onChange={(e) => setEditedLicense({...editedLicense, renewalEnabled: e.target.checked})}
-                        className="h-3 w-3 text-blue-600 rounded border-gray-300"
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
                       />
-                      <span className="text-xs text-gray-900">Attivo</span>
+                      <span className="text-sm text-gray-900">Attivo</span>
                     </label>
                     {editedLicense.renewalEnabled && (
                       <Select
                         value={editedLicense.renewalPeriod || ''}
                         onValueChange={(value) => setEditedLicense({...editedLicense, renewalPeriod: value})}
                       >
-                        <SelectTrigger className="h-6 text-xs w-20">
+                        <SelectTrigger className="h-7 text-sm w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -482,48 +526,61 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-900 text-right">
+                  <div className="flex items-center">
                     {license.renewalEnabled ? (
                       <span className="flex items-center text-green-600">
                         <i className="fas fa-check-circle mr-1"></i>
-                        {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
+                        <span className="text-sm font-medium">
+                          {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
+                        </span>
                       </span>
                     ) : (
                       <span className="flex items-center text-red-600">
                         <i className="fas fa-times-circle mr-1"></i>
-                        Disattivo
+                        <span className="text-sm font-medium">Disattivo</span>
                       </span>
                     )}
-                  </span>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-        {/* Moduli Attivi - Compatto */}
-        <div className="bg-white border rounded-lg p-3 mb-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Moduli Attivi</h3>
-            <div className="flex flex-wrap gap-1">
-              {license.activeModules && license.activeModules.length > 0 ? (
-                license.activeModules.map((module: string, index: number) => (
-                  <Badge key={index} variant="outline" className="capitalize text-xs h-5">
-                    {module}
-                  </Badge>
-                ))
-              ) : (
-                <Badge variant="secondary" className="text-xs h-5">
-                  Nessun modulo attivo
-                </Badge>
-              )}
+        {/* Sezione Moduli Attivi */}
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <i className="fas fa-puzzle-piece text-yellow-600 mr-2"></i>
+              Moduli Attivi
+            </h3>
+            <div className="bg-white rounded-lg p-3 shadow-sm">
+              <div className="flex flex-wrap gap-2">
+                {license.activeModules && license.activeModules.length > 0 ? (
+                  license.activeModules.map((module: string, index: number) => (
+                    <Badge key={index} variant="outline" className="capitalize text-sm h-7 px-3 bg-blue-50 border-blue-200 text-blue-700">
+                      <i className="fas fa-cog mr-1"></i>
+                      {module}
+                    </Badge>
+                  ))
+                ) : (
+                  <div className="flex items-center text-gray-500">
+                    <i className="fas fa-exclamation-circle mr-2"></i>
+                    <span className="text-sm">Nessun modulo attivo</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Dispositivi Autorizzati - Compatto */}
-        <div className="bg-white border rounded-lg p-3 mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Dispositivi Autorizzati</h3>
-          <DeviceKeysSection licenseId={license.id} />
+          {/* Sezione Dispositivi Autorizzati */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <i className="fas fa-desktop text-purple-600 mr-2"></i>
+              Dispositivi Autorizzati
+            </h3>
+            <div className="bg-white rounded-lg p-3 shadow-sm">
+              <DeviceKeysSection licenseId={license.id} />
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
