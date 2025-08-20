@@ -1053,7 +1053,17 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
     const registrationId = req.params.id;
     const { aziendaAssegnata, clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
 
-    console.log(`Classifying registration ${registrationId} with data:`, req.body);
+    console.log(`${user.role === 'admin' ? 'Computer key validation' : 'Classifying registration'} ${registrationId} with data:`, req.body);
+
+    // Admin can only authorize/deauthorize devices for existing license assignments
+    if (user.role === 'admin') {
+      // Admin cannot change license assignments, client assignments, or notes
+      if (clienteAssegnato !== undefined || licenzaAssegnata !== undefined || prodottoAssegnato !== undefined || note !== undefined) {
+        return res.status(403).json({ 
+          message: "Gli admin possono solo convalidare computer keys per licenze già assegnate" 
+        });
+      }
+    }
 
     // ID format: "partitaIva-deviceId"
     const [partitaIva, deviceId] = registrationId.split('-');
@@ -2630,9 +2640,9 @@ router.delete("/api/software/registrazioni/:id", authenticateToken, async (req: 
     const user = (req as any).user;
     const registrationId = req.params.id;
 
-    // Only admin/superadmin can delete registrations
-    if (user.role !== 'superadmin' && user.role !== 'admin') {
-      return res.status(403).json({ message: "Accesso negato" });
+    // Only superadmin can delete registrations
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo il superadmin può eliminare le registrazioni software" });
     }
 
     // ID format: "partitaIva-deviceId"

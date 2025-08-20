@@ -11,16 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X } from "lucide-react";
+import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Edit, Trash2, Key } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useAuth } from "@/hooks/use-auth"; // Import useAuth hook
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
 
 // Mock user for role checking, replace with actual auth context in a real app
-const user = {
-  role: 'superadmin' // or 'admin', 'user', etc.
-};
+// const user = {
+//   role: 'superadmin' // or 'admin', 'user', etc.
+// };
+// Use the actual user from useAuth hook
+const { user } = useAuth();
+
 
 interface SoftwareRegistration {
   id: string;
@@ -198,7 +203,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   // Safe arrays to prevent errors
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeCompanies = Array.isArray(companies) ? companies : [];
-  
+
   // Funzione per ottenere il nome dell'azienda
   const getCompanyName = (companyId: string) => {
     const company = safeCompanies.find((c: Company) => c.id === companyId);
@@ -217,7 +222,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     if (!searchTerm) return true;
 
     const searchLower = searchTerm.toLowerCase();
-    const clientMatch = client.name?.toLowerCase().includes(searchLower) || 
+    const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
                        client.email?.toLowerCase().includes(searchLower);
 
     return clientMatch;
@@ -307,7 +312,11 @@ export default function SoftwareRegistrations() {
   const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
   const { contentMargin } = useSidebar();
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const { register, handleSubmit, reset, setValue, watch, isSubmitting } = useForm<any>({
+    defaultValues: {
+      authorizeDevice: false // Default value for the checkbox
+    }
+  });
 
   // Function to execute search
   const executeSearch = () => {
@@ -496,7 +505,7 @@ export default function SoftwareRegistrations() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         // Handle device limit exceeded error specifically
         if (errorData.code === 'DEVICE_LIMIT_EXCEEDED') {
           const error = new Error(errorData.message);
@@ -505,7 +514,7 @@ export default function SoftwareRegistrations() {
           (error as any).currentDevices = errorData.currentDevices;
           throw error;
         }
-        
+
         throw new Error(errorData.message || 'Failed to classify registration');
       }
 
@@ -522,7 +531,7 @@ export default function SoftwareRegistrations() {
     },
     onError: (error: any) => {
       console.error('Classification error:', error);
-      
+
       // Handle device limit exceeded error with a custom dialog
       if (error.code === 'DEVICE_LIMIT_EXCEEDED') {
         const message = `⚠️ Limite Dispositivi Raggiunto\n\n` +
@@ -530,7 +539,7 @@ export default function SoftwareRegistrations() {
           `Attualmente sono già autorizzati ${error.currentDevices} dispositivi.\n\n` +
           `Per autorizzare questo nuovo dispositivo, devi prima rimuovere l'autorizzazione da un altro dispositivo esistente.\n\n` +
           `Vuoi procedere comunque senza autorizzare il dispositivo?`;
-          
+
         if (confirm(message)) {
           // Retry without device authorization
           const currentFormData = watch();
@@ -541,7 +550,7 @@ export default function SoftwareRegistrations() {
         }
         return;
       }
-      
+
       alert(`Errore nella classificazione: ${error.message}`);
     }
   });
@@ -633,7 +642,15 @@ export default function SoftwareRegistrations() {
     setIsClassifyDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  // Mock functions for dropdown actions, replace with actual logic
+  const handleViewRegistration = (id: string) => {
+    const registrationToView = safeRegistrations.find((r: SoftwareRegistration) => r.id === id);
+    setSelectedRegistration(registrationToView || null);
+    // Logic to show registration details (e.g., in a modal or separate view)
+    alert(`Visualizza dettagli per ${id}`);
+  };
+
+  const handleDeleteRegistration = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questa registrazione?')) {
       try {
         const token = localStorage.getItem('token');
@@ -706,7 +723,7 @@ export default function SoftwareRegistrations() {
                   onKeyPress={handleKeyPress}
                   data-testid="input-search"
                 />
-                <Button 
+                <Button
                   onClick={executeSearch}
                   variant="outline"
                   size="sm"
@@ -716,7 +733,7 @@ export default function SoftwareRegistrations() {
                   <Search className="h-4 w-4" />
                 </Button>
                 {searchTerm && (
-                  <Button 
+                  <Button
                     onClick={clearSearch}
                     variant="ghost"
                     size="sm"
@@ -849,8 +866,8 @@ export default function SoftwareRegistrations() {
                               const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
                               if (assignedLicense) {
                                 const safeCompanies = Array.isArray(companies) ? companies : [];
-                                const clientCompany = safeCompanies.find(c => 
-                                  c.id === assignedLicense.client?.company_id || 
+                                const clientCompany = safeCompanies.find(c =>
+                                  c.id === assignedLicense.client?.company_id ||
                                   c.id === assignedLicense.client?.companyId
                                 );
                                 return (
@@ -938,14 +955,14 @@ export default function SoftwareRegistrations() {
                       <td className="p-3 border-r text-sm">
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {(registration.primaRegistrazione || registration.registrationDate) ? 
-                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'dd/MM/yyyy', { locale: it }) : 
+                            {(registration.primaRegistrazione || registration.registrationDate) ?
+                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'dd/MM/yyyy', { locale: it }) :
                               'N/A'
                             }
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {(registration.primaRegistrazione || registration.registrationDate) ? 
-                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'HH:mm', { locale: it }) : 
+                            {(registration.primaRegistrazione || registration.registrationDate) ?
+                              format(new Date(registration.primaRegistrazione || registration.registrationDate!), 'HH:mm', { locale: it }) :
                               'N/A'
                             }
                           </span>
@@ -968,70 +985,59 @@ export default function SoftwareRegistrations() {
                       </td>
 
                       <td className="p-3">
-                        <div className="flex gap-1">
-                          <Button
-                            variant={registration.status === 'non_assegnato' || registration.status === 'in_attesa_computer_key' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleEdit(registration)}
-                            className={`h-8 w-8 p-0 ${registration.status === 'non_assegnato' ? 'bg-blue-600 hover:bg-blue-700' : registration.status === 'in_attesa_computer_key' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
-                            title={
-                              registration.status === 'non_assegnato' ? "Classifica registrazione" : 
-                              registration.status === 'in_attesa_computer_key' ? "Assegna Computer Key" :
-                              "Visualizza registrazione"
-                            }
-                          >
-                            <i className={`fas ${
-                              registration.status === 'non_assegnato' ? 'fa-cog' : 
-                              registration.status === 'in_attesa_computer_key' ? 'fa-key' :
-                              'fa-eye'
-                            } text-xs`}></i>
-                          </Button>
-
-                          {user.role === 'superadmin' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                if (confirm('Sei sicuro di voler eliminare questa registrazione? Questa azione non può essere annullata.')) {
-                                  try {
-                                    const token = localStorage.getItem('token');
-                                    const response = await fetch(`/api/software/registrazioni/${registration.id}`, {
-                                      method: 'DELETE',
-                                      headers: {
-                                        'Authorization': `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                      }
-                                    });
-
-                                    if (response.ok) {
-                                      queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
-                                      alert('Registrazione eliminata con successo!');
-                                    } else {
-                                      const errorData = await response.json().catch(() => ({}));
-                                      alert(`Errore nell'eliminazione: ${errorData.message || 'Errore sconosciuto'}`);
-                                    }
-                                  } catch (error) {
-                                    console.error('Error deleting registration:', error);
-                                    alert('Errore nell\'eliminazione della registrazione');
-                                  }
-                                }
-                              }}
-                              disabled={Boolean(registration.status === 'classificato' && registration.licenzaAssegnata)}
-                              className={`h-8 w-8 p-0 ${
-                                registration.status === 'classificato' && registration.licenzaAssegnata
-                                  ? 'text-gray-400 cursor-not-allowed'
-                                  : 'text-red-600'
-                              }`}
-                              title={
-                                registration.status === 'classificato' && registration.licenzaAssegnata
-                                  ? "Prima rimuovi l'assegnazione della licenza"
-                                  : "Elimina registrazione"
-                              }
-                            >
-                              <i className="fas fa-trash text-xs"></i>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user?.role === 'superadmin' && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedRegistration(registration);
+                                  setIsClassifyDialogOpen(true);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Classifica
+                              </DropdownMenuItem>
+                            )}
+
+                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedRegistration(registration);
+                                  setIsClassifyDialogOpen(true);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Key className="h-4 w-4 mr-2" />
+                                Convalida Computer Key
+                              </DropdownMenuItem>
+                            )}
+
+                            <DropdownMenuItem
+                              onClick={() => handleViewRegistration(registration.id)}
+                              className="cursor-pointer"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Visualizza
+                            </DropdownMenuItem>
+
+                            {user?.role === 'superadmin' && (
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteRegistration(registration.id)}
+                                className="cursor-pointer text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -1045,88 +1051,68 @@ export default function SoftwareRegistrations() {
       <Dialog open={isClassifyDialogOpen} onOpenChange={setIsClassifyDialogOpen}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
-              {selectedRegistration?.status === 'classificato' ? 'Gestione Computer Key' : 
-               selectedRegistration?.status === 'in_attesa_computer_key' ? 'Genera Computer Key' :
-               'Classifica Registrazione Software'}
+            <DialogTitle>
+              {user?.role === 'superadmin' ? 'Classifica Registrazione Software' : 'Convalida Computer Key'}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-            {(selectedRegistration?.status === 'in_attesa_computer_key' || 
-              (selectedRegistration?.status === 'classificato' && !selectedRegistration?.computerKey)) && (
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <i className="fas fa-info-circle text-blue-600"></i>
-                    <span className="font-medium text-blue-800">Registrazione Classificata</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
-                    <div>
-                      <strong>Azienda:</strong> {selectedRegistration.ragioneSociale}
-                    </div>
-                    <div>
-                      <strong>Software:</strong> {selectedRegistration.nomeSoftware}
-                    </div>
-                    <div>
-                      <strong>Versione:</strong> {selectedRegistration.versione}
-                    </div>
-                    <div>
-                      <strong>Stato:</strong> Licenza assegnata
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <i className="fas fa-key text-yellow-600"></i>
-                    <span className="font-medium text-yellow-800">Autorizzazione Dispositivo Richiesta</span>
-                  </div>
-                  <p className="text-sm text-yellow-700">
-                    Questa registrazione ha una licenza assegnata ma il dispositivo non è ancora autorizzato. 
-                    Genera una Computer Key per autorizzare questo specifico dispositivo.
-                  </p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="software">Software</Label>
+                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.nomeSoftware}</p>
               </div>
-            )}
+              <div>
+                <Label htmlFor="versione">Versione</Label>
+                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.versione}</p>
+              </div>
+              <div>
+                <Label htmlFor="azienda">Azienda</Label>
+                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.ragioneSociale}</p>
+              </div>
+              <div>
+                <Label htmlFor="computerKey">Computer Key</Label>
+                <p className="text-sm text-gray-600 font-mono p-2 bg-gray-50 border rounded-md">
+                  {selectedRegistration?.computerKey || 'Non assegnata'}
+                </p>
+              </div>
+            </div>
 
-            {selectedRegistration?.status === 'non_assegnato' && (
+            {user?.role === 'superadmin' && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="aziendaAssegnata">Azienda</Label>
-                    <CompanySearchInput 
-                      companies={Array.isArray(companies) ? companies.map(c => ({
-                        ...c,
-                        name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
-                        partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
-                      })) : []}
-                      onCompanySelect={(companyId) => {
-                        setValue('aziendaAssegnata', companyId || null);
-                        // Reset dei campi dipendenti
-                        setValue('clienteAssegnato', null);
-                        setValue('licenzaAssegnata', null);
-                        setValue('prodottoAssegnato', null);
-                      }}
-                      placeholder="Cerca azienda per nome o P.IVA..."
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="aziendaAssegnata">Azienda</Label>
+                  <CompanySearchInput
+                    companies={Array.isArray(companies) ? companies.map(c => ({
+                      ...c,
+                      name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
+                      partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
+                    })) : []}
+                    onCompanySelect={(companyId) => {
+                      setValue('aziendaAssegnata', companyId || null);
+                      setValue('clienteAssegnato', null);
+                      setValue('licenzaAssegnata', null);
+                      setValue('prodottoAssegnato', null);
+                    }}
+                    placeholder="Cerca azienda per nome o P.IVA..."
+                    // Set initial company based on selected registration's client's company
+                    initialCompanyId={selectedRegistration?.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.company_id || safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.companyId : undefined}
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="clienteAssegnato">Cliente</Label>
-                    <ClientSearchInput 
-                      clients={clients}
-                      companies={Array.isArray(companies) ? companies : []}
-                      companyId={watch('aziendaAssegnata')}
-                      onClientSelect={(clientId) => {
-                        setValue('clienteAssegnato', clientId || null);
-                        // Reset dei campi dipendenti
-                        setValue('licenzaAssegnata', null);
-                        setValue('prodottoAssegnato', null);
-                      }}
-                      placeholder="Cerca cliente per nome o email..."
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="clienteAssegnato">Cliente</Label>
+                  <ClientSearchInput
+                    clients={clients}
+                    companies={Array.isArray(companies) ? companies : []}
+                    companyId={watch('aziendaAssegnata')}
+                    onClientSelect={(clientId) => {
+                      setValue('clienteAssegnato', clientId || null);
+                      setValue('licenzaAssegnata', null);
+                      setValue('prodottoAssegnato', null);
+                    }}
+                    placeholder="Cerca cliente per nome o email..."
+                  />
                 </div>
 
                 <div>
@@ -1151,21 +1137,13 @@ export default function SoftwareRegistrations() {
                       );
                     }
 
-                    // Filter licenses for the selected client from the selected company
                     const clientLicenses = safeLicenses.filter((license: License) => {
-                      // Check if license belongs to the selected client
                       const licenseClientId = license.client?.id;
-                      if (licenseClientId !== selectedClientId) {
-                        return false;
-                      }
+                      if (licenseClientId !== selectedClientId) return false;
 
-                      // Double check that the client belongs to the selected company
                       const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                      if (licenseClientCompanyId !== selectedCompanyId) {
-                        return false;
-                      }
+                      if (licenseClientCompanyId !== selectedCompanyId) return false;
 
-                      // Only show active, pending, or suspended licenses
                       return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
                     });
 
@@ -1173,7 +1151,7 @@ export default function SoftwareRegistrations() {
                       return (
                         <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                           <p className="text-sm text-yellow-700">
-                            <i className="fas fa-exclamation-triangle mr-2"></i>
+                            <Key className="h-4 w-4 inline mr-2" />
                             Nessuna licenza disponibile per questo cliente
                           </p>
                         </div>
@@ -1220,7 +1198,7 @@ export default function SoftwareRegistrations() {
                             return (
                               <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
                                 <p className="text-sm text-yellow-700">
-                                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                                  <Key className="h-4 w-4 inline mr-2" />
                                   Prodotto non trovato per questa licenza
                                 </p>
                               </div>
@@ -1232,7 +1210,7 @@ export default function SoftwareRegistrations() {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm font-medium text-green-800">
-                                    <i className="fas fa-link mr-2"></i>
+                                    <Key className="h-4 w-4 inline mr-2" />
                                     Licenza selezionata
                                   </p>
                                   <p className="text-xs text-green-600 mt-1">
@@ -1242,7 +1220,7 @@ export default function SoftwareRegistrations() {
                                     Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
                                   </p>
                                 </div>
-                                <i className="fas fa-check-circle text-green-500"></i>
+                                <Key className="h-6 w-6 text-green-500" />
                               </div>
                             </div>
                           );
@@ -1254,110 +1232,57 @@ export default function SoftwareRegistrations() {
               </>
             )}
 
-            {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (() => {
-              const selectedLicense = safeLicenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
-              if (!selectedLicense) return null;
-
-              return (
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <i className="fas fa-info-circle text-blue-600"></i>
-                    <span className="font-medium text-blue-800">Dettagli Licenza Selezionata</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
-                    <div>
-                      <strong>Cliente:</strong> {selectedLicense.client?.name || selectedLicense.clientName || 'Non specificato'}
-                    </div>
-                    <div>
-                      <strong>Azienda:</strong> {selectedLicense.company?.name || selectedLicense.companyName || 'Non specificata'}
-                    </div>
-                    <div>
-                      <strong>Tipo:</strong> {selectedLicense.licenseType}
-                    </div>
-                    <div>
-                      <strong>Stato:</strong> {selectedLicense.status}
-                    </div>
-                    <div>
-                      <strong>Max Dispositivi:</strong> {selectedLicense.maxDevices}
-                    </div>
-                    <div>
-                      <strong>Prodotto:</strong> {selectedLicense.product?.name} {selectedLicense.product?.version}
-                    </div>
-                    {selectedLicense.expiryDate && (
-                      <div>
-                        <strong>Scadenza:</strong> {new Date(selectedLicense.expiryDate).toLocaleDateString('it-IT')}
-                      </div>
-                    )}
-                    <div>
-                      <strong>Chiave:</strong> 
-                      <span className="font-mono text-xs bg-white px-2 py-1 rounded border ml-2">
-                        {selectedLicense.activationKey}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div>
-              <Label htmlFor="note">Note</Label>
-              <Textarea
-                {...register('note')}
-                placeholder="Aggiungi note sulla classificazione..."
-                data-testid="textarea-classification-notes"
-                className="min-h-[80px]"
-                defaultValue={selectedRegistration?.note || ''}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <input
-                  type="checkbox"
-                  id="authorizeDevice"
-                  {...register('authorizeDevice')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
-                  data-testid="checkbox-authorize-device"
-                  checked={!!selectedRegistration?.computerKey || watch('authorizeDevice')} // Ensure checkbox state reflects existing computerKey or form value
-                />
-                <div className="flex-1">
+            <div className="space-y-4">
+              {(user?.role === 'admin' || user?.role === 'superadmin') && selectedRegistration?.licenzaAssegnata && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="authorizeDevice"
+                    {...register('authorizeDevice')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    data-testid="checkbox-authorize-device"
+                    // Set initial checked state based on existing computerKey or form value if available
+                    defaultChecked={!!selectedRegistration?.computerKey || watch('authorizeDevice')}
+                  />
                   <Label htmlFor="authorizeDevice" className="font-medium">
-                    Autorizza Dispositivo (Computer Key)
+                    Autorizza dispositivo (genera/rimuovi computer key)
                   </Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Genera una chiave computer per autorizzare questo dispositivo specifico.
-                  </p>
-                </div>
-              </div>
-
-              {selectedRegistration?.computerKey && (
-                <div className="ml-7 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-green-800">
-                        <i className="fas fa-key mr-2"></i>
-                        Computer Key Assegnata
-                      </p>
-                      <p className="text-xs font-mono text-green-600 mt-2 bg-white px-2 py-1 rounded border break-all">
-                        {selectedRegistration.computerKey}
-                      </p>
-                      <p className="text-xs text-green-600 mt-2">
-                        Dispositivo già autorizzato. La licenza funzionerà solo su questo dispositivo.
-                      </p>
-                    </div>
-                    <i className="fas fa-check-circle text-green-500 flex-shrink-0 mt-1"></i>
-                  </div>
                 </div>
               )}
+
+              {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-800">
+                    <Key className="h-4 w-4 inline mr-2" />
+                    Nessuna licenza assegnata a questa registrazione. Solo il superadmin può assegnare licenze.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="note">Note</Label>
+                <Textarea
+                  id="note"
+                  {...register('note')}
+                  placeholder="Aggiungi note sulla classificazione..."
+                  data-testid="textarea-classification-notes"
+                  className={user?.role === 'admin' ? "min-h-[80px] bg-gray-50" : "min-h-[80px]"}
+                  defaultValue={selectedRegistration?.note || ''}
+                  readOnly={user?.role === 'admin'}
+                />
+                {user?.role === 'admin' && (
+                  <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
               <div className="flex flex-wrap gap-2">
-                {selectedRegistration?.status === 'classificato' && selectedRegistration?.licenzaAssegnata && (
+                {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
                   <>
-                    <Button 
-                      type="button" 
-                      variant="destructive" 
+                    <Button
+                      type="button"
+                      variant="destructive"
                       size="sm"
                       onClick={() => {
                         if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
@@ -1379,19 +1304,19 @@ export default function SoftwareRegistrations() {
                     </Button>
 
                     {selectedRegistration?.computerKey && (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
                             const removeKeyData = {
-                              aziendaAssegnata: selectedRegistration.aziendaAssegnata || null, // Keep existing company
-                              clienteAssegnato: selectedRegistration.clienteAssegnato || null, // Keep existing client
-                              licenzaAssegnata: selectedRegistration.licenzaAssegnata || null, // Keep existing license
-                              prodottoAssegnato: selectedRegistration.prodottoAssegnato || null, // Keep existing product
+                              aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
+                              clienteAssegnato: selectedRegistration.clienteAssegnato || null,
+                              licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
+                              prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
                               note: selectedRegistration.note,
-                              authorizeDevice: false // Explicitly set to false to remove the key
+                              authorizeDevice: false
                             };
                             classifyMutation.mutate(removeKeyData);
                           }
@@ -1407,11 +1332,10 @@ export default function SoftwareRegistrations() {
                 )}
               </div>
               <div className="flex space-x-2 w-full md:w-auto">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
-                    // Reset the form and dialog state
                     reset();
                     setSelectedRegistration(null);
                     setIsClassifyDialogOpen(false);
@@ -1420,12 +1344,10 @@ export default function SoftwareRegistrations() {
                 >
                   Annulla
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={classifyMutation.isPending}
-                  className="flex-1 md:flex-none"
-                >
-                  {classifyMutation.isPending ? 'Salvando...' : 'Salva'}
+                <Button type="submit" disabled={isSubmitting} className="flex-1 md:flex-none">
+                  {isSubmitting ? "Salvando..." : (
+                    user?.role === 'superadmin' ? "Salva Classificazione" : "Convalida Computer Key"
+                  )}
                 </Button>
               </div>
             </div>
