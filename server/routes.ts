@@ -1254,7 +1254,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         // Get the license details for transaction creation
         const license = await storage.getLicense(company.idLicenza);
         
-        // Get transactions to process refunds BEFORE deleting them
+        // Get transactions to process refunds FIRST, then delete them
         try {
           const transactions = await storage.getTransactionsByLicense(company.idLicenza);
           console.log(`🔍 Found ${transactions.length} transactions for license ${company.idLicenza}`);
@@ -1262,6 +1262,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           let totalRefunded = 0;
           let refundCompanyId = null;
           
+          // STEP 1: Process all refunds BEFORE deleting transactions
           for (const transaction of transactions) {
             console.log(`🔍 Processing transaction ${transaction.id}: status=${transaction.status}, creditsUsed=${transaction.creditsUsed || transaction.credits_used}, finalAmount=${transaction.finalAmount || transaction.final_amount}`);
             
@@ -1289,7 +1290,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
               if (companyId) {
                 console.log(`💰 Processing refund: ${creditsToRefund} crediti to company ${companyId}`);
 
-                // Update wallet balance with POSITIVE amount (this will add credits back to wallet)
+                // FIRST: Create wallet transaction for refund
                 await storage.updateWalletBalance(
                   companyId,
                   creditsToRefund, // Positive amount to ADD back to wallet
@@ -1300,16 +1301,18 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
                 totalRefunded += creditsToRefund;
                 refundCompanyId = companyId;
-                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
+                console.log(`✅ Refunded ${creditsToRefunded} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
             } else {
               console.log(`ℹ️ No credits to refund for transaction ${transaction.id} - status: ${transaction.status}, amount: ${transaction.finalAmount || transaction.final_amount}`);
             }
           }
 
-          // Now delete the original transactions after processing refunds
-          await storage.deleteTransactionsByLicense(company.idLicenza);
-          console.log(`🗑️ Deleted ${transactions.length} original transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
+          // STEP 2: ONLY NOW delete the original transactions (after all refunds are processed)
+          if (transactions.length > 0) {
+            await storage.deleteTransactionsByLicense(company.idLicenza);
+            console.log(`🗑️ Deleted ${transactions.length} original transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
+          }
 
         } catch (error) {
           console.error('Error processing refunds and deleting transactions:', error);
