@@ -1617,10 +1617,10 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
       if (user.role === 'admin') {
         // Admin can create licenses for clients in their company hierarchy
         const companyIds = await storage.getCompanyHierarchy(user.companyId);
-        hasPermission = companyIds.includes(client.company_id || client.companyId);
+        hasPermission = companyIds.includes(client.companyId);
       } else {
         // Other roles can only create licenses for clients in their own company
-        hasPermission = (client.company_id || client.companyId) === user.companyId;
+        hasPermission = client.companyId === user.companyId;
       }
 
       if (!hasPermission) {
@@ -1637,19 +1637,21 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     // Calculate final amount
     const finalAmount = Math.max(0, (price || 0) - (discount || 0));
     
-    // Handle wallet payment method
-    if (paymentMethod === 'wallet' && finalAmount > 0) {
+    // Handle automatic wallet payment (default is 'crediti')
+    const shouldUseWallet = (paymentMethod === 'wallet' || paymentMethod === 'crediti' || !paymentMethod) && finalAmount > 0;
+    
+    if (shouldUseWallet) {
       const companyId = client.company_id || client.companyId;
       
       // Check if company has sufficient wallet balance
       const wallet = await storage.getCompanyWallet(companyId);
-      if (!wallet || wallet.balance < finalAmount) {
+      if (!wallet || parseFloat(wallet.balance?.toString() || '0') < finalAmount) {
         return res.status(400).json({ 
           message: `Saldo wallet insufficiente. Richiesto: ${finalAmount} crediti, Disponibile: ${wallet ? wallet.balance : 0} crediti` 
         });
       }
       
-      console.log(`💳 Wallet payment requested: ${finalAmount} crediti from company ${companyId}`);
+      console.log(`💳 Automatic wallet payment: ${finalAmount} crediti from company ${companyId}`);
     }
 
     const licenseData = {
@@ -1673,21 +1675,66 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     console.log('Creating license with data:', licenseData);
     const license = await storage.createLicense(licenseData);
 
-    // If wallet payment was selected and amount > 0, deduct credits
-    if (paymentMethod === 'wallet' && finalAmount > 0) {
+    // If automatic wallet payment and amount > 0, deduct credits and create transactions
+    if (shouldUseWallet) {
       const companyId = client.company_id || client.companyId;
+      
+      // Deduct credits from wallet and create wallet transaction
       const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
       
       if (success) {
-        console.log(`💳 Wallet payment successful: License ${license.id}, Company ${companyId}, Amount ${finalAmount} crediti`);
+        console.log(`💳 Automatic wallet payment successful: License ${license.id}, Company ${companyId}, Amount ${finalAmount} crediti`);
+        
+        // Create main transaction record (paid status)
+        const transactionData = {
+          id: nanoid(),
+          licenseId: license.id,
+          clientId: client.id,
+          companyId: client.companyId,
+          type: 'attivazione',
+          amount: (price || 0).toString(),
+          discount: (discount || 0).toString(),
+          finalAmount: finalAmount.toString(),
+          paymentMethod: 'crediti',
+          status: 'pagato_crediti',
+          creditsUsed: finalAmount,
+          paymentDate: new Date(),
+          modifiedBy: user.id,
+          notes: `Pagamento automatico con crediti per licenza ${license.activationKey}`
+        };
+        
+        const transaction = await storage.createTransaction(transactionData);
+        console.log(`📋 Transaction created: ${transaction.id} for license ${license.id}`);
+        
         // Update license status to 'attiva' since payment is completed
         await storage.updateLicense(license.id, { status: 'attiva' });
         license.status = 'attiva';
+        
       } else {
         // If wallet charge fails, delete the created license
         await storage.deleteLicense(license.id);
-        return res.status(400).json({ message: "Errore durante il pagamento con wallet" });
+        return res.status(400).json({ message: "Errore durante il pagamento automatico con crediti" });
       }
+    } else if (finalAmount > 0) {
+      // Create unpaid transaction for non-wallet payments
+      const transactionData = {
+        id: nanoid(),
+        licenseId: license.id,
+        clientId: client.id,
+        companyId: client.companyId,
+        type: 'attivazione',
+        amount: (price || 0).toString(),
+        discount: (discount || 0).toString(),
+        finalAmount: finalAmount.toString(),
+        paymentMethod: paymentMethod || 'bonifico',
+        status: 'in_attesa',
+        creditsUsed: 0,
+        modifiedBy: user.id,
+        notes: `Transazione in attesa per licenza ${license.activationKey}`
+      };
+      
+      const transaction = await storage.createTransaction(transactionData);
+      console.log(`📋 Unpaid transaction created: ${transaction.id} for license ${license.id}`);
     }
 
     console.log('License created successfully:', license.id);
@@ -1771,14 +1818,108 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
       }
     }
 
-    // Delete associated transactions first
+    // Get transactions to check for wallet payments that need refunds
+    const transactions = await storage.getTransactionsByLicense(licenseId);
+    
+    for (const transaction of transactions) {
+      if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && transaction.creditsUsed > 0) {
+        // Refund credits to company wallet
+        const companyId = transaction.companyId || existingLicense.client.companyId;
+        if (companyId) {
+          await storage.updateWalletBalance(
+            companyId,
+            parseFloat(transaction.creditsUsed.toString()),
+            `Rimborso per eliminazione licenza ${existingLicense.activationKey}`,
+            'rimborso',
+            user.id
+          );
+          console.log(`💰 Refunded ${transaction.creditsUsed} crediti to company ${companyId} for deleted license ${licenseId}`);
+        }
+      }
+    }
+    
+    // Delete associated transactions
     await storage.deleteTransactionsByLicense(licenseId);
-    console.log(`Deleted transactions for license: ${licenseId}`);
+    console.log(`🗑️ Deleted transactions for license: ${licenseId}`);
+
+    // Reset license activation dates before deletion (for unassignment scenario)
+    await storage.updateLicense(licenseId, {
+      activationDate: null,
+      expiryDate: null,
+      status: 'in_attesa_convalida',
+      computerKey: null
+    });
+    console.log(`🔄 Reset license dates and status for license: ${licenseId}`);
 
     await storage.deleteLicense(licenseId);
-    res.json({ message: "License deleted successfully" });
+    res.json({ message: "License deleted successfully with wallet refunds processed" });
   } catch (error) {
     console.error('Delete license error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Remove license assignment (different from full deletion)
+router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const licenseId = req.params.id;
+
+    // Get the existing license
+    const existingLicense = await storage.getLicense(licenseId);
+    if (!existingLicense) {
+      return res.status(404).json({ message: "License not found" });
+    }
+
+    // Check permissions - only superadmin and admin can remove assignments
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to remove license assignments" });
+    }
+
+    // Get transactions to check for wallet payments that need refunds
+    const transactions = await storage.getTransactionsByLicense(licenseId);
+    
+    for (const transaction of transactions) {
+      if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
+        // Refund credits to company wallet
+        const companyId = transaction.companyId || existingLicense.client.companyId;
+        if (companyId) {
+          await storage.updateWalletBalance(
+            companyId,
+            parseFloat(transaction.creditsUsed.toString()),
+            `Rimborso per rimozione assegnazione licenza ${existingLicense.activationKey}`,
+            'rimborso',
+            user.id
+          );
+          console.log(`💰 Refunded ${transaction.creditsUsed} crediti to company ${companyId} for unassigned license ${licenseId}`);
+        }
+      }
+    }
+    
+    // Delete associated transactions
+    await storage.deleteTransactionsByLicense(licenseId);
+    console.log(`🗑️ Deleted transactions for license assignment removal: ${licenseId}`);
+
+    // Reset license to unassigned state (reset dates and status)
+    const resetData = {
+      activationDate: null,
+      expiryDate: null,
+      status: 'in_attesa_convalida',
+      computerKey: null,
+      assignedCompany: null,
+      assignedAgent: null
+    };
+    
+    await storage.updateLicense(licenseId, resetData);
+    console.log(`🔄 Reset license assignment and dates for license: ${licenseId}`);
+
+    res.json({ 
+      message: "License assignment removed successfully", 
+      refundsProcessed: transactions.filter(t => t.status === 'pagato_crediti').length > 0,
+      license: { ...existingLicense, ...resetData }
+    });
+  } catch (error) {
+    console.error('Remove license assignment error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

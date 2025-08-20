@@ -56,18 +56,13 @@ export interface License {
   maxDevices?: number;
   price?: number;
   discount?: number;
+  priceType?: string;
   activeModules?: string[];
   assignedCompany?: string;
   assignedAgent?: string;
   renewalEnabled?: boolean;
   renewalPeriod?: string;
   createdAt: Date;
-}
-
-export interface LicenseWithDetails extends License {
-  client: Client;
-  product: Product;
-  company?: Company;
 }
 
 export interface DashboardStats {
@@ -114,11 +109,10 @@ export interface LicenseWithDetails {
   maxDevices: number;
   price: string | number;
   discount: string | number;
+  priceType?: string;
   activeModules: string[];
   assignedCompany?: string | null;
   assignedAgent?: string | null;
-  renewalEnabled?: boolean;
-  renewalPeriod?: string;
   createdAt: string;
   client?: {
     id: string;
