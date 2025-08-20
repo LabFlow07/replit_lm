@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -64,11 +63,11 @@ export default function ProductsPage() {
     maxDevices: 1,
     trialDays: 30
   });
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [licenseTypeFilter, setLicenseTypeFilter] = useState("all");
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -88,11 +87,11 @@ export default function ProductsPage() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Products data received:', data);
       return data;
@@ -252,7 +251,7 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestione Prodotti</h1>
           <p className="text-gray-600">Gestisci i prodotti software e le loro configurazioni</p>
         </div>
-        
+
         {(user.role === 'superadmin' || user.role === 'admin') && (
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
@@ -279,7 +278,7 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="version">Versione *</Label>
                   <Input
@@ -290,7 +289,7 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="description">Descrizione</Label>
                   <Textarea
@@ -301,7 +300,7 @@ export default function ProductsPage() {
                     rows={3}
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="licenseType">Tipo di Licenza *</Label>
                   <Select value={newProduct.licenseType} onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
@@ -317,12 +316,12 @@ export default function ProductsPage() {
                   </Select>
                 </div>
 
-                
+
 
                 {/* NEW: Product-Level Pricing Configuration */}
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
                   <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="price">Costo in Crediti *</Label>
@@ -337,7 +336,7 @@ export default function ProductsPage() {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="discount">Sconto Crediti</Label>
                       <Input
@@ -366,7 +365,7 @@ export default function ProductsPage() {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="maxDevices">Max Dispositivi *</Label>
                       <Input
@@ -378,7 +377,7 @@ export default function ProductsPage() {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="trialDays">Giorni Trial</Label>
                       <Input
@@ -391,7 +390,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                     Annulla
@@ -411,7 +410,7 @@ export default function ProductsPage() {
         <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <CardTitle>Prodotti ({filteredProducts.length} di {products.length})</CardTitle>
-            
+
             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
               <Input
                 placeholder="Cerca per nome, versione o descrizione..."
@@ -419,7 +418,7 @@ export default function ProductsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="md:w-80"
               />
-              
+
               <Select value={licenseTypeFilter} onValueChange={setLicenseTypeFilter}>
                 <SelectTrigger className="md:w-48">
                   <SelectValue placeholder="Tipo licenza" />
@@ -492,7 +491,7 @@ export default function ProductsPage() {
                 ) : (
                   filteredProducts.map((product: any) => {
                     const licenseCount = getProductLicenseCount(product.id);
-                    
+
                     return (
                       <TableRow key={product.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
@@ -503,13 +502,13 @@ export default function ProductsPage() {
                             <span className="font-semibold">{product.name}</span>
                           </div>
                         </TableCell>
-                        
+
                         <TableCell>
                           <Badge variant="outline" className="font-mono">
                             {product.version}
                           </Badge>
                         </TableCell>
-                        
+
                         <TableCell className="max-w-xs">
                           <div className="truncate" title={product.description || ''}>
                             {product.description || (
@@ -517,7 +516,7 @@ export default function ProductsPage() {
                             )}
                           </div>
                         </TableCell>
-                        
+
                         <TableCell>
                           <Badge 
                             className={`text-xs ${licenseTypeColors[product.licenseType] || 'bg-gray-100 text-gray-800'}`}
@@ -525,40 +524,42 @@ export default function ProductsPage() {
                             {licenseTypeLabels[product.licenseType] || product.licenseType || 'Non definito'}
                           </Badge>
                         </TableCell>
-                        
+
                         <TableCell className="text-center">
                           <Badge variant={licenseCount > 0 ? "default" : "secondary"}>
                             {licenseCount}
                           </Badge>
                         </TableCell>
-                        
+
                         <TableCell>
                           <div className="flex justify-center space-x-1">
                             {(user.role === 'superadmin' || user.role === 'admin') && (
                               <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedProduct(product);
-                                    setEditProduct({
-                                      name: product.name || '',
-                                      version: product.version || '',
-                                      description: product.description || '',
-                                      licenseType: product.licenseType || '',
-                                      price: product.price || 0,
-                                      discount: product.discount || 0,
-                                      maxUsers: product.maxUsers || 1,
-                                      maxDevices: product.maxDevices || 1,
-                                      trialDays: product.trialDays || 30
-                                    });
-                                    setIsEditModalOpen(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <i className="fas fa-edit text-sm"></i>
-                                </Button>
-                                
+                                {user.role === 'superadmin' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditProduct({
+                                        name: product.name,
+                                        version: product.version,
+                                        description: product.description || '',
+                                        licenseType: product.licenseType,
+                                        price: product.price || 0,
+                                        discount: product.discount || 0,
+                                        maxUsers: product.maxUsers || 1,
+                                        maxDevices: product.maxDevices || 1,
+                                        trialDays: product.trialDays || 30
+                                      });
+                                      setSelectedProduct(product);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <i className="fas fa-edit text-sm"></i>
+                                  </Button>
+                                )}
+
                                 {user.role === 'superadmin' && (
                                   <Button 
                                     variant="ghost" 
@@ -574,7 +575,7 @@ export default function ProductsPage() {
                                               'Authorization': `Bearer ${token}`
                                             }
                                           });
-                                          
+
                                           if (response.ok) {
                                             window.location.reload();
                                           } else {
@@ -625,7 +626,7 @@ export default function ProductsPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="edit-version">Versione *</Label>
               <Input
@@ -636,7 +637,7 @@ export default function ProductsPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="edit-description">Descrizione</Label>
               <Textarea
@@ -647,7 +648,7 @@ export default function ProductsPage() {
                 rows={3}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="edit-licenseType">Tipo di Licenza *</Label>
               <Select value={editProduct.licenseType} onValueChange={(value) => setEditProduct({ ...editProduct, licenseType: value })}>
@@ -663,12 +664,12 @@ export default function ProductsPage() {
               </Select>
             </div>
 
-            
+
 
             {/* NEW: Product-Level Pricing Configuration for Edit */}
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
               <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-price">Costo in Crediti *</Label>
@@ -683,7 +684,7 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="edit-discount">Sconto Crediti</Label>
                   <Input
@@ -712,7 +713,7 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="edit-maxDevices">Max Dispositivi *</Label>
                   <Input
@@ -724,7 +725,7 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="edit-trialDays">Giorni Trial</Label>
                   <Input
@@ -737,7 +738,7 @@ export default function ProductsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
                 Annulla

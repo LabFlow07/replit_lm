@@ -722,9 +722,9 @@ router.post("/api/products", authenticateToken, async (req: Request, res: Respon
     const user = (req as any).user;
     const { name, version, description, supportedLicenseTypes } = req.body;
 
-    // Only superadmin and admin can create products
-    if (user.role !== 'superadmin' && user.role !== 'admin') {
-      return res.status(403).json({ message: "Not authorized to create products" });
+    // Only superadmin can create products
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo il superadmin può creare prodotti" });
     }
 
     // Validate required fields
@@ -2372,9 +2372,9 @@ router.put("/api/products/:id", authenticateToken, async (req: Request, res: Res
       trialDays 
     } = req.body;
 
-    // Only superadmin and admin can update products
-    if (user.role !== 'superadmin' && user.role !== 'admin') {
-      return res.status(403).json({ message: "Not authorized to update products" });
+    // Only superadmin can update products
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo il superadmin può modificare prodotti" });
     }
 
     const existingProduct = await storage.getProductById(productId);
