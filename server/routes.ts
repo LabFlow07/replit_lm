@@ -149,7 +149,7 @@ router.post('/api/stripe/test', authenticateToken, async (req: Request, res: Res
   try {
     // Test connection by retrieving account info
     const account = await stripe.accounts.retrieve();
-    
+
     res.json({ 
       success: true,
       message: 'Connessione Stripe testata con successo',
@@ -169,14 +169,14 @@ router.post('/api/stripe/test', authenticateToken, async (req: Request, res: Res
 router.get('/api/stripe/config', authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Allow both superadmin and admin to access Stripe configuration for wallet recharging
     if (user.role !== 'superadmin' && user.role !== 'admin') {
       return res.status(403).json({ message: "Solo superadmin e admin possono visualizzare la configurazione Stripe" });
     }
 
     const config = await storage.getStripeConfiguration();
-    
+
     if (!config) {
       return res.json({ 
         success: true,
@@ -205,34 +205,34 @@ router.get('/api/stripe/config', authenticateToken, async (req: Request, res: Re
 router.post('/api/stripe/config', authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Only superadmin can save Stripe configuration
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Solo superadmin può salvare la configurazione Stripe" });
     }
 
     const { publicKey, secretKey } = req.body;
-    
+
     // Validate keys format
     if (publicKey && !publicKey.startsWith('pk_')) {
       return res.status(400).json({ message: "La chiave pubblica deve iniziare con pk_" });
     }
-    
+
     if (secretKey && !secretKey.startsWith('sk_')) {
       return res.status(400).json({ message: "La chiave segreta deve iniziare con sk_" });
     }
-    
+
     // Save Stripe configuration to database
     console.log('Stripe configuration updated by:', user.username);
     console.log('Public key updated:', publicKey ? 'Yes' : 'No');
     console.log('Secret key updated:', secretKey ? 'Yes' : 'No');
-    
+
     // Actually save the configuration to the database
     if (publicKey && secretKey) {
       await storage.saveStripeConfiguration(publicKey, secretKey, user.id);
       console.log('✅ Stripe configuration saved to system_config table');
     }
-    
+
     res.json({ 
       success: true,
       message: 'Configurazione Stripe salvata con successo'
@@ -546,7 +546,7 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
         parentCompanyId: row.parentCompanyId,
         parentCompanyName: row.parentCompanyName
       };
-      
+
       return license;
     });
 
@@ -764,7 +764,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
 
     // Get company registrations based on user role and company hierarchy
     let companies;
-    
+
     if (user.role === 'superadmin') {
       // Superadmin can see all registrations
       companies = await storage.getAllTestaRegAzienda();
@@ -774,15 +774,15 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
       // Admin can only see registrations from their company hierarchy
       const companyHierarchy = await storage.getCompanyHierarchy(user.companyId);
       console.log('Admin: company hierarchy for', user.companyId, ':', companyHierarchy);
-      
+
       // Get all registrations and filter by company hierarchy  
       const allCompanies = await storage.getAllTestaRegAzienda();
       companies = [];
-      
+
       for (const company of allCompanies) {
         // Check if this registration should be visible to this admin
         // We need to check if the company registration belongs to a client in the admin's company hierarchy
-        
+
         // First, try to find if there's a direct license assignment
         if (company.idLicenza) {
           const license = await storage.getLicense(company.idLicenza);
@@ -791,7 +791,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
             continue;
           }
         }
-        
+
         // If no license assigned, check if the registration company name matches any company in the hierarchy
         // Get the company names from the hierarchy
         const hierarchyCompanies = await Promise.all(
@@ -800,7 +800,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
         const hierarchyCompanyNames = hierarchyCompanies
           .filter(c => c)
           .map(c => c.name.toLowerCase());
-        
+
         // Check if registration company name matches any in the hierarchy
         const registrationCompanyName = company.nomeAzienda?.toLowerCase();
         if (registrationCompanyName && hierarchyCompanyNames.some(name => 
@@ -809,7 +809,7 @@ router.get("/api/software/registrazioni", authenticateToken, async (req: Request
           companies.push(company);
         }
       }
-      
+
       console.log('Admin: filtered to', companies.length, 'company registrations in hierarchy');
     } else {
       // Other roles get empty results for now
@@ -1063,6 +1063,7 @@ router.get("/api/software/registrazioni/:id", authenticateToken, async (req: Req
 
 router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const registrationId = req.params.id;
     const { aziendaAssegnata, clienteAssegnato, licenzaAssegnata, prodottoAssegnato, note, authorizeDevice = false } = req.body;
 
@@ -1133,7 +1134,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       console.log(`updateData before storage update:`, updateData);
 
       await storage.updateLicense(licenzaAssegnata, updateData);
-      
+
       console.log(`License ${licenzaAssegnata} updated successfully`);
 
       // Update company record with license assignment
@@ -1141,37 +1142,106 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         idLicenza: licenzaAssegnata
       });
 
-      // Generate automatic transaction for license assignment - ALWAYS create transaction
-      try {
-        // Ottieni informazioni del client per la transazione
-        const client = await storage.getClientById(clienteAssegnato);
-        const clientCompanyId = client?.companyId || client?.company_id;
+      // Generate automatic transaction and process wallet payment for license assignment
+        try {
+          // Ottieni informazioni del client per la transazione
+          const client = await storage.getClientById(clienteAssegnato);
+          const clientCompanyId = client?.companyId || client?.company_id;
 
-        // Crea SEMPRE una transazione (anche per prezzo 0)
-        const transactionAmount = parseFloat(license.price?.toString() || '0');
-        const discountPercent = parseFloat(license.discount?.toString() || '0');
-        const discountAmount = transactionAmount * (discountPercent / 100);
-        const finalAmount = Math.max(0, transactionAmount - discountAmount);
+          // Calcola l'importo finale
+          const transactionAmount = parseFloat(license.price?.toString() || '0');
+          const discountPercent = parseFloat(license.discount?.toString() || '0');
+          const discountAmount = transactionAmount * (discountPercent / 100);
+          const finalAmount = Math.max(0, transactionAmount - discountAmount);
 
-        const transaction = await storage.createTransaction({
-          licenseId: licenzaAssegnata,
-          clientId: clienteAssegnato || null,
-          companyId: clientCompanyId || null,
-          type: 'attivazione',
-          amount: transactionAmount,
-          discount: discountAmount, // Store the calculated discount amount
-          finalAmount: finalAmount,
-          paymentMethod: finalAmount === 0 ? 'gratis' : 'manuale', // Default to manual if not specified and amount > 0
-          status: finalAmount === 0 ? 'completed' : 'in_attesa', // Default to completed if free, otherwise in_attesa
-          paymentDate: finalAmount === 0 ? new Date() : null,
-          notes: `Transazione generata automaticamente per assegnazione licenza ${license.activationKey}${clienteAssegnato ? ` al cliente ${client?.name}` : ''}`
-        });
+          console.log(`💳 Software registration classification: Processing payment for license ${licenzaAssegnata}, Amount: ${finalAmount} crediti`);
 
-        console.log(`Transaction ${transaction.id} created for license ${licenzaAssegnata} with client ${clienteAssegnato || 'N/A'}, company ${clientCompanyId || 'N/A'}, amount ${transactionAmount}, discount ${discountAmount}, final amount ${finalAmount}, status ${transaction.status}, date: ${transaction.paymentDate || 'pending'}`);
-      } catch (transactionError) {
-        console.error('Error creating transaction:', transactionError);
-        // Continue with license assignment even if transaction creation fails
-      }
+          if (finalAmount > 0 && clientCompanyId) {
+            // Tenta il pagamento automatico con crediti wallet
+            const walletPaymentSuccess = await storage.chargeWalletForLicense(
+              clientCompanyId,
+              licenzaAssegnata,
+              finalAmount,
+              user.id
+            );
+
+            if (walletPaymentSuccess) {
+              // Pagamento con crediti riuscito - crea transazione pagata
+              const transaction = await storage.createTransaction({
+                licenseId: licenzaAssegnata,
+                clientId: clienteAssegnato || null,
+                companyId: clientCompanyId,
+                type: 'attivazione',
+                amount: transactionAmount,
+                discount: discountAmount,
+                finalAmount: finalAmount,
+                paymentMethod: 'crediti',
+                status: 'pagato_crediti',
+                creditsUsed: finalAmount,
+                paymentDate: new Date(),
+                modifiedBy: user.id,
+                notes: `Pagamento automatico con crediti per classificazione licenza ${license.activationKey} da registrazione software`
+              });
+
+              console.log(`💳 Wallet payment successful for software registration: License ${licenzaAssegnata}, Amount ${finalAmount} crediti, Transaction ${transaction.id}`);
+            } else {
+              // Saldo insufficiente - crea transazione in attesa
+              const transaction = await storage.createTransaction({
+                licenseId: licenzaAssegnata,
+                clientId: clienteAssegnato || null,
+                companyId: clientCompanyId,
+                type: 'attivazione',
+                amount: transactionAmount,
+                discount: discountAmount,
+                finalAmount: finalAmount,
+                paymentMethod: 'manuale',
+                status: 'in_attesa',
+                notes: `Transazione per classificazione licenza ${license.activationKey} da registrazione software - Saldo wallet insufficiente`
+              });
+
+              console.log(`⚠️ Wallet payment failed (insufficient funds) for software registration: License ${licenzaAssegnata}, Transaction ${transaction.id} created as pending`);
+            }
+          } else if (finalAmount === 0) {
+            // Licenza gratuita
+            const transaction = await storage.createTransaction({
+              licenseId: licenzaAssegnata,
+              clientId: clienteAssegnato || null,
+              companyId: clientCompanyId || null,
+              type: 'attivazione',
+              amount: transactionAmount,
+              discount: discountAmount,
+              finalAmount: finalAmount,
+              paymentMethod: 'gratis',
+              status: 'completed',
+              paymentDate: new Date(),
+              notes: `Licenza gratuita per classificazione da registrazione software ${license.activationKey}`
+            });
+
+            console.log(`✅ Free license transaction created for software registration: License ${licenzaAssegnata}, Transaction ${transaction.id}`);
+          } else {
+            console.log(`⚠️ No company ID found for automatic wallet payment - creating manual transaction`);
+
+            // Crea transazione manuale se non c'è azienda
+            const transaction = await storage.createTransaction({
+              licenseId: licenzaAssegnata,
+              clientId: clienteAssegnato || null,
+              companyId: clientCompanyId || null,
+              type: 'attivazione',
+              amount: transactionAmount,
+              discount: discountAmount,
+              finalAmount: finalAmount,
+              paymentMethod: 'manuale',
+              status: 'in_attesa',
+              notes: `Transazione manuale per classificazione licenza ${license.activationKey} da registrazione software`
+            });
+
+            console.log(`📋 Manual transaction created for software registration: License ${licenzaAssegnata}, Transaction ${transaction.id}`);
+          }
+
+        } catch (transactionError) {
+          console.error('Error creating transaction for software registration:', transactionError);
+          // Continue with license assignment even if transaction creation fails
+        }
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     } else if (licenzaAssegnata === null) {
@@ -1361,7 +1431,7 @@ router.post("/api/licenses/from-registration", authenticateToken, async (req: Re
 
     // For licenses created from software registrations, automatically use wallet payment if price > 0
     const finalAmount = Math.max(0, (price || 0));
-    
+
     // Check wallet balance if price > 0
     if (finalAmount > 0) {
       const companyId = client.company_id || client.companyId;
@@ -1397,7 +1467,7 @@ router.post("/api/licenses/from-registration", authenticateToken, async (req: Re
     if (finalAmount > 0) {
       const companyId = client.company_id || client.companyId;
       const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
-      
+
       if (!success) {
         // If wallet charge fails, delete the created license
         await storage.deleteLicense(license.id);
@@ -1636,13 +1706,13 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
 
     // Calculate final amount
     const finalAmount = Math.max(0, (price || 0) - (discount || 0));
-    
+
     // Handle automatic wallet payment (default is 'crediti')
     const shouldUseWallet = (paymentMethod === 'wallet' || paymentMethod === 'crediti' || !paymentMethod) && finalAmount > 0;
-    
+
     if (shouldUseWallet) {
       const companyId = client.company_id || client.companyId;
-      
+
       // Check if company has sufficient wallet balance
       const wallet = await storage.getCompanyWallet(companyId);
       if (!wallet || parseFloat(wallet.balance?.toString() || '0') < finalAmount) {
@@ -1650,7 +1720,7 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
           message: `Saldo wallet insufficiente. Richiesto: ${finalAmount} crediti, Disponibile: ${wallet ? wallet.balance : 0} crediti` 
         });
       }
-      
+
       console.log(`💳 Automatic wallet payment: ${finalAmount} crediti from company ${companyId}`);
     }
 
@@ -1678,13 +1748,13 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
     // If automatic wallet payment and amount > 0, deduct credits and create transactions
     if (shouldUseWallet) {
       const companyId = client.company_id || client.companyId;
-      
+
       // Deduct credits from wallet and create wallet transaction
       const success = await storage.chargeWalletForLicense(companyId, license.id, finalAmount, user.id);
-      
+
       if (success) {
         console.log(`💳 Automatic wallet payment successful: License ${license.id}, Company ${companyId}, Amount ${finalAmount} crediti`);
-        
+
         // Create main transaction record (paid status)
         const transactionData = {
           id: nanoid(),
@@ -1702,14 +1772,14 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
           modifiedBy: user.id,
           notes: `Pagamento automatico con crediti per licenza ${license.activationKey}`
         };
-        
+
         const transaction = await storage.createTransaction(transactionData);
         console.log(`📋 Transaction created: ${transaction.id} for license ${license.id}`);
-        
+
         // Update license status to 'attiva' since payment is completed
         await storage.updateLicense(license.id, { status: 'attiva' });
         license.status = 'attiva';
-        
+
       } else {
         // If wallet charge fails, delete the created license
         await storage.deleteLicense(license.id);
@@ -1732,7 +1802,7 @@ router.post("/api/licenses", authenticateToken, async (req: Request, res: Respon
         modifiedBy: user.id,
         notes: `Transazione in attesa per licenza ${license.activationKey}`
       };
-      
+
       const transaction = await storage.createTransaction(transactionData);
       console.log(`📋 Unpaid transaction created: ${transaction.id} for license ${license.id}`);
     }
@@ -1820,7 +1890,7 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
 
     // Get transactions to check for wallet payments that need refunds
     const transactions = await storage.getTransactionsByLicense(licenseId);
-    
+
     for (const transaction of transactions) {
       if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && transaction.creditsUsed > 0) {
         // Refund credits to company wallet
@@ -1837,7 +1907,7 @@ router.delete("/api/licenses/:id", authenticateToken, async (req: Request, res: 
         }
       }
     }
-    
+
     // Delete associated transactions
     await storage.deleteTransactionsByLicense(licenseId);
     console.log(`🗑️ Deleted transactions for license: ${licenseId}`);
@@ -1878,7 +1948,7 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
 
     // Get transactions to check for wallet payments that need refunds
     const transactions = await storage.getTransactionsByLicense(licenseId);
-    
+
     for (const transaction of transactions) {
       if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
         // Refund credits to company wallet
@@ -1895,7 +1965,7 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
         }
       }
     }
-    
+
     // Delete associated transactions
     await storage.deleteTransactionsByLicense(licenseId);
     console.log(`🗑️ Deleted transactions for license assignment removal: ${licenseId}`);
@@ -1909,7 +1979,7 @@ router.post("/api/licenses/:id/remove-assignment", authenticateToken, async (req
       assignedCompany: null,
       assignedAgent: null
     };
-    
+
     await storage.updateLicense(licenseId, resetData);
     console.log(`🔄 Reset license assignment and dates for license: ${licenseId}`);
 
@@ -2745,7 +2815,7 @@ router.patch("/api/transactions/:id/status", authenticateToken, async (req: Requ
     const user = (req as any).user;
     const transactionId = req.params.id;
     const { status, paymentMethod } = req.body;
-    
+
     console.log(`📝 Request body:`, { status, paymentMethod });
     console.log(`👤 User:`, { id: user?.id, username: user?.username, role: user?.role });
 
@@ -2923,7 +2993,7 @@ router.post("/api/licenses/fix-specific-expiry", authenticateToken, async (req: 
 
     // Find the specific license that needs fixing
     const license = await storage.getLicenseByActivationKey('LIC-80885882-PHUUHXM6');
-    
+
     if (!license) {
       return res.status(404).json({ message: 'Licenza non trovata' });
     }
@@ -2984,7 +3054,7 @@ router.post("/api/licenses/fix-expiry-dates", authenticateToken, async (req: Req
           (license.licenseType === 'abbonamento_mensile' || 
            license.licenseType === 'abbonamento_annuale' ||
            license.licenseType === 'trial')) {
-        
+
         const activationDate = new Date(license.activationDate);
         let expiryDate: Date;
 
@@ -3162,7 +3232,7 @@ router.post("/api/wallet/:companyId/create-payment-intent", authenticateToken, a
     }
 
     let customerId = wallet.stripeCustomerId;
-    
+
     if (!customerId) {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
@@ -3172,9 +3242,9 @@ router.post("/api/wallet/:companyId/create-payment-intent", authenticateToken, a
           userId: user.id
         }
       });
-      
+
       customerId = customer.id;
-      
+
       // Update wallet with Stripe customer ID
       await storage.updateWalletStripeCustomer(companyId, customerId);
     }
@@ -3221,7 +3291,7 @@ router.post("/api/wallet/:companyId/confirm-payment", authenticateToken, async (
 
     // Retrieve payment intent from Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
+
     if (paymentIntent.status !== 'succeeded') {
       return res.status(400).json({ message: "Pagamento non completato" });
     }
@@ -3231,7 +3301,7 @@ router.post("/api/wallet/:companyId/confirm-payment", authenticateToken, async (
     }
 
     const amount = parseFloat(paymentIntent.metadata.credits);
-    
+
     // Update wallet balance
     const wallet = await storage.updateWalletBalance(
       companyId, 
@@ -3242,7 +3312,7 @@ router.post("/api/wallet/:companyId/confirm-payment", authenticateToken, async (
     );
 
     console.log(`💳 Stripe payment confirmed: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
-    
+
     res.json({ 
       message: "Ricarica completata con successo",
       wallet,
@@ -3286,7 +3356,7 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
     );
 
     console.log(`💳 Test wallet recharged: Company ${companyId}, Amount ${amount}, New balance: ${wallet.balance}`);
-    
+
     res.json({ 
       message: "Ricarica completata con successo",
       wallet,
@@ -3295,7 +3365,7 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
     });
   } catch (error) {
     console.error('Recharge wallet error:', error);
-    res.status(500).json({ message: "Errore interno del server" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -3320,7 +3390,7 @@ router.post("/api/wallet/transfer", authenticateToken, async (req: Request, res:
     }
 
     const success = await storage.transferCredits(fromCompanyId, toCompanyId, amount, user.id);
-    
+
     if (success) {
       res.json({ message: "Trasferimento crediti completato con successo" });
     } else {
@@ -3355,7 +3425,7 @@ router.post("/api/wallet/pay-license", authenticateToken, async (req: Request, r
     }
 
     const success = await storage.chargeWalletForLicense(companyId, licenseId, amount, user.id);
-    
+
     if (success) {
       console.log(`💳 License payment successful: License ${licenseId}, Company ${companyId}, Amount ${amount} crediti`);
       res.json({ message: "Pagamento licenza completato con crediti" });
@@ -3395,7 +3465,7 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
       if (!wallet) {
         wallet = await storage.createCompanyWallet(company.id);
       }
-      
+
       walletsData.push({
         company: company,
         wallet: wallet
@@ -3413,7 +3483,7 @@ router.get("/api/wallets", authenticateToken, async (req: Request, res: Response
 router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res: Response) => {
   const timestamp = Date.now();
   console.log(`🚀 WALLET ENDPOINT HIT - TIMESTAMP: ${timestamp}`);
-  
+
   try {
     // DISABLE ALL CACHING COMPLETELY
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
@@ -3422,7 +3492,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     res.setHeader('Last-Modified', new Date(0).toUTCString()); // Force old date
     res.setHeader('ETag', `wallet-${timestamp}-${Math.random()}`); // Always unique
     res.setHeader('X-Timestamp', timestamp.toString());
-    
+
     const user = (req as any).user;
     const { companyId } = req.params;
 
@@ -3449,7 +3519,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
 
     console.log(`💥 WALLET DATA: Company ${companyId}, Balance: ${wallet.balance}`);
     console.log(`💥 TRANSACTION COUNT FROM DB: ${transactions.length}`);
-    
+
     // CRITICAL: ALWAYS include transactions in response
     const responseData = {
       id: wallet.id,
@@ -3470,7 +3540,7 @@ router.get("/api/wallet/:companyId", authenticateToken, async (req: Request, res
     };
 
     console.log(`✅ SENDING RESPONSE WITH ${transactions.length} TRANSACTIONS - TIMESTAMP: ${timestamp}`);
-    
+
     res.json(responseData);
   } catch (error: any) {
     console.error('Get company wallet error:', error);
@@ -3487,7 +3557,7 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
     }
 
     const { companyId } = req.params;
-    
+
     // Check if transactions already exist
     const existingTransactions = await storage.getWalletTransactions(companyId, 10);
     if (existingTransactions.length > 0) {
@@ -3526,7 +3596,7 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
     ];
 
     const createdTransactions = [];
-    
+
     for (const tx of testTransactions) {
       const transaction = await storage.createWalletTransaction({
         companyId: companyId,
@@ -3546,13 +3616,13 @@ router.post("/api/wallet/:companyId/force-create-transactions", authenticateToke
     }
 
     console.log(`✅ FORCE CREATED ${createdTransactions.length} transactions for company ${companyId}`);
-    
+
     return res.json({
       success: true,
       message: `Creati ${createdTransactions.length} transazioni di test`,
       transactions: createdTransactions
     });
-    
+
   } catch (error: any) {
     console.error('🔧 FORCE CREATE Error:', error);
     res.status(500).json({ error: error.message });
@@ -3564,19 +3634,19 @@ router.get("/api/company/:companyId/wallet-transactions", authenticateToken, asy
   try {
     const { companyId } = req.params;
     console.log(`🏦 ENDPOINT WALLET TRANSACTIONS per company: ${companyId}`);
-    
+
     const transactions = await storage.getWalletTransactions(companyId, 100);
     console.log(`💰 TROVATE ${transactions.length} transazioni wallet`);
-    
+
     // Log prime transazioni per debug
     if (transactions.length > 0) {
       console.log(`✨ Prima transazione:`, transactions[0]);
     }
-    
+
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Content-Type', 'application/json');
     res.json(transactions);
-    
+
   } catch (error: any) {
     console.error('💥 ERRORE ENDPOINT WALLET TRANSACTIONS:', error);
     res.status(500).json({ error: error.message });
@@ -3593,20 +3663,20 @@ router.get("/api/wallet/:companyId/debug-transactions", authenticateToken, async
 
     const { companyId } = req.params;
     console.log(`🔧 DEBUG: Testing getWalletTransactions for company ${companyId} at ${new Date().toISOString()}`);
-    
+
     const transactions = await storage.getWalletTransactions(companyId, 100);
     console.log(`🔧 DEBUG: Function returned ${transactions.length} transactions`);
-    
+
     if (transactions.length > 0) {
       console.log(`🔧 DEBUG: First transaction:`, JSON.stringify(transactions[0], null, 2));
     }
-    
+
     return res.json({
       companyId,
       transactionsCount: transactions.length,
       transactions: transactions
     });
-    
+
   } catch (error: any) {
     console.error('🔧 DEBUG: Error:', error);
     res.status(500).json({ error: error.message });
@@ -3623,16 +3693,16 @@ router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (r
 
     const { companyId } = req.params;
     const wallet = await storage.getCompanyWallet(companyId);
-    
+
     if (!wallet) {
       return res.status(404).json({ message: "Wallet non trovato" });
     }
 
     const existingTransactions = await storage.getWalletTransactions(companyId, 10);
-    
+
     if (wallet.balance && parseFloat(wallet.balance.toString()) > 0 && existingTransactions.length === 0) {
       console.log(`🔧 FORCE Creating historical transaction for company ${companyId} with balance ${wallet.balance}`);
-      
+
       await storage.createWalletTransaction({
         companyId: companyId,
         type: 'ricarica',
@@ -3650,7 +3720,7 @@ router.post("/api/wallet/:companyId/fix-historical", authenticateToken, async (r
 
       const newTransactions = await storage.getWalletTransactions(companyId, 10);
       console.log(`✅ Historical transaction created! New count: ${newTransactions.length}`);
-      
+
       return res.json({ 
         success: true, 
         message: `Transazione storica creata per ${parseFloat(wallet.balance.toString())} crediti`,
@@ -3678,7 +3748,7 @@ router.post("/api/wallet/:companyId/test-transactions", authenticateToken, async
 
     const { companyId } = req.params;
     const wallet = await storage.getCompanyWallet(companyId);
-    
+
     if (!wallet) {
       return res.status(404).json({ message: "Wallet non trovato" });
     }
@@ -3727,7 +3797,7 @@ router.post("/api/wallet/:companyId/test-transactions", authenticateToken, async
     }
 
     console.log(`✅ Created ${createdTransactions.length} test transactions for company ${companyId}`);
-    
+
     res.json({
       message: `Creati ${createdTransactions.length} transazioni di test`,
       transactions: createdTransactions
@@ -3778,7 +3848,7 @@ router.post("/api/wallet/:companyId/recharge", authenticateToken, async (req: Re
 router.post("/api/stripe/config", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    
+
     // Only superadmin can configure Stripe settings
     if (user.role !== 'superadmin') {
       return res.status(403).json({ message: "Access denied" });
@@ -3819,7 +3889,7 @@ router.post("/api/stripe/config", authenticateToken, async (req: Request, res: R
     // Save to database for persistence
     try {
       await storage.saveStripeConfiguration(publicKey, secretKey, user.id);
-      
+
       // Also update runtime environment variables for immediate use
       process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
       process.env.STRIPE_SECRET_KEY = secretKey;
@@ -3834,7 +3904,7 @@ router.post("/api/stripe/config", authenticateToken, async (req: Request, res: R
       });
     } catch (dbError) {
       console.error('Database save failed, falling back to runtime variables:', dbError);
-      
+
       // Fallback: just update runtime variables
       process.env.VITE_STRIPE_PUBLIC_KEY = publicKey;
       process.env.STRIPE_SECRET_KEY = secretKey;
