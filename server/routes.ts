@@ -1251,12 +1251,17 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       if (company && company.idLicenza) {
         console.log(`Removing license assignment ${company.idLicenza} from registration ${registrationId}`);
 
+        // Get the license details for transaction creation
+        const license = await storage.getLicense(company.idLicenza);
+        
         // Get transactions to process refunds BEFORE deleting them
         try {
           const transactions = await storage.getTransactionsByLicense(company.idLicenza);
           console.log(`🔍 Found ${transactions.length} transactions for license ${company.idLicenza}`);
 
           let totalRefunded = 0;
+          let refundCompanyId = null;
+          
           for (const transaction of transactions) {
             if (transaction.status === 'pagato_crediti' && transaction.creditsUsed && parseFloat(transaction.creditsUsed.toString()) > 0) {
               const creditsToRefund = parseFloat(transaction.creditsUsed.toString());
@@ -1280,14 +1285,36 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
                 );
 
                 totalRefunded += creditsToRefund;
+                refundCompanyId = companyId;
                 console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
             }
           }
 
-          // Now delete the transactions after processing refunds
+          // Create a new refund transaction in the transactions table if we processed refunds
+          if (totalRefunded > 0 && refundCompanyId && license) {
+            const refundTransaction = await storage.createTransaction({
+              licenseId: company.idLicenza,
+              clientId: clienteAssegnato || license.clientId,
+              companyId: refundCompanyId,
+              type: 'rimborso',
+              amount: totalRefunded.toString(),
+              discount: '0',
+              finalAmount: totalRefunded.toString(),
+              paymentMethod: 'crediti',
+              status: 'rimborsato',
+              creditsUsed: -totalRefunded, // Negative because it's a refund
+              paymentDate: new Date(),
+              modifiedBy: user.id,
+              notes: `Rimborso per rimozione assegnazione licenza ${license.activationKey} da registrazione software ${partitaIva}`
+            });
+            
+            console.log(`📋 Created refund transaction: ${refundTransaction.id} for ${totalRefunded} crediti`);
+          }
+
+          // Now delete the original transactions after processing refunds
           await storage.deleteTransactionsByLicense(company.idLicenza);
-          console.log(`🗑️ Deleted ${transactions.length} transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
+          console.log(`🗑️ Deleted ${transactions.length} original transactions for license ${company.idLicenza}. Total refunded: ${totalRefunded} crediti`);
 
         } catch (error) {
           console.error('Error processing refunds and deleting transactions:', error);
