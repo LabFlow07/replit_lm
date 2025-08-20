@@ -11,13 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Edit, Trash2, Key, MoreHorizontal } from "lucide-react";
+import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Key } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/hooks/use-auth"; // Import useAuth hook
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
+
 import { useToast } from "@/hooks/use-toast";
 
 // Mock user for role checking, replace with actual auth context in a real app
@@ -1088,39 +1088,7 @@ export default function SoftwareRegistrations() {
                             </Button>
                           )}
 
-                          {/* Menu dropdown per altre azioni */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {user?.role === 'superadmin' && (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedRegistration(registration);
-                                    setIsClassifyDialogOpen(true);
-                                  }}
-                                  className="cursor-pointer"
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Classifica
-                                </DropdownMenuItem>
-                              )}
-
-                              {user?.role === 'superadmin' && (
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteRegistration(registration.id)}
-                                  className="cursor-pointer text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Elimina
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          
                         </div>
                       </td>
                     </tr>
