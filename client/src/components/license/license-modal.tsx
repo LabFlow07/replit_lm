@@ -265,8 +265,8 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader className="pb-2">
+      <DialogContent className="sm:max-w-5xl max-h-[95vh] overflow-y-auto">
+        <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <i className={`fas ${isEditing ? 'fa-edit text-green-600' : 'fa-key text-blue-600'}`}></i>
@@ -279,280 +279,260 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Chiave di Attivazione */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="text-center">
-              <Label className="text-sm font-medium text-gray-700">Chiave di Attivazione</Label>
-              <p className="text-xl font-mono font-semibold text-gray-900 mt-1 tracking-wider">
-                {license.activationKey}
-              </p>
-            </div>
-          </div>
+        {/* Chiave di Attivazione */}
+        <div className="bg-gray-50 p-3 rounded-lg text-center mb-4">
+          <Label className="text-xs font-medium text-gray-700">Chiave di Attivazione</Label>
+          <p className="text-lg font-mono font-semibold text-gray-900 mt-1 tracking-wider">
+            {license.activationKey}
+          </p>
+        </div>
 
-          {/* Griglia principale con 3 colonne */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Cliente */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-1">Cliente</h3>
-              
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Nome</p>
-                  <p className="text-sm text-gray-900 font-semibold">{license.client?.name || license.clientName || 'N/A'}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Email</p>
-                  <p className="text-sm text-gray-900">{license.client?.email || license.clientEmail || 'N/A'}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Azienda</p>
-                  <p className="text-sm text-gray-900 font-semibold">{license.company?.name || license.companyName || 'N/A'}</p>
-                </div>
+        {/* Layout compatto a griglia */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          {/* Cliente */}
+          <div className="bg-white border rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Cliente</h3>
+            <div className="space-y-1">
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Nome:</span>
+                <span className="text-xs font-medium text-gray-900 text-right">{license.client?.name || license.clientName || 'N/A'}</span>
               </div>
-            </div>
-
-            {/* Prodotto */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-1">Prodotto</h3>
-              
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Software</p>
-                  <p className="text-sm text-gray-900 font-semibold">
-                    {license.product?.name} {license.product?.version}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Tipologia</p>
-                  {isEditing ? (
-                    <Select 
-                      value={editedLicense.licenseType || license.licenseType} 
-                      onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="permanente">Permanente</SelectItem>
-                        <SelectItem value="trial">Trial</SelectItem>
-                        <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                        <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm text-gray-900">
-                      {getLicenseTypeLabel(license.licenseType)}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Prezzo</p>
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          step="1"
-                          value={editedLicense.price || license.price || 0}
-                          onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                          className="h-8 text-sm flex-1"
-                          placeholder="0"
-                          min="0"
-                        />
-                        <span className="text-sm text-gray-600 whitespace-nowrap">crediti</span>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={editedLicense.discount || license.discount || 0}
-                          onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                          className="h-8 text-sm flex-1"
-                          placeholder="0"
-                          max="100"
-                          min="0"
-                        />
-                        <span className="text-sm text-gray-600">% sconto</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-900 font-semibold">
-                      {Math.round(parseFloat((license.price || 0).toString()))} crediti
-                      {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
-                        <span className="text-green-600 ml-1 text-xs">
-                          (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Email:</span>
+                <span className="text-xs text-gray-900 text-right">{license.client?.email || license.clientEmail || 'N/A'}</span>
               </div>
-            </div>
-
-            {/* Date e Limiti */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-1">Limiti & Date</h3>
-              
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Utenti</p>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editedLicense.maxUsers || 1}
-                        onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
-                        className="h-8 text-sm"
-                        min="1"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 font-semibold">{license.maxUsers || 1}</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Dispositivi</p>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editedLicense.maxDevices || 1}
-                        onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
-                        className="h-8 text-sm"
-                        min="1"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 font-semibold">{license.maxDevices || 1}</p>
-                    )}
-                  </div>
-                </div>
-
-                <Separator className="my-2" />
-
-
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Creata il</p>
-                  <p className="text-sm text-gray-900">
-                    {license.createdAt 
-                      ? new Date(license.createdAt).toLocaleDateString('it-IT')
-                      : 'N/A'
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Attivata il</p>
-                  <p className="text-sm text-gray-900">
-                    {license.activationDate 
-                      ? new Date(license.activationDate).toLocaleDateString('it-IT')
-                      : 'Non attivata'
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Scade il</p>
-                  <p className={`text-sm font-semibold ${
-                    license.expiryDate ? (
-                      new Date(license.expiryDate) < new Date() ? 'text-red-600' :
-                      new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
-                      'text-green-600'
-                    ) : 'text-gray-900'
-                  }`}>
-                    {license.expiryDate 
-                      ? new Date(license.expiryDate).toLocaleDateString('it-IT')
-                      : (license.licenseType === 'permanente' ? 'Permanente' : 'Data non impostata')
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Rinnovo Automatico</p>
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={editedLicense.renewalEnabled || false}
-                          onChange={(e) => setEditedLicense({...editedLicense, renewalEnabled: e.target.checked})}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                        />
-                        <span className="text-sm text-gray-900">Attiva rinnovo automatico</span>
-                      </label>
-                      {editedLicense.renewalEnabled && (
-                        <Select
-                          value={editedLicense.renewalPeriod || ''}
-                          onValueChange={(value) => setEditedLicense({...editedLicense, renewalPeriod: value})}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Periodo rinnovo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="monthly">Mensile</SelectItem>
-                            <SelectItem value="yearly">Annuale</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-900">
-                      {license.renewalEnabled ? (
-                        <span className="flex items-center">
-                          <i className="fas fa-check-circle text-green-600 mr-1"></i>
-                          Attivo ({license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : license.renewalPeriod})
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <i className="fas fa-times-circle text-red-600 mr-1"></i>
-                          Disattivo
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Azienda:</span>
+                <span className="text-xs font-medium text-gray-900 text-right">{license.company?.name || license.companyName || 'N/A'}</span>
               </div>
             </div>
           </div>
 
-          {/* Moduli Attivi */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">Moduli Attivi</h3>
-              <div className="flex flex-wrap gap-1">
-                {license.activeModules && license.activeModules.length > 0 ? (
-                  license.activeModules.map((module: string, index: number) => (
-                    <Badge key={index} variant="outline" className="capitalize text-xs">
-                      {module}
-                    </Badge>
-                  ))
+          {/* Prodotto */}
+          <div className="bg-white border rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Prodotto</h3>
+            <div className="space-y-1">
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Software:</span>
+                <span className="text-xs font-medium text-gray-900 text-right">
+                  {license.product?.name} {license.product?.version}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Tipologia:</span>
+                {isEditing ? (
+                  <Select 
+                    value={editedLicense.licenseType || license.licenseType} 
+                    onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
+                  >
+                    <SelectTrigger className="h-6 text-xs w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="permanente">Permanente</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="abbonamento_mensile">Mensile</SelectItem>
+                      <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    Nessun modulo attivo
-                  </Badge>
+                  <span className="text-xs text-gray-900 text-right">
+                    {getLicenseTypeLabel(license.licenseType)}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Prezzo:</span>
+                {isEditing ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="number"
+                        step="1"
+                        value={editedLicense.price || license.price || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                        className="h-6 text-xs w-16"
+                        placeholder="0"
+                        min="0"
+                      />
+                      <span className="text-xs text-gray-600">cr</span>
+                    </div>
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedLicense.discount || license.discount || 0}
+                        onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                        className="h-6 text-xs w-16"
+                        placeholder="0"
+                        max="100"
+                        min="0"
+                      />
+                      <span className="text-xs text-gray-600">%</span>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-xs font-medium text-gray-900 text-right">
+                    {Math.round(parseFloat((license.price || 0).toString()))} crediti
+                    {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
+                      <span className="text-green-600 ml-1">
+                        (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
+                      </span>
+                    )}
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Dispositivi Autorizzati */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-1 mb-3">Dispositivi Autorizzati</h3>
-            <DeviceKeysSection licenseId={license.id} />
+          {/* Limiti & Date */}
+          <div className="bg-white border rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Limiti & Date</h3>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Utenti:</span>
+                {isEditing ? (
+                  <Input
+                    type="number"
+                    value={editedLicense.maxUsers || 1}
+                    onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
+                    className="h-6 text-xs w-16"
+                    min="1"
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-gray-900">{license.maxUsers || 1}</span>
+                )}
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Dispositivi:</span>
+                {isEditing ? (
+                  <Input
+                    type="number"
+                    value={editedLicense.maxDevices || 1}
+                    onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
+                    className="h-6 text-xs w-16"
+                    min="1"
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-gray-900">{license.maxDevices || 1}</span>
+                )}
+              </div>
+              <Separator className="my-1" />
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Creata il:</span>
+                <span className="text-xs text-gray-900 text-right">
+                  {license.createdAt 
+                    ? new Date(license.createdAt).toLocaleDateString('it-IT')
+                    : 'N/A'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Attivata il:</span>
+                <span className="text-xs text-gray-900 text-right">
+                  {license.activationDate 
+                    ? new Date(license.activationDate).toLocaleDateString('it-IT')
+                    : 'Non attivata'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-600">Scade il:</span>
+                <span className={`text-xs font-medium text-right ${
+                  license.expiryDate ? (
+                    new Date(license.expiryDate) < new Date() ? 'text-red-600' :
+                    new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
+                    'text-green-600'
+                  ) : 'text-gray-900'
+                }`}>
+                  {license.expiryDate 
+                    ? new Date(license.expiryDate).toLocaleDateString('it-IT')
+                    : (license.licenseType === 'permanente' ? 'Permanente' : 'N/A')
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Rinnovo Auto:</span>
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={editedLicense.renewalEnabled || false}
+                        onChange={(e) => setEditedLicense({...editedLicense, renewalEnabled: e.target.checked})}
+                        className="h-3 w-3 text-blue-600 rounded border-gray-300"
+                      />
+                      <span className="text-xs text-gray-900">Attivo</span>
+                    </label>
+                    {editedLicense.renewalEnabled && (
+                      <Select
+                        value={editedLicense.renewalPeriod || ''}
+                        onValueChange={(value) => setEditedLicense({...editedLicense, renewalPeriod: value})}
+                      >
+                        <SelectTrigger className="h-6 text-xs w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Mensile</SelectItem>
+                          <SelectItem value="yearly">Annuale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-900 text-right">
+                    {license.renewalEnabled ? (
+                      <span className="flex items-center text-green-600">
+                        <i className="fas fa-check-circle mr-1"></i>
+                        {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-600">
+                        <i className="fas fa-times-circle mr-1"></i>
+                        Disattivo
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Moduli Attivi - Compatto */}
+        <div className="bg-white border rounded-lg p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Moduli Attivi</h3>
+            <div className="flex flex-wrap gap-1">
+              {license.activeModules && license.activeModules.length > 0 ? (
+                license.activeModules.map((module: string, index: number) => (
+                  <Badge key={index} variant="outline" className="capitalize text-xs h-5">
+                    {module}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="secondary" className="text-xs h-5">
+                  Nessun modulo attivo
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Dispositivi Autorizzati - Compatto */}
+        <div className="bg-white border rounded-lg p-3 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">Dispositivi Autorizzati</h3>
+          <DeviceKeysSection licenseId={license.id} />
+        </div>
+
         {/* Footer */}
-        <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-          <Button variant="outline" onClick={onClose}>
+        <div className="flex justify-end space-x-2 pt-3 border-t">
+          <Button variant="outline" onClick={onClose} size="sm">
             Chiudi
           </Button>
           {canEdit && !isEditing && (
-            <Button onClick={() => setIsEditing(true)} className="bg-primary hover:bg-blue-700">
-              <i className="fas fa-edit mr-2"></i>
+            <Button onClick={() => setIsEditing(true)} className="bg-primary hover:bg-blue-700" size="sm">
+              <i className="fas fa-edit mr-1"></i>
               Modifica
             </Button>
           )}
@@ -560,6 +540,7 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
             <>
               <Button 
                 variant="outline" 
+                size="sm"
                 onClick={() => {
                   setIsEditing(false);
                   setEditedLicense({
@@ -576,8 +557,8 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
               >
                 Annulla
               </Button>
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
-                <i className="fas fa-save mr-2"></i>
+              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" size="sm">
+                <i className="fas fa-save mr-1"></i>
                 Salva
               </Button>
             </>
