@@ -673,10 +673,7 @@ class DatabaseStorage implements IStorage {
       updateFields.push('description = ?');
       updateValues.push(updates.description);
     }
-    if (updates.supportedLicenseTypes) {
-      updateFields.push('supported_license_types = ?');
-      updateValues.push(JSON.stringify(updates.supportedLicenseTypes));
-    }
+    
     if (updates.price !== undefined) {
       updateFields.push('price = ?');
       updateValues.push(updates.price);
@@ -711,7 +708,6 @@ class DatabaseStorage implements IStorage {
     const updatedProduct = await this.getProductById(id);
     return {
       ...updatedProduct,
-      supportedLicenseTypes: JSON.parse(updatedProduct.supported_license_types || '[]'),
       price: parseFloat(updatedProduct.price || '0'),
       discount: parseFloat(updatedProduct.discount || '0'),
       maxUsers: parseInt(updatedProduct.max_users || '1'),

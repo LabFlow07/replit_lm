@@ -163,6 +163,8 @@ export default function ProductsPage() {
         throw new Error('No authentication token found');
       }
 
+      console.log('Updating product with data:', productData);
+
       const response = await fetch(`/api/products/${id}`, {
         method: 'PUT',
         headers: {
@@ -174,10 +176,13 @@ export default function ProductsPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Update product error:', errorData);
         throw new Error(errorData.message || 'Failed to update product');
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('Update product result:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
@@ -189,6 +194,7 @@ export default function ProductsPage() {
       });
     },
     onError: (error: any) => {
+      console.error('Update mutation error:', error);
       toast({
         title: "Errore",
         description: error.message || "Errore nell'aggiornamento del prodotto",
@@ -315,11 +321,11 @@ export default function ProductsPage() {
 
                 {/* NEW: Product-Level Pricing Configuration */}
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
-                  <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Prezzi e Limiti</h4>
+                  <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="price">Prezzo (€) *</Label>
+                      <Label htmlFor="price">Costo in Crediti *</Label>
                       <Input
                         id="price"
                         type="number"
@@ -333,7 +339,7 @@ export default function ProductsPage() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="discount">Sconto (€)</Label>
+                      <Label htmlFor="discount">Sconto Crediti</Label>
                       <Input
                         id="discount"
                         type="number"
@@ -661,11 +667,11 @@ export default function ProductsPage() {
 
             {/* NEW: Product-Level Pricing Configuration for Edit */}
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
-              <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Prezzi e Limiti</h4>
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-price">Prezzo (€) *</Label>
+                  <Label htmlFor="edit-price">Costo in Crediti *</Label>
                   <Input
                     id="edit-price"
                     type="number"
@@ -679,7 +685,7 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="edit-discount">Sconto (€)</Label>
+                  <Label htmlFor="edit-discount">Sconto Crediti</Label>
                   <Input
                     id="edit-discount"
                     type="number"
