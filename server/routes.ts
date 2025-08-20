@@ -1276,15 +1276,10 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
               if (companyId) {
                 console.log(`💰 Processing refund: ${creditsToRefund} crediti to company ${companyId}`);
 
-                // Get current wallet balance before refund
-                const currentWallet = await storage.getCompanyWallet(companyId);
-                const balanceBefore = currentWallet?.balance || 0;
-                const balanceAfter = balanceBefore + creditsToRefund;
-
-                // Update wallet balance
+                // Update wallet balance with POSITIVE amount (this will add credits back to wallet)
                 await storage.updateWalletBalance(
                   companyId,
-                  creditsToRefund,
+                  creditsToRefund, // Positive amount to ADD back to wallet
                   `Rimborso per rimozione licenza da registrazione software ${partitaIva}`,
                   'rimborso',
                   user.id
@@ -1292,7 +1287,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
 
                 totalRefunded += creditsToRefund;
                 refundCompanyId = companyId;
-                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}. Balance: ${balanceBefore} → ${balanceAfter}`);
+                console.log(`✅ Refunded ${creditsToRefund} crediti to company ${companyId} for removed license ${company.idLicenza}`);
               }
             }
           }
