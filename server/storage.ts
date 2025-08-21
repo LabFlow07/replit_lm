@@ -413,6 +413,7 @@ class DatabaseStorage implements IStorage {
         version: row.version,
         description: row.description,
         categoryId: row.category_id,
+        category_id: row.category_id, // Keep snake_case for backward compatibility
         category: row.category_name ? {
           id: row.category_id,
           name: row.category_name,
@@ -422,9 +423,13 @@ class DatabaseStorage implements IStorage {
         price: parseFloat(row.price || '0'),
         discount: parseFloat(row.discount || '0'),
         licenseType: row.license_type,
+        license_type: row.license_type, // Keep snake_case for backward compatibility
         maxUsers: row.max_users,
+        max_users: row.max_users, // Keep snake_case for backward compatibility
         maxDevices: row.max_devices,
+        max_devices: row.max_devices, // Keep snake_case for backward compatibility
         trialDays: row.trial_days,
+        trial_days: row.trial_days, // Keep snake_case for backward compatibility
         // Legacy fields for backward compatibility
         supportedLicenseTypes: []
       }));

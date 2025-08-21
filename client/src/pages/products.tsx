@@ -798,17 +798,20 @@ export default function ProductsPage() {
                                   variant="ghost" 
                                   size="sm"
                                   onClick={() => {
+                                    console.log('Opening edit modal for product:', product);
+                                    console.log('Product categoryId:', product.categoryId);
+                                    console.log('Product category_id:', product.category_id);
                                     setEditProduct({
                                       name: product.name,
                                       version: product.version,
                                       description: product.description || '',
-                                      categoryId: product.categoryId || '',
-                                      licenseType: product.licenseType,
+                                      categoryId: product.categoryId || product.category_id || '',
+                                      licenseType: product.licenseType || product.license_type,
                                       price: product.price || 0,
                                       discount: product.discount || 0,
-                                      maxUsers: product.maxUsers || 1,
-                                      maxDevices: product.maxDevices || 1,
-                                      trialDays: product.trialDays || 30
+                                      maxUsers: product.maxUsers || product.max_users || 1,
+                                      maxDevices: product.maxDevices || product.max_devices || 1,
+                                      trialDays: product.trialDays || product.trial_days || 30
                                     });
                                     setSelectedProduct(product);
                                     setIsEditModalOpen(true);
