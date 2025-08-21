@@ -435,7 +435,167 @@ export default function ProductsPage() {
 
       {/* Create Product Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-      </div>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Crea Nuovo Prodotto</DialogTitle>
+            <DialogDescription>
+              Inserisci i dettagli del nuovo prodotto software
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nome Prodotto *</Label>
+              <Input
+                id="name"
+                value={newProduct.name}
+                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                placeholder="es. AutoCAD Professional"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="version">Versione *</Label>
+              <Input
+                id="version"
+                value={newProduct.version}
+                onChange={(e) => setNewProduct({ ...newProduct, version: e.target.value })}
+                placeholder="es. 2024.1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Descrizione</Label>
+              <Textarea
+                id="description"
+                value={newProduct.description}
+                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                placeholder="Descrizione del prodotto..."
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Categoria</Label>
+              <Select value={newProduct.categoryId || "none"} onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value === "none" ? "" : value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nessuna categoria</SelectItem>
+                  {categories.map((category: any) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: category.color }}
+                        ></div>
+                        {category.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="licenseType">Tipo di Licenza *</Label>
+              <Select value={newProduct.licenseType} onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona tipo licenza" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="permanente">Permanente</SelectItem>
+                  <SelectItem value="trial">Trial/Demo</SelectItem>
+                  <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
+                  <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* NEW: Product-Level Pricing Configuration */}
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price">Costo in Crediti *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newProduct.price || ''}
+                    onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="discount">Sconto Crediti</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newProduct.discount || ''}
+                    onChange={(e) => setNewProduct({ ...newProduct, discount: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="maxUsers">Max Utenti *</Label>
+                  <Input
+                    id="maxUsers"
+                    type="number"
+                    min="1"
+                    value={newProduct.maxUsers || 1}
+                    onChange={(e) => setNewProduct({ ...newProduct, maxUsers: parseInt(e.target.value) || 1 })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="maxDevices">Max Dispositivi *</Label>
+                  <Input
+                    id="maxDevices"
+                    type="number"
+                    min="1"
+                    value={newProduct.maxDevices || 1}
+                    onChange={(e) => setNewProduct({ ...newProduct, maxDevices: parseInt(e.target.value) || 1 })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="trialDays">Giorni Trial</Label>
+                  <Input
+                    id="trialDays"
+                    type="number"
+                    min="1"
+                    value={newProduct.trialDays || 30}
+                    onChange={(e) => setNewProduct({ ...newProduct, trialDays: parseInt(e.target.value) || 30 })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={createProductMutation.isPending}>
+                {createProductMutation.isPending ? 'Creazione...' : 'Crea Prodotto'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog></old_str>
 
       {/* Search and Filter Section */}
       <Card className="mb-6">
@@ -667,175 +827,7 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Create Product Modal */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Crea Nuovo Prodotto</DialogTitle>
-                <DialogDescription>
-                  Inserisci i dettagli del nuovo prodotto software
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Nome Prodotto *</Label>
-                  <Input
-                    id="name"
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                    placeholder="es. AutoCAD Professional"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="version">Versione *</Label>
-                  <Input
-                    id="version"
-                    value={newProduct.version}
-                    onChange={(e) => setNewProduct({ ...newProduct, version: e.target.value })}
-                    placeholder="es. 2024.1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Descrizione</Label>
-                  <Textarea
-                    id="description"
-                    value={newProduct.description}
-                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                    placeholder="Descrizione del prodotto..."
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select value={newProduct.categoryId || "none"} onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value === "none" ? "" : value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nessuna categoria</SelectItem>
-                      {categories.map((category: any) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: category.color }}
-                            ></div>
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="licenseType">Tipo di Licenza *</Label>
-                  <Select value={newProduct.licenseType} onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona tipo licenza" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="permanente">Permanente</SelectItem>
-                      <SelectItem value="trial">Trial/Demo</SelectItem>
-                      <SelectItem value="abbonamento_mensile">Abbonamento Mensile</SelectItem>
-                      <SelectItem value="abbonamento_annuale">Abbonamento Annuale</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-
-
-                {/* NEW: Product-Level Pricing Configuration */}
-                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-4">
-                  <h4 className="font-semibold text-blue-800 dark:text-blue-200">Configurazione Crediti e Limiti</h4>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="price">Costo in Crediti *</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={newProduct.price || ''}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="discount">Sconto Crediti</Label>
-                      <Input
-                        id="discount"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={newProduct.discount || ''}
-                        onChange={(e) => setNewProduct({ ...newProduct, discount: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="maxUsers">Max Utenti *</Label>
-                      <Input
-                        id="maxUsers"
-                        type="number"
-                        min="1"
-                        value={newProduct.maxUsers || 1}
-                        onChange={(e) => setNewProduct({ ...newProduct, maxUsers: parseInt(e.target.value) || 1 })}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="maxDevices">Max Dispositivi *</Label>
-                      <Input
-                        id="maxDevices"
-                        type="number"
-                        min="1"
-                        value={newProduct.maxDevices || 1}
-                        onChange={(e) => setNewProduct({ ...newProduct, maxDevices: parseInt(e.target.value) || 1 })}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="trialDays">Giorni Trial</Label>
-                      <Input
-                        id="trialDays"
-                        type="number"
-                        min="1"
-                        value={newProduct.trialDays || 30}
-                        onChange={(e) => setNewProduct({ ...newProduct, trialDays: parseInt(e.target.value) || 30 })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                    Annulla
-                  </Button>
-                  <Button type="submit" disabled={createProductMutation.isPending}>
-                    {createProductMutation.isPending ? 'Creazione...' : 'Crea Prodotto'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+      </old_str>
 
       {/* Search and Filter Section */}
       <Card className="mb-6">
