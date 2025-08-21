@@ -119,13 +119,13 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
         setSearchTerm(company.name || '');
         onCompanySelect(company.id);
       }
-    } else if (!initialCompanyId) {
-      // Clear selection if initialCompanyId is null or undefined
+    } else if (!initialCompanyId && selectedCompany) {
+      // Clear selection only if we had a company selected before
       setSelectedCompany(null);
       setSearchTerm('');
       onCompanySelect('');
     }
-  }, [initialCompanyId, companies, onCompanySelect, selectedCompany]);
+  }, [initialCompanyId, companies]); // Removed onCompanySelect and selectedCompany from dependencies
 
 
   // Filtra le aziende in base al termine di ricerca
@@ -236,7 +236,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     setSearchTerm("");
     setSelectedClient(null);
     onClientSelect(''); // Also clear the selected client ID when company changes
-  }, [companyId, onClientSelect]);
+  }, [companyId]); // Removed onClientSelect from dependencies
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -681,13 +681,13 @@ export default function SoftwareRegistrations() {
 
     if (registrationToClassify) {
       const client = safeClients.find(c => c.id === registrationToClassify.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || null; // Use null if not found
+      const companyId = client?.company_id || client?.companyId || ''; // Use empty string instead of null
 
-      // Set values using setValue with a slight delay to ensure state updates
+      // Set values using setValue
       setValue('aziendaAssegnata', companyId);
-      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || null);
-      setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || null);
-      setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || null);
+      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || '');
+      setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || '');
+      setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || '');
       setValue('note', registrationToClassify.note || '');
     }
     setIsClassifyDialogOpen(true);
@@ -697,7 +697,7 @@ export default function SoftwareRegistrations() {
     setSelectedRegistration(registration);
 
     const client = safeClients.find(c => c.id === registration.clienteAssegnato);
-    const companyId = client?.company_id || client?.companyId || null; // Use null if not found
+    const companyId = client?.company_id || client?.companyId || ''; // Use empty string instead of null
 
     console.log('Edit registration:', registration);
     console.log('Found client:', client);
@@ -706,11 +706,11 @@ export default function SoftwareRegistrations() {
 
     reset();
 
-    // Set values using setValue with a slight delay to ensure state updates
+    // Set values using setValue
     setValue('aziendaAssegnata', companyId);
-    setValue('clienteAssegnato', registration.clienteAssegnato || null);
-    setValue('prodottoAssegnato', registration.prodottoAssegnato || null);
-    setValue('licenzaAssegnata', registration.licenzaAssegnata || null);
+    setValue('clienteAssegnato', registration.clienteAssegnato || '');
+    setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
+    setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
     setValue('note', registration.note || '');
     setValue('authorizeDevice', !!registration.computerKey);
 
@@ -1191,7 +1191,7 @@ export default function SoftwareRegistrations() {
                       setValue('prodottoAssegnato', null);
                     }}
                     placeholder="Cerca azienda per nome o P.IVA..."
-                    initialCompanyId={selectedRegistration?.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.company_id || safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.companyId : undefined}
+                    initialCompanyId={watch('aziendaAssegnata') || undefined}
                   />
                 </div>
 
