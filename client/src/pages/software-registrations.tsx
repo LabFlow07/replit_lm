@@ -354,7 +354,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: isClassifyModalOpen || isEditModalOpen // Fetch when either modal is open
+    enabled: isClassifyModalOpen // Fetch when the classify modal is open
   });
 
   // Fetch licenses for classification
@@ -379,7 +379,7 @@ export default function SoftwareRegistrations() {
         product: license.product || { id: license.productId, name: license.productName, version: license.productVersion }
       }));
     },
-    enabled: isClassifyModalOpen || isEditModalOpen
+    enabled: isClassifyModalOpen
   });
 
   // Fetch products for classification
@@ -398,7 +398,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: isClassifyModalOpen || isEditModalOpen
+    enabled: isClassifyModalOpen
   });
 
   // Fetch companies for classification
@@ -417,7 +417,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: isClassifyModalOpen || isEditModalOpen
+    enabled: isClassifyModalOpen
   });
 
   // Safe arrays to prevent runtime errors
@@ -628,7 +628,7 @@ export default function SoftwareRegistrations() {
       alert('⚠️ Errore: Non puoi assegnare una licenza senza selezionare un cliente.');
       return;
     }
-    
+
     // Check if user wants to remove assignments
     if (!currentLicenseId && (selectedRegistration?.licenzaAssegnata || selectedRegistration?.clienteAssegnato)) {
       const confirmMessage =
@@ -1325,7 +1325,7 @@ export default function SoftwareRegistrations() {
                 </div>
               </div>
 
-              
+
 
               {/* Footer - Pulsante Chiudi */}
               <div className="flex justify-end pt-4 border-t">
@@ -1464,7 +1464,7 @@ export default function SoftwareRegistrations() {
                         {isClassifyModalOpen ? "Gestione Assegnazioni" : "Gestione Computer Key"}
                       </h3>
                       <form onSubmit={handleSubmit(isClassifyModalOpen ? onClassifySubmit : onClassifySubmit)} className="space-y-4">
-                        
+
                         {isClassifyModalOpen && (
                           <>
                             <div>
@@ -1582,7 +1582,7 @@ export default function SoftwareRegistrations() {
                 </div>
               </div>
 
-              
+
             </div>
           )}
         </DialogContent>
