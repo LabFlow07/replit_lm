@@ -742,10 +742,10 @@ export default function SoftwareRegistrations() {
         // Get the client ID from the license
         clientId = assignedLicense.client.id;
         companyId = assignedLicense.client.company_id || assignedLicense.client.companyId || '';
-        
+
         // Find the full client object for form population
         client = safeClients.find(c => c.id === clientId);
-        
+
         console.log('Found license client:', assignedLicense.client);
         console.log('Found full client from list:', client);
       }
@@ -1274,7 +1274,7 @@ export default function SoftwareRegistrations() {
                               `⚠️ Attenzione!\n\n` +
                               `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
                               `Vuoi continuare?`;
-                            
+
                             if (!confirm(confirmMessage)) {
                               return; // Non cambiare la selezione
                             }
@@ -1396,80 +1396,96 @@ export default function SoftwareRegistrations() {
             </div>
 
             <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
-              <div className="flex flex-wrap gap-2">
-                {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
-                          const removeAssignmentData = {
-                            aziendaAssegnata: null,
-                            clienteAssegnato: null,
-                            licenzaAssegnata: null,
-                            prodottoAssegnato: null,
-                            note: selectedRegistration.note,
-                            authorizeDevice: false
-                          };
-                          classifyMutation.mutate(removeAssignmentData);
-                        }
-                      }}
-                      disabled={classifyMutation.isPending}
-                    >
-                      <i className="fas fa-unlink mr-2"></i>
-                      Rimuovi Assegnazione
-                    </Button>
-
-                    {selectedRegistration?.computerKey && (
+                <div className="flex flex-wrap gap-2">
+                  {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
+                    <>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
                         onClick={() => {
-                          if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
-                            const removeKeyData = {
-                              aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
-                              clienteAssegnato: selectedRegistration.clienteAssegnato || null,
-                              licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
-                              prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
+                          if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
+                            const removeAssignmentData = {
+                              aziendaAssegnata: null,
+                              clienteAssegnato: null,
+                              licenzaAssegnata: null,
+                              prodottoAssegnato: null,
                               note: selectedRegistration.note,
                               authorizeDevice: false
                             };
-                            classifyMutation.mutate(removeKeyData);
+                            classifyMutation.mutate(removeAssignmentData);
                           }
                         }}
                         disabled={classifyMutation.isPending}
-                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
                       >
-                        <i className="fas fa-key mr-2"></i>
-                        Rimuovi Solo Computer Key
+                        <i className="fas fa-unlink mr-2"></i>
+                        Rimuovi Assegnazione
                       </Button>
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="flex space-x-2 w-full md:w-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    reset();
-                    setSelectedRegistration(null);
-                    setIsClassifyDialogOpen(false);
-                  }}
-                  className="flex-1 md:flex-none"
-                >
-                  Annulla
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1 md:flex-none">
-                  {isSubmitting ? "Salvando..." : (
-                    user?.role === 'superadmin' ? "Salva Classificazione" : "Convalida Computer Key"
+
+                      {selectedRegistration?.computerKey && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
+                              const removeKeyData = {
+                                aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
+                                clienteAssegnato: selectedRegistration.clienteAssegnato || null,
+                                licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
+                                prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
+                                note: selectedRegistration.note,
+                                authorizeDevice: false
+                              };
+                              classifyMutation.mutate(removeKeyData);
+                            }
+                          }}
+                          disabled={classifyMutation.isPending}
+                          className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                        >
+                          <i className="fas fa-key mr-2"></i>
+                          Rimuovi Solo Computer Key
+                        </Button>
+                      )}
+                    </>
                   )}
-                </Button>
+                </div>
+                <div className="flex space-x-2 w-full md:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      reset();
+                      setSelectedRegistration(null);
+                      setIsClassifyDialogOpen(false);
+                    }}
+                    className="flex-1 md:flex-none"
+                  >
+                    Annulla
+                  </Button>
+                  {(() => {
+                    const watchedAzienda = watch('aziendaAssegnata');
+                    const watchedCliente = watch('clienteAssegnato');
+                    const watchedLicenza = watch('licenzaAssegnata');
+
+                    // Se hai azienda e cliente, la licenza è obbligatoria
+                    const isFormIncomplete = watchedAzienda && watchedCliente && (!watchedLicenza || watchedLicenza === 'none');
+
+                    return (
+                      <Button 
+                        type="submit" 
+                        disabled={isSubmitting || isFormIncomplete} 
+                        className={`flex-1 md:flex-none ${isFormIncomplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={isFormIncomplete ? "Devi selezionare una licenza per completare l'assegnazione" : ""}
+                      >
+                        {isSubmitting ? "Salvando..." : (
+                          user?.role === 'superadmin' ? "Salva Classificazione" : "Convalida Computer Key"
+                        )}
+                      </Button>
+                    );
+                  })()}
+                </div>
               </div>
-            </div>
           </form>
         </DialogContent>
       </Dialog>
