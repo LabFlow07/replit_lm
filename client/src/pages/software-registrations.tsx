@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Key } from "lucide-react";
+import { Search, Monitor, User, MapPin, Calendar, Activity, Settings, X, Eye, Key, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Sidebar from '@/components/layout/sidebar';
@@ -1059,36 +1060,79 @@ export default function SoftwareRegistrations() {
 
                       <td className="p-3">
                         <div className="flex items-center gap-2">
-                          {/* Icona Visualizza - sempre visibile */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleViewRegistration(registration.id)}
-                            title="Visualizza dettagli"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Azioni"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {/* Visualizza - sempre disponibile */}
+                              <DropdownMenuItem onClick={() => handleViewRegistration(registration.id)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Visualizza Dettagli
+                              </DropdownMenuItem>
 
-                          {/* Icona Computer Key - solo per admin/superadmin e se non c'è già la chiave */}
-                          {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-8 w-8 p-0 ${registration.computerKey ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              onClick={() => {
-                                if (!registration.computerKey) {
-                                  handleValidateKey(registration);
-                                }
-                              }}
-                              disabled={!!registration.computerKey}
-                              title={registration.computerKey ? "Computer Key già presente" : "Convalida Computer Key"}
-                            >
-                              <Key className="h-4 w-4" />
-                            </Button>
-                          )}
+                              {/* Azioni per admin e superadmin */}
+                              {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  
+                                  {/* Convalida Computer Key - solo se non presente */}
+                                  {!registration.computerKey && (
+                                    <DropdownMenuItem 
+                                      onClick={() => handleValidateKey(registration)}
+                                      disabled={validatingId === registration.id}
+                                    >
+                                      <Key className="h-4 w-4 mr-2" />
+                                      {validatingId === registration.id ? "Convalidando..." : "Convalida Computer Key"}
+                                    </DropdownMenuItem>
+                                  )}
 
-                          
+                                  {/* Modifica/Classifica - sempre disponibile per admin/superadmin */}
+                                  <DropdownMenuItem onClick={() => handleEdit(registration)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    {user?.role === 'superadmin' ? 'Modifica Registrazione' : 'Gestione Computer Key'}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                              {/* Azioni solo per superadmin */}
+                              {user?.role === 'superadmin' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  
+                                  {/* Elimina - solo se non ha licenza assegnata */}
+                                  {!registration.licenzaAssegnata && (
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDeleteRegistration(registration.id)}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Elimina Registrazione
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {/* Messaggio se non può eliminare */}
+                                  {registration.licenzaAssegnata && (
+                                    <DropdownMenuItem 
+                                      disabled
+                                      className="text-gray-400 cursor-not-allowed"
+                                      title="Rimuovi prima la licenza per poter eliminare"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Elimina (Rimuovi licenza prima)
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
