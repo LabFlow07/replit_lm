@@ -1489,7 +1489,13 @@ export default function SoftwareRegistrations() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Nessuna azienda</SelectItem>
-                              {safeCompanies.map((company: any) => (
+                              {safeCompanies
+                                .filter((company: any) => 
+                                  // Filtra per mostrare solo le aziende principali (quelle senza parent_id o con parent_id null)
+                                  // e non i clienti individuali
+                                  !company.parent_id && company.type !== 'client'
+                                )
+                                .map((company: any) => (
                                 <SelectItem key={company.id} value={company.id}>
                                   {company.name} - {company.partitaIva || 'N/A'}
                                 </SelectItem>
