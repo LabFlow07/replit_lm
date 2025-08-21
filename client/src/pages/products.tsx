@@ -351,12 +351,12 @@ export default function ProductsPage() {
 
                 <div>
                   <Label htmlFor="category">Categoria</Label>
-                  <Select value={newProduct.categoryId} onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value })}>
+                  <Select value={newProduct.categoryId || "none"} onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value === "none" ? "" : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleziona categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nessuna categoria</SelectItem>
+                      <SelectItem value="none">Nessuna categoria</SelectItem>
                       {categories.map((category: any) => (
                         <SelectItem key={category.id} value={category.id}>
                           <div className="flex items-center gap-2">
@@ -759,15 +759,15 @@ export default function ProductsPage() {
             <div>
               <Label htmlFor="edit-category">Categoria</Label>
               <Select 
-                value={editProduct.categoryId || ''} 
-                onValueChange={(value) => setEditProduct({ ...editProduct, categoryId: value })}
+                value={editProduct.categoryId || "none"} 
+                onValueChange={(value) => setEditProduct({ ...editProduct, categoryId: value === "none" ? "" : value })}
                 disabled={user.role !== 'superadmin'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nessuna categoria</SelectItem>
+                  <SelectItem value="none">Nessuna categoria</SelectItem>
                   {categories.map((category: any) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
