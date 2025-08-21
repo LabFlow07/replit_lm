@@ -1108,7 +1108,7 @@ export default function SoftwareRegistrations() {
                               size="sm"
                               className="h-8 w-8 p-0"
                               title={user?.role === 'superadmin' ? 'Modifica Registrazione' : 'Gestione Computer Key'}
-                              onClick={() => handleClassify(registration.id)}
+                              onClick={() => handleEdit(registration)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
