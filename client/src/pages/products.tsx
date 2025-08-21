@@ -745,26 +745,66 @@ export default function ProductsPage() {
                         </TableCell>
 
                         <TableCell>
-                          {product.category ? (
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: product.category.color }}
-                              ></div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{product.category.name}</span>
-                                {product.category.companyId ? (
-                                  <span className="text-xs text-gray-500">
-                                    {companies.find(c => c.id === product.category.companyId)?.name || 'Azienda specifica'}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-blue-600">🌐 Globale</span>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 italic text-sm">Nessuna categoria</span>
-                          )}
+                          {(() => {
+                            // Debug logging
+                            console.log(`Product ${product.name} category data:`, {
+                              category: product.category,
+                              categoryId: product.categoryId,
+                              category_id: product.category_id
+                            });
+
+                            // Check if product has a category
+                            const hasCategory = product.category && product.category.name;
+                            const categoryId = product.categoryId || product.category_id;
+
+                            if (hasCategory) {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: product.category.color || '#3B82F6' }}
+                                  ></div>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium">{product.category.name}</span>
+                                    {product.category.companyId ? (
+                                      <span className="text-xs text-gray-500">
+                                        {companies.find(c => c.id === product.category.companyId)?.name || 'Azienda specifica'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-blue-600">🌐 Globale</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            } else if (categoryId) {
+                              // Product has categoryId but no category object - try to find it in categories
+                              const matchingCategory = categories.find(cat => cat.id === categoryId);
+                              if (matchingCategory) {
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: matchingCategory.color || '#3B82F6' }}
+                                    ></div>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">{matchingCategory.name}</span>
+                                      {matchingCategory.companyId ? (
+                                        <span className="text-xs text-gray-500">
+                                          {companies.find(c => c.id === matchingCategory.companyId)?.name || 'Azienda specifica'}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-blue-600">🌐 Globale</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              } else {
+                                return <span className="text-orange-500 italic text-sm">Categoria non trovata</span>;
+                              }
+                            } else {
+                              return <span className="text-gray-400 italic text-sm">Nessuna categoria</span>;
+                            }
+                          })()}
                         </TableCell>
 
                         <TableCell className="max-w-xs">

@@ -400,11 +400,21 @@ class DatabaseStorage implements IStorage {
   async getAllProducts(): Promise<Product[]> {
     try {
       const rows = await database.query(`
-        SELECT p.*, c.name as category_name, c.color as category_color
+        SELECT p.*, c.name as category_name, c.color as category_color, c.company_id as category_company_id
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         ORDER BY p.name, p.version
       `);
+
+      console.log(`getAllProducts: Found ${rows.length} products from database`);
+      if (rows.length > 0) {
+        console.log(`Sample product with category:`, {
+          name: rows[0].name,
+          category_id: rows[0].category_id,
+          category_name: rows[0].category_name,
+          category_color: rows[0].category_color
+        });
+      }
 
       // Map database fields to camelCase for frontend compatibility
       return rows.map((row: any) => ({
@@ -417,7 +427,8 @@ class DatabaseStorage implements IStorage {
         category: row.category_name ? {
           id: row.category_id,
           name: row.category_name,
-          color: row.category_color
+          color: row.category_color,
+          companyId: row.category_company_id
         } : null,
         createdAt: row.created_at,
         price: parseFloat(row.price || '0'),
