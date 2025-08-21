@@ -1242,53 +1242,60 @@ export default function SoftwareRegistrations() {
                 <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
                   <div className="border-t pt-4">
                     <h3 className="text-lg font-semibold mb-4">Modifica Assegnazioni</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="aziendaAssegnata">Azienda</Label>
-                        <CompanySearchInput
-                          key={`company-${selectedRegistration?.id}-${watch('aziendaAssegnata')}`}
-                          companies={Array.isArray(companies) ? companies.map(c => ({
-                            ...c,
-                            name: c.name || 'Nome non disponibile',
-                            partitaIva: c.partitaIva || 'N/A'
-                          })) : []}
-                          onCompanySelect={(companyId) => {
-                            setValue('aziendaAssegnata', companyId || null);
-                            setValue('clienteAssegnato', null);
-                            setValue('licenzaAssegnata', null);
-                            setValue('prodottoAssegnato', null);
-                          }}
-                          placeholder="Cerca azienda per nome o P.IVA..."
-                          initialCompanyId={watch('aziendaAssegnata') || undefined}
-                        />
+                    
+                    {/* Layout compatto responsivo */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Colonna sinistra: Azienda e Cliente */}
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="aziendaAssegnata" className="text-sm font-medium">Azienda</Label>
+                          <CompanySearchInput
+                            key={`company-${selectedRegistration?.id}-${isClassifyDialogOpen}`}
+                            companies={Array.isArray(companies) ? companies.map((c: any) => ({
+                              ...c,
+                              name: c.name || 'Nome non disponibile',
+                              partitaIva: c.partitaIva || 'N/A'
+                            })) : []}
+                            onCompanySelect={(companyId) => {
+                              setValue('aziendaAssegnata', companyId || null);
+                              setValue('clienteAssegnato', null);
+                              setValue('licenzaAssegnata', null);
+                              setValue('prodottoAssegnato', null);
+                            }}
+                            placeholder="Cerca azienda per nome o P.IVA..."
+                            initialCompanyId={selectedRegistration?.aziendaAssegnata || undefined}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="clienteAssegnato" className="text-sm font-medium">Cliente</Label>
+                          <ClientSearchInput
+                            key={`client-${selectedRegistration?.id}-${isClassifyDialogOpen}`}
+                            clients={clients}
+                            companies={Array.isArray(companies) ? companies : []}
+                            companyId={watch('aziendaAssegnata')}
+                            onClientSelect={(clientId) => {
+                              setValue('clienteAssegnato', clientId || null);
+                              setValue('licenzaAssegnata', null);
+                              setValue('prodottoAssegnato', null);
+                            }}
+                            placeholder="Cerca cliente per nome o email..."
+                            initialClientId={selectedRegistration?.clienteAssegnato || undefined}
+                          />
+                        </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="clienteAssegnato">Cliente</Label>
-                        <ClientSearchInput
-                          key={`client-${selectedRegistration?.id}-${watch('clienteAssegnato')}-${watch('aziendaAssegnata')}`}
-                          clients={clients}
-                          companies={Array.isArray(companies) ? companies : []}
-                          companyId={watch('aziendaAssegnata')}
-                          onClientSelect={(clientId) => {
-                            setValue('clienteAssegnato', clientId || null);
-                            setValue('licenzaAssegnata', null);
-                            setValue('prodottoAssegnato', null);
-                          }}
-                          placeholder="Cerca cliente per nome o email..."
-                          initialClientId={watch('clienteAssegnato') || undefined}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="licenzaAssegnata" className="flex items-center gap-2">
-                          Licenza
-                          {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
-                            <span className="text-red-500 text-xs font-medium">
-                              * Obbligatoria per mantenere le assegnazioni
-                            </span>
-                          )}
-                        </Label>
+                      {/* Colonna destra: Licenza e Note */}
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="licenzaAssegnata" className="text-sm font-medium flex items-center gap-2">
+                            Licenza
+                            {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
+                              <span className="text-red-500 text-xs font-medium">
+                                * Obbligatoria per mantenere le assegnazioni
+                              </span>
+                            )}
+                          </Label>
                         {(() => {
                           const selectedClientId = watch('clienteAssegnato');
                           const selectedCompanyId = watch('aziendaAssegnata');
@@ -1416,10 +1423,128 @@ export default function SoftwareRegistrations() {
                             </>
                           );
                         })()}
+                        </div>
+
+                        {/* Note compatte */}
+                        <div>
+                          <Label htmlFor="note" className="text-sm font-medium">Note</Label>
+                          <Textarea
+                            id="note"
+                            {...register('note')}
+                            placeholder="Aggiungi note sulla classificazione..."
+                            data-testid="textarea-classification-notes"
+                            className="min-h-[60px] text-sm"
+                            defaultValue={selectedRegistration?.note || ''}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Autorizzazione dispositivo per superadmin */}
+                    {(selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && !selectedRegistration?.computerKey && (
+                      <div className="flex items-center space-x-2 pt-3 border-t">
+                        <input
+                          type="checkbox"
+                          id="authorizeDevice"
+                          {...register('authorizeDevice')}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          data-testid="checkbox-authorize-device"
+                        />
+                        <Label htmlFor="authorizeDevice" className="text-sm font-medium">
+                          Autorizza dispositivo (genera computer key)
+                        </Label>
+                      </div>
+                    )}
+
+                    {/* Messaggio se il dispositivo è già autorizzato */}
+                    {selectedRegistration?.computerKey && (
+                      <div className="flex items-center space-x-2 pt-3 border-t bg-green-50 p-3 rounded-md">
+                        <div className="h-4 w-4 text-green-600">🔑</div>
+                        <span className="text-sm text-green-800 font-medium">
+                          Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Pulsanti azione */}
+                    <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
+                      <div className="flex flex-wrap gap-2">
+                        {selectedRegistration?.licenzaAssegnata && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
+                                  const removeAssignmentData = {
+                                    aziendaAssegnata: null,
+                                    clienteAssegnato: null,
+                                    licenzaAssegnata: null,
+                                    prodottoAssegnato: null,
+                                    note: selectedRegistration.note,
+                                    authorizeDevice: false
+                                  };
+                                  classifyMutation.mutate(removeAssignmentData);
+                                }
+                              }}
+                              disabled={classifyMutation.isPending}
+                            >
+                              <i className="fas fa-unlink mr-2"></i>
+                              Rimuovi Assegnazione
+                            </Button>
+
+                            {selectedRegistration?.computerKey && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non potrà più accedere al software.')) {
+                                    const removeKeyData = {
+                                      aziendaAssegnata: selectedRegistration.aziendaAssegnata,
+                                      clienteAssegnato: selectedRegistration.clienteAssegnato,
+                                      licenzaAssegnata: selectedRegistration.licenzaAssegnata,
+                                      prodottoAssegnato: selectedRegistration.prodottoAssegnato,
+                                      note: selectedRegistration.note,
+                                      removeComputerKey: true
+                                    };
+                                    classifyMutation.mutate(removeKeyData);
+                                  }
+                                }}
+                                disabled={classifyMutation.isPending}
+                                className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                              >
+                                <i className="fas fa-key mr-2"></i>
+                                Rimuovi Solo Computer Key
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsClassifyDialogOpen(false)}
+                          data-testid="button-cancel-classify"
+                        >
+                          Annulla
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isSubmitting}
+                          data-testid="button-save-classify"
+                          className="px-6"
+                        >
+                          {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
+                        </Button>
                       </div>
                     </div>
                   </div>
-
+                </form>
+              )}
 
 
               {/* Sezione per Admin - Solo gestione Computer Key */}
