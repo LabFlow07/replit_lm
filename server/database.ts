@@ -98,12 +98,14 @@ class Database {
       await this.query(`
         CREATE TABLE IF NOT EXISTS categories (
           id VARCHAR(36) PRIMARY KEY,
-          name VARCHAR(255) NOT NULL UNIQUE,
+          name VARCHAR(255) NOT NULL,
           description TEXT,
           color VARCHAR(7) DEFAULT '#3B82F6',
           is_active BOOLEAN DEFAULT TRUE,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_category_name (name)
+          company_id VARCHAR(36),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL,
+          UNIQUE KEY unique_name_per_company (name, company_id)
         )
       `);
 
@@ -111,20 +113,17 @@ class Database {
       await this.query(`
         CREATE TABLE IF NOT EXISTS products (
           id VARCHAR(36) PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          version VARCHAR(100) NOT NULL,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL,
           description TEXT,
           category_id VARCHAR(36),
-          price DECIMAL(10,2) DEFAULT 0.00,
-          discount DECIMAL(5,2) DEFAULT 0.00,
-          license_type VARCHAR(50) DEFAULT 'permanente',
+          price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+          discount DECIMAL(5, 2) DEFAULT 0,
+          license_type VARCHAR(50) NOT NULL DEFAULT 'permanente',
           max_users INT DEFAULT 1,
           max_devices INT DEFAULT 1,
           trial_days INT DEFAULT 30,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_product_name (name),
-          INDEX idx_license_type (license_type),
-          INDEX idx_category_id (category_id),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
         )
       `);

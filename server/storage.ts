@@ -1,6 +1,6 @@
 import { database } from "./database";
-import type { 
-  User, InsertUser, 
+import type {
+  User, InsertUser,
   Company, InsertCompany,
   Product, InsertProduct,
   Module, InsertModule,
@@ -140,6 +140,7 @@ export interface IStorage {
 
   // Category methods
   getAllCategories(): Promise<Category[]>;
+  getCategoriesByCompanyHierarchy(companyId: string): Promise<Category[]>;
   createCategory(category: any): Promise<Category>;
   getCategoryById(categoryId: string): Promise<Category | null>;
   updateCategory(categoryId: string, updates: Partial<Category>): Promise<Category | null>;
@@ -271,9 +272,9 @@ class DatabaseStorage implements IStorage {
       VALUES (?, ?, ?, ?, ?, ?)
     `, [id, insertCompany.name, insertCompany.type, insertCompany.parentId || null, insertCompany.status || 'active', JSON.stringify(insertCompany.contactInfo || {})]);
 
-    const created = { 
-      ...insertCompany, 
-      id, 
+    const created = {
+      ...insertCompany,
+      id,
       createdAt: new Date(),
       parentId: insertCompany.parentId,
       parent_id: insertCompany.parentId
@@ -328,8 +329,8 @@ class DatabaseStorage implements IStorage {
     return {
       ...updatedCompany,
       parentId: updatedCompany.parent_id,
-      contactInfo: typeof updatedCompany.contact_info === 'string' 
-        ? JSON.parse(updatedCompany.contact_info) 
+      contactInfo: typeof updatedCompany.contact_info === 'string'
+        ? JSON.parse(updatedCompany.contact_info)
         : (updatedCompany.contact_info || {})
     };
   }
@@ -364,7 +365,7 @@ class DatabaseStorage implements IStorage {
 
       // Move subcompanies to the parent company (or make them root if no parent)
       const result = await this.db.query(
-        'UPDATE companies SET parent_id = ? WHERE parent_id = ?', 
+        'UPDATE companies SET parent_id = ? WHERE parent_id = ?',
         [parentId, id]
       );
       console.log(`deleteCompany: Updated ${result.affectedRows || 'unknown'} subcompanies`);
@@ -489,10 +490,10 @@ class DatabaseStorage implements IStorage {
       INSERT INTO products (id, name, version, description, category_id, price, discount, license_type, max_users, max_devices, trial_days, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
-      id, 
-      productData.name, 
-      productData.version, 
-      productData.description, 
+      id,
+      productData.name,
+      productData.version,
+      productData.description,
       productData.categoryId || null,
       productData.price || 0,
       productData.discount || 0,
@@ -584,7 +585,7 @@ class DatabaseStorage implements IStorage {
     await this.db.query(`
       INSERT INTO clients (id, company_id, name, email, status, contact_info, is_multi_site, is_multi_user)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending', 
+    `, [id, insertClient.companyId, insertClient.name, insertClient.email, insertClient.status || 'pending',
         JSON.stringify(insertClient.contactInfo), insertClient.isMultiSite, insertClient.isMultiUser]);
 
     return { ...insertClient, id, createdAt: new Date() };
@@ -666,7 +667,7 @@ class DatabaseStorage implements IStorage {
     updateValues.push(id);
 
     await this.db.query(`
-      UPDATE clients 
+      UPDATE clients
       SET ${updateFields.join(', ')}
       WHERE id = ?
     `, updateValues);
@@ -742,7 +743,7 @@ class DatabaseStorage implements IStorage {
         setParts.push('trial_days = ?');
         values.push(updateData.trialDays);
       }
-      
+
       if (setParts.length === 0) {
         throw new Error('No fields to update');
       }
@@ -750,7 +751,7 @@ class DatabaseStorage implements IStorage {
       values.push(productId);
 
       await this.db.query(`
-        UPDATE products 
+        UPDATE products
         SET ${setParts.join(', ')}
         WHERE id = ?
       `, values);
@@ -768,7 +769,7 @@ class DatabaseStorage implements IStorage {
 
   async getLicenses(filters?: any): Promise<LicenseWithDetails[]> {
     let query = `
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
         p.name as product_name, p.version as product_version,
@@ -797,7 +798,7 @@ class DatabaseStorage implements IStorage {
 
   async getAllLicenses(): Promise<LicenseWithDetails[]> {
     const query = `
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name,
         c.email as client_email,
@@ -826,7 +827,7 @@ class DatabaseStorage implements IStorage {
     console.log(`getLicensesByCompanyHierarchy: Company hierarchy IDs: [${companyIds.join(', ')}]`);
 
     const query = `
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name,
         c.email as client_email,
@@ -856,26 +857,26 @@ class DatabaseStorage implements IStorage {
 
     // Debug: let's check all licenses and their client company_ids
     const debugLicensesQuery = `
-      SELECT l.id, l.activation_key, c.name as client_name, c.company_id 
-      FROM licenses l 
+      SELECT l.id, l.activation_key, c.name as client_name, c.company_id
+      FROM licenses l
       JOIN clients c ON l.client_id = c.id
       ORDER BY l.created_at DESC
     `;
     const debugLicenses = await this.db.query(debugLicensesQuery);
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses.map(l => ({ 
-      id: l.id.substring(0, 8), 
-      activation_key: l.activation_key, 
-      client_name: l.client_name, 
-      client_company_id: l.company_id 
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses.map(l => ({
+      id: l.id.substring(0, 8),
+      activation_key: l.activation_key,
+      client_name: l.client_name,
+      client_company_id: l.company_id
     })));
 
     // Debug: specifically check which licenses should match our hierarchy
     const matchingLicenses = debugLicenses.filter(l => companyIds.includes(l.company_id));
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - Licenses that should match our hierarchy:`, matchingLicenses.map(l => ({ 
-      id: l.id.substring(0, 8), 
-      activation_key: l.activation_key, 
-      client_name: l.client_name, 
-      client_company_id: l.company_id 
+    console.log(`getLicensesByCompanyHierarchy: DEBUG - Licenses that should match our hierarchy:`, matchingLicenses.map(l => ({
+      id: l.id.substring(0, 8),
+      activation_key: l.activation_key,
+      client_name: l.client_name,
+      client_company_id: l.company_id
     })));
 
     const mappedLicenses = this.mapLicenseRows(rows);
@@ -931,20 +932,20 @@ class DatabaseStorage implements IStorage {
         active_modules, assigned_company, assigned_agent, renewal_enabled, renewal_period
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, 
-      insertLicense.clientId, 
-      insertLicense.productId, 
+      id,
+      insertLicense.clientId,
+      insertLicense.productId,
       activationKey,
-      insertLicense.computerKey || null, 
-      activationDate, 
+      insertLicense.computerKey || null,
+      activationDate,
       expiryDate,
-      insertLicense.licenseType || 'permanente', 
-      finalStatus, 
+      insertLicense.licenseType || 'permanente',
+      finalStatus,
       insertLicense.maxUsers || 1,
-      insertLicense.maxDevices || 1, 
-      parseFloat(insertLicense.price?.toString() || '0'), 
+      insertLicense.maxDevices || 1,
+      parseFloat(insertLicense.price?.toString() || '0'),
       parseFloat(insertLicense.discount?.toString() || '0'),
-      JSON.stringify(insertLicense.activeModules || ['core']), 
+      JSON.stringify(insertLicense.activeModules || ['core']),
       insertLicense.assignedCompany || null,
       insertLicense.assignedAgent || null,
       insertLicense.renewalEnabled ? 1 : 0,
@@ -954,12 +955,12 @@ class DatabaseStorage implements IStorage {
     // NON creare automaticamente la transazione durante la creazione della licenza
     // La transazione verrà creata solo durante l'assegnazione/attivazione della licenza
 
-    return { 
-      ...insertLicense, 
-      id, 
+    return {
+      ...insertLicense,
+      id,
       activationKey,
-      expiryDate, 
-      createdAt: new Date() 
+      expiryDate,
+      createdAt: new Date()
     };
   }
 
@@ -1110,8 +1111,8 @@ class DatabaseStorage implements IStorage {
         SELECT COUNT(*) as count
         FROM Dett_Reg_Azienda d
         INNER JOIN Testa_Reg_Azienda t ON d.PartitaIva = t.PartitaIva
-        WHERE t.ID_Licenza = ? 
-        AND d.Computer_Key IS NOT NULL 
+        WHERE t.ID_Licenza = ?
+        AND d.Computer_Key IS NOT NULL
         AND d.Computer_Key != ''
       `;
 
@@ -1138,8 +1139,8 @@ class DatabaseStorage implements IStorage {
 
     const query = `
       INSERT INTO transactions (
-        id, license_id, client_id, company_id, type, amount, discount, 
-        final_amount, payment_method, status, payment_link, payment_date, 
+        id, license_id, client_id, company_id, type, amount, discount,
+        final_amount, payment_method, status, payment_link, payment_date,
         notes, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
@@ -1164,14 +1165,14 @@ class DatabaseStorage implements IStorage {
       now
     ]);
 
-    return { 
-      id, 
-      ...transactionData, 
-      amount, 
-      discount, 
-      finalAmount, 
-      createdAt: now, 
-      updatedAt: now 
+    return {
+      id,
+      ...transactionData,
+      amount,
+      discount,
+      finalAmount,
+      createdAt: now,
+      updatedAt: now
     };
   }
 
@@ -1186,7 +1187,7 @@ class DatabaseStorage implements IStorage {
   async getAllTransactions(): Promise<Transaction[]> {
     try {
       const query = `
-        SELECT 
+        SELECT
           t.*,
           c.name as client_name,
           c.email as client_email,
@@ -1237,7 +1238,7 @@ class DatabaseStorage implements IStorage {
       const placeholders = companyIds.map(() => '?').join(',');
 
       const query = `
-        SELECT 
+        SELECT
           t.*,
           c.name as client_name,
           c.email as client_email,
@@ -1284,7 +1285,7 @@ class DatabaseStorage implements IStorage {
 
   async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
     const query = `
-      SELECT 
+      SELECT
         t.*,
         c.name as client_name,
         c.email as client_email,
@@ -1377,8 +1378,8 @@ class DatabaseStorage implements IStorage {
         // If status is "in_attesa", explicitly set payment_date to NULL
         paymentDateValue = null;
         console.log(`⏳ Status is "in_attesa" - removing payment date (setting to NULL)`);
-      } else if (status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito' || 
-                 status === 'dall_agente' || status === 'dal_rivenditore' || 
+      } else if (status === 'contanti' || status === 'bonifico' || status === 'carta_di_credito' ||
+                 status === 'dall_agente' || status === 'dal_rivenditore' ||
                  status === 'completed' || status === 'manual_paid') {
         // If status indicates payment received, set current date
         paymentDateValue = mariaDbDate;
@@ -1430,7 +1431,7 @@ class DatabaseStorage implements IStorage {
 
   async getTransaction(id: string): Promise<Transaction | undefined> {
     const rows = await this.db.query(`
-      SELECT 
+      SELECT
         t.*,
         c.name as client_name,
         c.email as client_email,
@@ -1474,9 +1475,9 @@ class DatabaseStorage implements IStorage {
   }
 
   async updateTransactionPaymentLink(id: string, paymentLink: string): Promise<Transaction> {
-    return await this.updateTransaction(id, { 
-      paymentLink, 
-      updatedAt: new Date() 
+    return await this.updateTransaction(id, {
+      paymentLink,
+      updatedAt: new Date()
     });
   }
 
@@ -1548,7 +1549,7 @@ class DatabaseStorage implements IStorage {
 
   async getLicensesExpiringByDate(): Promise<LicenseWithDetails[]> {
     const query = `
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
         p.name as product_name, p.version as product_version,
@@ -1557,7 +1558,7 @@ class DatabaseStorage implements IStorage {
       JOIN clients c ON l.client_id = c.id
       JOIN products p ON l.product_id = p.id
       LEFT JOIN companies comp ON l.assigned_company = comp.id
-      WHERE l.expiry_date IS NOT NULL 
+      WHERE l.expiry_date IS NOT NULL
       AND l.status = 'attiva'
       ORDER BY l.expiry_date ASC
     `
@@ -1571,7 +1572,7 @@ class DatabaseStorage implements IStorage {
     const placeholders = companyIds.map(() => '?').join(',');
 
     const query = `
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
         p.name as product_name, p.version as product_version,
@@ -1580,7 +1581,7 @@ class DatabaseStorage implements IStorage {
       JOIN clients c ON l.client_id = c.id
       JOIN products p ON l.product_id = p.id
       LEFT JOIN companies comp ON l.assigned_company = comp.id
-      WHERE l.expiry_date IS NOT NULL 
+      WHERE l.expiry_date IS NOT NULL
       AND l.status = 'attiva'
       AND c.company_id IN (${placeholders})
       ORDER BY l.expiry_date ASC
@@ -1592,53 +1593,53 @@ class DatabaseStorage implements IStorage {
 
   private mapLicenseRows(rows: any[]): LicenseWithDetails[] {
     return rows.map(row => ({
-        id: row.id,
-        clientId: row.client_id,
-        productId: row.product_id,
-        activationKey: row.activation_key,
-        computerKey: row.computerKey,
-        activationDate: row.activationDate,
-        expiryDate: row.expiryDate,
-        licenseType: row.licenseType,
-        status: row.status,
-        maxUsers: row.maxUsers,
-        maxDevices: row.maxDevices,
-        price: row.price,
-        discount: row.discount,
-        activeModules: JSON.parse(row.active_modules || '[]'),
-        assignedCompany: row.assignedCompany,
-        assignedAgent: row.assignedAgent,
-        renewalEnabled: row.renewalEnabled,
-        renewalPeriod: row.renewalPeriod,
-        createdAt: row.createdAt,
-        client: {
-          id: row.client_id,
-          name: row.client_name,
-          email: row.client_email,
-          status: row.client_status,
-          companyId: row.client_company_id || row.company_id,
-          contactInfo: {},
-          isMultiSite: false,
-          isMultiUser: false,
-          createdAt: new Date()
-        },
-        product: {
-          id: row.product_id,
-          name: row.product_name,
-          version: row.product_version,
-          description: '',
-          supportedLicenseTypes: [],
-          createdAt: new Date()
-        },
-        company: row.company_name ? {
-          id: row.assigned_company,
-          name: row.company_name,
-          type: '',
-          parentId: null,
-          status: 'active',
-          contactInfo: null,
-          createdAt: new Date()
-        } : undefined
+      id: row.id,
+      clientId: row.client_id,
+      productId: row.product_id,
+      activationKey: row.activation_key,
+      computerKey: row.computerKey,
+      activationDate: row.activationDate,
+      expiryDate: row.expiryDate,
+      licenseType: row.licenseType,
+      status: row.status,
+      maxUsers: row.maxUsers,
+      maxDevices: row.maxDevices,
+      price: row.price,
+      discount: row.discount,
+      activeModules: JSON.parse(row.active_modules || '[]'),
+      assignedCompany: row.assignedCompany,
+      assignedAgent: row.assignedAgent,
+      renewalEnabled: row.renewalEnabled,
+      renewalPeriod: row.renewalPeriod,
+      createdAt: row.createdAt,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        email: row.client_email,
+        status: row.client_status,
+        companyId: row.client_company_id || row.company_id,
+        contactInfo: {},
+        isMultiSite: false,
+        isMultiUser: false,
+        createdAt: new Date()
+      },
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        version: row.product_version,
+        description: '',
+        supportedLicenseTypes: [],
+        createdAt: new Date()
+      },
+      company: row.company_name ? {
+        id: row.assigned_company,
+        name: row.company_name,
+        type: '',
+        parentId: null,
+        status: 'active',
+        contactInfo: null,
+        createdAt: new Date()
+      } : undefined
     }));
   }
 
@@ -1649,39 +1650,39 @@ class DatabaseStorage implements IStorage {
       const placeholders = companyIds.map(() => '?').join(',');
 
       const [activeLicenses] = await this.db.query(
-        `SELECT COUNT(*) as count FROM licenses l 
-         JOIN clients c ON l.client_id = c.id 
+        `SELECT COUNT(*) as count FROM licenses l
+         JOIN clients c ON l.client_id = c.id
          WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
         companyIds
       );
 
       const [demoLicenses] = await this.db.query(
-        `SELECT COUNT(*) as count FROM licenses l 
-         JOIN clients c ON l.client_id = c.id 
-         WHERE l.license_type = "trial" AND l.status IN ("attiva", "demo") 
+        `SELECT COUNT(*) as count FROM licenses l
+         JOIN clients c ON l.client_id = c.id
+         WHERE l.license_type = "trial" AND l.status IN ("attiva", "demo")
          AND c.company_id IN (${placeholders})`,
         companyIds
       );
 
       const [totalClients] = await this.db.query(
-        `SELECT COUNT(*) as count FROM clients 
+        `SELECT COUNT(*) as count FROM clients
          WHERE status = "convalidato" AND company_id IN (${placeholders})`,
         companyIds
       );
 
       const [monthlyRevenue] = await this.db.query(`
-        SELECT COALESCE(SUM(t.amount), 0) as total 
+        SELECT COALESCE(SUM(t.amount), 0) as total
         FROM transactions t
         JOIN licenses l ON t.license_id = l.id
         JOIN clients c ON l.client_id = c.id
-        WHERE t.status = "completed" 
+        WHERE t.status = "completed"
         AND MONTH(t.created_at) = MONTH(CURRENT_DATE())
         AND YEAR(t.created_at) = YEAR(CURRENT_DATE())
         AND c.company_id IN (${placeholders})
       `, companyIds);
 
       const [todayActivations] = await this.db.query(`
-        SELECT COUNT(*) as count 
+        SELECT COUNT(*) as count
         FROM licenses l
         JOIN clients c ON l.client_id = c.id
         WHERE DATE(l.activation_date) = CURDATE()
@@ -1714,16 +1715,16 @@ class DatabaseStorage implements IStorage {
     );
 
     const [monthlyRevenue] = await this.db.query(`
-      SELECT COALESCE(SUM(amount), 0) as total 
-      FROM transactions 
-      WHERE status = "completed" 
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM transactions
+      WHERE status = "completed"
       AND MONTH(created_at) = MONTH(CURRENT_DATE())
       AND YEAR(created_at) = YEAR(CURRENT_DATE())
     `);
 
     const [todayActivations] = await this.db.query(`
-      SELECT COUNT(*) as count 
-      FROM licenses 
+      SELECT COUNT(*) as count
+      FROM licenses
       WHERE DATE(activation_date) = CURDATE()
     `);
 
@@ -1742,9 +1743,9 @@ class DatabaseStorage implements IStorage {
   // Software Registration methods
   async getSoftwareRegistrations(filters?: any): Promise<SoftwareRegistration[]> {
     let sql = `
-      SELECT sr.*, 
-             c.name as client_name, 
-             p.name as product_name, 
+      SELECT sr.*,
+             c.name as client_name,
+             p.name as product_name,
              p.version as product_version,
              comp.name as company_name
       FROM software_registrations sr
@@ -1762,17 +1763,17 @@ class DatabaseStorage implements IStorage {
 
     if (filters?.nomeSoftware) {
       whereClauses.push(`(
-        sr.nome_software LIKE ? OR 
-        sr.ragione_sociale LIKE ? OR 
-        sr.versione LIKE ? OR 
-        sr.partita_iva LIKE ? OR 
-        sr.note LIKE ? OR 
-        sr.computer_key LIKE ? OR 
-        sr.sistema_operativo LIKE ? OR 
+        sr.nome_software LIKE ? OR
+        sr.ragione_sociale LIKE ? OR
+        sr.versione LIKE ? OR
+        sr.partita_iva LIKE ? OR
+        sr.note LIKE ? OR
+        sr.computer_key LIKE ? OR
+        sr.sistema_operativo LIKE ? OR
         sr.indirizzo_ip LIKE ? OR
-        c.name LIKE ? OR 
-        c.email LIKE ? OR 
-        p.name LIKE ? OR 
+        c.name LIKE ? OR
+        c.email LIKE ? OR
+        p.name LIKE ? OR
         p.version LIKE ? OR
         comp.name LIKE ?
       )`);
@@ -1947,8 +1948,8 @@ class DatabaseStorage implements IStorage {
     const placeholders = companyIds.map(() => '?').join(',');
 
     const rows = await this.db.query(
-      `SELECT COUNT(*) as count FROM licenses l 
-       JOIN clients c ON l.client_id = c.id 
+      `SELECT COUNT(*) as count FROM licenses l
+       JOIN clients c ON l.client_id = c.id
        WHERE l.status = "attiva" AND c.company_id IN (${placeholders})`,
       companyIds
     );
@@ -1957,8 +1958,8 @@ class DatabaseStorage implements IStorage {
 
   async getActiveLicensesCountByCompany(companyId: string): Promise<number> {
     const rows = await this.db.query(
-      `SELECT COUNT(*) as count FROM licenses l 
-       JOIN clients c ON l.client_id = c.id 
+      `SELECT COUNT(*) as count FROM licenses l
+       JOIN clients c ON l.client_id = c.id
        WHERE l.status = "attiva" AND c.company_id = ?`,
       [companyId]
     );
@@ -2011,7 +2012,7 @@ class DatabaseStorage implements IStorage {
     console.log('getLicensesByCompanyHierarchy: Query parameters:', companyIds);
 
     const rows = await this.db.query(`
-      SELECT 
+      SELECT
         l.*,
         c.name as client_name, c.email as client_email, c.status as client_status, c.company_id,
         p.name as product_name, p.version as product_version,
@@ -2561,7 +2562,7 @@ class DatabaseStorage implements IStorage {
 
     await this.db.query(`
       INSERT INTO company_wallets (
-        id, company_id, balance, total_recharges, total_spent, 
+        id, company_id, balance, total_recharges, total_spent,
         created_at, updated_at
       ) VALUES (?, ?, 0.00, 0.00, 0.00, ?, ?)
     `, [walletId, companyId, now, now]);
@@ -2587,9 +2588,9 @@ class DatabaseStorage implements IStorage {
 
     await this.db.query(`
       INSERT INTO wallet_transactions (
-        id, company_id, type, amount, balance_before, balance_after, 
-        description, related_entity_type, related_entity_id, 
-        from_company_id, to_company_id, stripe_payment_intent_id, 
+        id, company_id, type, amount, balance_before, balance_after,
+        description, related_entity_type, related_entity_id,
+        from_company_id, to_company_id, stripe_payment_intent_id,
         created_by, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -2613,10 +2614,10 @@ class DatabaseStorage implements IStorage {
   }
 
   async updateWalletBalance(
-    companyId: string, 
-    amount: number, 
-    description: string, 
-    type: string, 
+    companyId: string,
+    amount: number,
+    description: string,
+    type: string,
     createdBy?: string
   ): Promise<CompanyWallet> {
     // Ottieni o crea il wallet
@@ -2631,9 +2632,9 @@ class DatabaseStorage implements IStorage {
 
       // Aggiorna il saldo del wallet
       await this.db.query(`
-        UPDATE company_wallets 
-        SET balance = ?, 
-            ${type === 'ricarica' || type === 'rimborso' ? 'total_recharges = total_recharges + ?, last_recharge_date = ?' : 'total_spent = total_spent + ABS(?)'}, 
+        UPDATE company_wallets
+        SET balance = ?,
+            ${type === 'ricarica' || type === 'rimborso' ? 'total_recharges = total_recharges + ?, last_recharge_date = ?' : 'total_spent = total_spent + ABS(?)'},
             updated_at = ?
         WHERE company_id = ?
       `, (type === 'ricarica' || type === 'rimborso')
@@ -2670,16 +2671,16 @@ class DatabaseStorage implements IStorage {
 
   async updateWalletStripeCustomer(companyId: string, stripeCustomerId: string): Promise<void> {
     await this.db.query(`
-      UPDATE company_wallets 
+      UPDATE company_wallets
       SET stripe_customer_id = ?, updated_at = ?
       WHERE company_id = ?
     `, [stripeCustomerId, new Date(), companyId]);
   }
 
   async transferCredits(
-    fromCompanyId: string, 
-    toCompanyId: string, 
-    amount: number, 
+    fromCompanyId: string,
+    toCompanyId: string,
+    amount: number,
     createdBy: string
   ): Promise<boolean> {
     // Verifica gerarchia aziendale
@@ -2705,19 +2706,19 @@ class DatabaseStorage implements IStorage {
     try {
       // Sottrai crediti dall'azienda madre
       await this.updateWalletBalance(
-        fromCompanyId, 
-        -amount, 
-        `Trasferimento a ${toCompany.name}`, 
-        'trasferimento_out', 
+        fromCompanyId,
+        -amount,
+        `Trasferimento a ${toCompany.name}`,
+        'trasferimento_out',
         createdBy
       );
 
       // Aggiungi crediti alla sotto-azienda
       await this.updateWalletBalance(
-        toCompanyId, 
-        amount, 
-        `Trasferimento da ${fromCompany.name}`, 
-        'trasferimento_in', 
+        toCompanyId,
+        amount,
+        `Trasferimento da ${fromCompany.name}`,
+        'trasferimento_in',
         createdBy
       );
 
@@ -2741,7 +2742,7 @@ class DatabaseStorage implements IStorage {
     console.log(`🔍 Transactions for company ${companyId}: ${companyRowsQuery[0]?.total || 0}`);
 
     const rows = await this.db.query(`
-      SELECT 
+      SELECT
         id,
         company_id as companyId,
         type,
@@ -2756,8 +2757,8 @@ class DatabaseStorage implements IStorage {
         stripe_payment_intent_id as stripePaymentIntentId,
         created_by as createdBy,
         created_at as createdAt
-      FROM wallet_transactions 
-      WHERE company_id = ? 
+      FROM wallet_transactions
+      WHERE company_id = ?
       ORDER BY created_at DESC
       LIMIT ?
     `, [companyId, limit]);
@@ -2797,19 +2798,19 @@ class DatabaseStorage implements IStorage {
         created_by, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, 
-      transaction.companyId, 
-      transaction.type, 
+      id,
+      transaction.companyId,
+      transaction.type,
       transaction.amount,
-      transaction.balanceBefore || 0, 
-      transaction.balanceAfter || 0, 
+      transaction.balanceBefore || 0,
+      transaction.balanceAfter || 0,
       transaction.description,
-      transaction.relatedEntityType || null, 
+      transaction.relatedEntityType || null,
       transaction.relatedEntityId || null,
-      transaction.fromCompanyId || null, 
-      transaction.toCompanyId || null, 
-      transaction.stripePaymentIntentId || null, 
-      transaction.createdBy || null, 
+      transaction.fromCompanyId || null,
+      transaction.toCompanyId || null,
+      transaction.stripePaymentIntentId || null,
+      transaction.createdBy || null,
       now
     ]);
 
@@ -2832,9 +2833,9 @@ class DatabaseStorage implements IStorage {
   }
 
   async chargeWalletForLicense(
-    companyId: string, 
-    licenseId: string, 
-    amount: number, 
+    companyId: string,
+    licenseId: string,
+    amount: number,
     createdBy: string
   ): Promise<boolean> {
     const wallet = await this.getCompanyWallet(companyId);
@@ -2846,16 +2847,16 @@ class DatabaseStorage implements IStorage {
     try {
       // Scala i crediti dal wallet
       await this.updateWalletBalance(
-        companyId, 
-        -amount, 
-        `Rinnovo licenza ${licenseId}`, 
-        'spesa', 
+        companyId,
+        -amount,
+        `Rinnovo licenza ${licenseId}`,
+        'spesa',
         createdBy
       );
 
       // Aggiorna la transazione licenza con crediti utilizzati
       await this.db.query(`
-        UPDATE transactions 
+        UPDATE transactions
         SET credits_used = ?, payment_method = 'crediti', status = 'pagato_crediti', payment_date = ?
         WHERE license_id = ? AND status = 'in_attesa'
       `, [amount, new Date(), licenseId]);
@@ -2906,7 +2907,7 @@ class DatabaseStorage implements IStorage {
     }
   }
 
-  async getStripeConfiguration(): Promise<{publicKey: string; secretKey: string} | null> {
+  async getStripeConfiguration(): Promise<{ publicKey: string; secretKey: string } | null> {
     try {
       const rows = await this.db.query(
         'SELECT config_key, config_value FROM system_config WHERE config_key IN (?, ?)',
@@ -2917,7 +2918,7 @@ class DatabaseStorage implements IStorage {
         return null;
       }
 
-      const config: {publicKey: string; secretKey: string} = { publicKey: '', secretKey: '' };
+      const config: { publicKey: string; secretKey: string } = { publicKey: '', secretKey: '' };
 
       for (const row of rows) {
         if (row.config_key === 'stripe_public_key') {
@@ -2936,43 +2937,66 @@ class DatabaseStorage implements IStorage {
 
   // Category methods
   async getAllCategories(): Promise<Category[]> {
-    try {
-      const rows = await database.query('SELECT * FROM categories WHERE is_active = TRUE ORDER BY name');
-      return rows;
-    } catch (error) {
-      console.error('Get all categories error:', error);
-      throw error;
-    }
+    const rows = await this.db.query('SELECT * FROM categories WHERE is_active = TRUE ORDER BY name');
+    return rows.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      color: row.color,
+      isActive: row.is_active,
+      companyId: row.company_id,
+      createdAt: row.created_at
+    }));
+  }
+
+  async getCategoriesByCompanyHierarchy(companyId: string): Promise<Category[]> {
+    // Get company hierarchy (user's company + all subcompanies)
+    const companyIds = await this.getCompanyHierarchy(companyId);
+    const placeholders = companyIds.map(() => '?').join(',');
+
+    // Get categories that belong to companies in hierarchy + global categories (company_id IS NULL)
+    const rows = await this.db.query(`
+      SELECT * FROM categories
+      WHERE is_active = TRUE
+      AND (company_id IS NULL OR company_id IN (${placeholders}))
+      ORDER BY company_id IS NULL DESC, name ASC
+    `, companyIds);
+
+    return rows.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      color: row.color,
+      isActive: row.is_active,
+      companyId: row.company_id,
+      createdAt: row.created_at
+    }));
   }
 
   async createCategory(categoryData: any): Promise<Category> {
-    try {
-      const id = randomUUID(); // Generate ID if not provided
-      const result = await database.query(`
-        INSERT INTO categories (id, name, description, color, is_active, created_at)
-        VALUES (?, ?, ?, ?, TRUE, NOW())
-      `, [
-        categoryData.id || id,
-        categoryData.name,
-        categoryData.description || null,
-        categoryData.color || '#3B82F6'
-      ]);
+    const id = randomUUID();
+    await this.db.query(`
+      INSERT INTO categories (id, name, description, color, is_active, company_id)
+      VALUES (?, ?, ?, ?, TRUE, ?)
+    `, [id, categoryData.name, categoryData.description, categoryData.color, categoryData.companyId || null]);
 
-      return await this.getCategoryById(categoryData.id || id);
-    } catch (error) {
-      console.error('Create category error:', error);
-      throw error;
-    }
+    return this.getCategoryById(id) as Promise<Category>;
   }
 
   async getCategoryById(categoryId: string): Promise<Category | null> {
-    try {
-      const rows = await database.query('SELECT * FROM categories WHERE id = ?', [categoryId]);
-      return rows[0] || null;
-    } catch (error) {
-      console.error('Get category by ID error:', error);
-      throw error;
-    }
+    const rows = await this.db.query('SELECT * FROM categories WHERE id = ? AND is_active = TRUE', [categoryId]);
+    if (rows.length === 0) return null;
+
+    const row = rows[0];
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      color: row.color,
+      isActive: row.is_active,
+      companyId: row.company_id,
+      createdAt: row.created_at
+    };
   }
 
   async updateCategory(categoryId: string, updateData: Partial<Category>): Promise<Category | null> {
@@ -3004,7 +3028,7 @@ class DatabaseStorage implements IStorage {
       values.push(categoryId);
 
       await database.query(`
-        UPDATE categories 
+        UPDATE categories
         SET ${setParts.join(', ')}
         WHERE id = ?
       `, values);

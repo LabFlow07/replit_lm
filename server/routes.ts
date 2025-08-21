@@ -710,7 +710,20 @@ router.get("/api/licenses/active/count", authenticateToken, async (req: Request,
 // Categories endpoints
 router.get("/api/categories", authenticateToken, async (req: Request, res: Response) => {
   try {
-    const categories = await storage.getAllCategories();
+    const user = (req as any).user;
+    let categories;
+
+    if (user.role === 'superadmin') {
+      // Superadmin can see all categories
+      categories = await storage.getAllCategories();
+    } else if (user.role === 'admin' && user.companyId) {
+      // Admin can see categories from their company hierarchy + global categories
+      categories = await storage.getCategoriesByCompanyHierarchy(user.companyId);
+    } else {
+      // Other roles see only global categories for now
+      categories = await storage.getAllCategories();
+    }
+
     res.json(categories);
   } catch (error) {
     console.error('Get categories error:', error);
@@ -721,11 +734,11 @@ router.get("/api/categories", authenticateToken, async (req: Request, res: Respo
 router.post("/api/categories", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { name, description, color } = req.body;
+    const { name, description, color, companyId } = req.body;
 
-    // Only superadmin can create categories
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ message: "Solo il superadmin può creare categorie" });
+    // Superadmin and admin can create categories
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return res.status(403).json({ message: "Solo superadmin e admin possono creare categorie" });
     }
 
     // Validate required fields
@@ -733,15 +746,36 @@ router.post("/api/categories", authenticateToken, async (req: Request, res: Resp
       return res.status(400).json({ message: "Name is required" });
     }
 
+    // Determine category company assignment
+    let categoryCompanyId = null;
+    
+    if (user.role === 'superadmin') {
+      // Superadmin can create global categories (companyId = null) or assign to any company
+      categoryCompanyId = companyId || null;
+    } else if (user.role === 'admin') {
+      // Admin can only create categories for their company hierarchy
+      if (companyId) {
+        const companyIds = await storage.getCompanyHierarchy(user.companyId);
+        if (!companyIds.includes(companyId)) {
+          return res.status(403).json({ message: "Non puoi creare categorie per aziende fuori dalla tua gerarchia" });
+        }
+        categoryCompanyId = companyId;
+      } else {
+        // If no companyId specified, assign to admin's company
+        categoryCompanyId = user.companyId;
+      }
+    }
+
     const categoryData = {
       id: nanoid(),
       name: name.trim(),
       description: description?.trim() || null,
-      color: color || '#3B82F6'
+      color: color || '#3B82F6',
+      companyId: categoryCompanyId
     };
 
     const category = await storage.createCategory(categoryData);
-    console.log('Category created successfully:', category.name);
+    console.log('Category created successfully:', category.name, 'for company:', categoryCompanyId || 'global');
     res.json(category);
   } catch (error) {
     console.error('Create category error:', error);

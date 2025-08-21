@@ -44,10 +44,11 @@ export const agents = pgTable("agents", {
 // Categories for products
 export const categories = pgTable("categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   description: text("description"),
   color: text("color").default('#3B82F6'), // hex color for UI
   isActive: boolean("is_active").default(true),
+  companyId: varchar("company_id"), // Foreign key to companies - null for global categories
   createdAt: timestamp("created_at").defaultNow(),
 });
 

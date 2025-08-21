@@ -69,7 +69,8 @@ export default function ProductsPage() {
   const [newCategory, setNewCategory] = useState({
     name: '',
     description: '',
-    color: '#3B82F6'
+    color: '#3B82F6',
+    companyId: null
   });
 
   // Filter states
@@ -120,6 +121,25 @@ export default function ProductsPage() {
       });
       if (!response.ok) {
         throw new Error('Failed to fetch categories');
+      }
+      return response.json();
+    }
+  });
+
+  // Fetch companies (for superadmin category creation)
+  const { data: companies = [] } = useQuery({
+    queryKey: ['/api/companies'],
+    enabled: !!user && user.role === 'superadmin',
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch companies');
       }
       return response.json();
     }
@@ -285,7 +305,8 @@ export default function ProductsPage() {
       setNewCategory({
         name: '',
         description: '',
-        color: '#3B82F6'
+        color: '#3B82F6',
+        companyId: null
       });
       toast({
         title: "Categoria creata",
@@ -403,6 +424,28 @@ export default function ProductsPage() {
                       rows={3}
                     />
                   </div>
+
+                  {user.role === 'superadmin' && (
+                    <div>
+                      <Label htmlFor="category-company">Azienda (opzionale)</Label>
+                      <Select 
+                        value={newCategory.companyId || "global"} 
+                        onValueChange={(value) => setNewCategory({ ...newCategory, companyId: value === "global" ? null : value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona azienda" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">🌐 Categoria Globale</SelectItem>
+                          {companies.map((company: any) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div>
                     <Label htmlFor="category-color">Colore</Label>
@@ -708,7 +751,16 @@ export default function ProductsPage() {
                                 className="w-3 h-3 rounded-full" 
                                 style={{ backgroundColor: product.category.color }}
                               ></div>
-                              <span className="text-sm">{product.category.name}</span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{product.category.name}</span>
+                                {product.category.companyId ? (
+                                  <span className="text-xs text-gray-500">
+                                    {companies.find(c => c.id === product.category.companyId)?.name || 'Azienda specifica'}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-blue-600">🌐 Globale</span>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-gray-400 italic text-sm">Nessuna categoria</span>
