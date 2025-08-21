@@ -1215,7 +1215,7 @@ export default function SoftwareRegistrations() {
                       return (
                         <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
                           <p className="text-sm text-yellow-700">
-                            <Key className="h-4 w-4 inline mr-2" />
+                            <i className="fas fa-key mr-2"></i>
                             Nessuna licenza disponibile per questo cliente
                           </p>
                         </div>
@@ -1262,7 +1262,7 @@ export default function SoftwareRegistrations() {
                             return (
                               <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
                                 <p className="text-sm text-yellow-700">
-                                  <Key className="h-4 w-4 inline mr-2" />
+                                  <i className="fas fa-key mr-2"></i>
                                   Prodotto non trovato per questa licenza
                                 </p>
                               </div>
@@ -1274,7 +1274,7 @@ export default function SoftwareRegistrations() {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm font-medium text-green-800">
-                                    <Key className="h-4 w-4 inline mr-2" />
+                                    <i className="fas fa-key mr-2"></i>
                                     Licenza selezionata
                                   </p>
                                   <p className="text-xs text-green-600 mt-1">
@@ -1284,7 +1284,7 @@ export default function SoftwareRegistrations() {
                                     Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
                                   </p>
                                 </div>
-                                <Key className="h-6 w-6 text-green-500" />
+                                <i className="fas fa-key text-green-500 text-xl"></i>
                               </div>
                             </div>
                           );
@@ -1317,7 +1317,7 @@ export default function SoftwareRegistrations() {
               {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800">
-                    <Key className="h-4 w-4 inline mr-2" />
+                    <i className="fas fa-key mr-2"></i>
                     Nessuna licenza assegnata a questa registrazione. Solo il superadmin può assegnare licenze.
                   </p>
                 </div>
