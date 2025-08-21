@@ -1202,7 +1202,7 @@ export default function SoftwareRegistrations() {
                   )}
                 </div>
 
-                {/* Colonna destra - Assegnazioni e Form */}
+                {/* Colonna destra - Solo Assegnazioni Attuali (Visualizzazione) */}
                 <div className="space-y-4">
                   {/* Sezione Assegnazioni Attuali */}
                   <div>
@@ -1222,110 +1222,8 @@ export default function SoftwareRegistrations() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Sezione Gestione Assegnazioni - Solo per Superadmin */}
-                  {user?.role === 'superadmin' && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">Gestione Assegnazioni</h3>
-                      <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-                        <div>
-                          <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
-                          <CompanySearchInput
-                            companies={safeCompanies}
-                            onCompanySelect={(companyId) => {
-                              setValue('aziendaAssegnata', companyId);
-                              setValue('clienteAssegnato', '');
-                              setValue('licenzaAssegnata', '');
-                            }}
-                            initialCompanyId={watch('aziendaAssegnata')}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
-                          <ClientSearchInput
-                            clients={safeClients}
-                            companies={safeCompanies}
-                            onClientSelect={(clientId) => {
-                              setValue('clienteAssegnato', clientId);
-                              setValue('licenzaAssegnata', '');
-                            }}
-                            companyId={watch('aziendaAssegnata')}
-                            initialClientId={watch('clienteAssegnato')}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
-                          <Select
-                            value={watch('licenzaAssegnata') || ''}
-                            onValueChange={(value) => {
-                              setValue('licenzaAssegnata', value);
-                              setValue('prodottoAssegnato', null);
-                            }}
-                            disabled={!watch('clienteAssegnato')}
-                          >
-                            <SelectTrigger data-testid="select-assign-license" className="h-9">
-                              <SelectValue placeholder="Seleziona licenza" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
-                              {safeLicenses
-                                .filter((license: License) => {
-                                  const selectedClientId = watch('clienteAssegnato');
-                                  const selectedCompanyId = watch('aziendaAssegnata');
-                                  return (
-                                    license.client?.id === selectedClientId &&
-                                    (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
-                                    ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
-                                  );
-                                })
-                                .map((license: License) => (
-                                  <SelectItem key={license.id} value={license.id}>
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">{license.activationKey}</span>
-                                      <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
-                          <Textarea
-                            {...register('note')}
-                            placeholder="Aggiungi note..."
-                            rows={3}
-                            className="text-sm"
-                            defaultValue={selectedRegistration?.note || ''}
-                          />
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="authorizeDevice"
-                            checked={watch('authorizeDevice')}
-                            onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
-                          />
-                          <Label htmlFor="authorizeDevice" className="text-sm">
-                            Autorizza dispositivo
-                          </Label>
-                        </div>
-
-                        <div className="flex space-x-2 pt-2">
-                          <Button type="submit" size="sm" disabled={isSubmitting} className="flex-1">
-                            {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
-                          </Button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
                 </div>
               </div>
-
-
 
               {/* Footer - Pulsante Chiudi */}
               <div className="flex justify-end pt-4 border-t">
