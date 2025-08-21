@@ -492,7 +492,8 @@ export default function SoftwareRegistrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
       setIsClassifyModalOpen(false);
-      setIsEditModalOpen(false); // Close both modals on success
+      setIsEditModalOpen(false);
+      setIsViewDialogOpen(false); // Close view dialog as well
       setSelectedRegistration(null);
       reset();
     },
@@ -746,6 +747,23 @@ export default function SoftwareRegistrations() {
   const handleViewRegistration = (id: string) => {
     const registrationToView = safeRegistrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToView || null);
+    
+    // Initialize form for superadmin
+    if (user?.role === 'superadmin' && registrationToView) {
+      reset(); // Reset form state
+
+      const client = safeClients.find(c => c.id === registrationToView.clienteAssegnato);
+      const companyId = client?.company_id || client?.companyId || '';
+
+      // Set initial form values using setValue
+      setValue('aziendaAssegnata', companyId || '');
+      setValue('clienteAssegnato', registrationToView.clienteAssegnato || '');
+      setValue('prodottoAssegnato', registrationToView.prodottoAssegnato || '');
+      setValue('licenzaAssegnata', registrationToView.licenzaAssegnata || '');
+      setValue('note', registrationToView.note || '');
+      setValue('authorizeDevice', !!registrationToView.computerKey); // Set checkbox based on existing key
+    }
+    
     setIsViewDialogOpen(true);
   };
 
@@ -1220,8 +1238,8 @@ export default function SoftwareRegistrations() {
 
                 {/* Colonna destra - Form di modifica/classificazione */}
                 <div className="space-y-4">
-                  {/* Sezione Assegnazioni Attuali solo per view */}
-                  {isViewDialogOpen && !isClassifyModalOpen && !isEditModalOpen && (
+                  {/* Visualizzazione Assegnazioni per tutti gli utenti non superadmin */}
+                  {isViewDialogOpen && !isClassifyModalOpen && !isEditModalOpen && user?.role !== 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni Attuali</h3>
                       <div className="space-y-3 text-sm">
@@ -1241,7 +1259,126 @@ export default function SoftwareRegistrations() {
                     </div>
                   )}
 
-                  {/* Form di gestione per superadmin - sia per edit che classify */}
+                  {/* Form di gestione per superadmin nella modal Eye */}
+                  {isViewDialogOpen && user?.role === 'superadmin' && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        Modifica Assegnazioni
+                      </h3>
+                      <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
+
+                        <div>
+                          <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
+                          <CompanySearchInput
+                            companies={safeCompanies}
+                            onCompanySelect={(companyId) => {
+                              setValue('aziendaAssegnata', companyId);
+                              setValue('clienteAssegnato', '');
+                              setValue('licenzaAssegnata', '');
+                            }}
+                            initialCompanyId={watch('aziendaAssegnata')}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
+                          <ClientSearchInput
+                            clients={safeClients}
+                            companies={safeCompanies}
+                            onClientSelect={(clientId) => {
+                              setValue('clienteAssegnato', clientId);
+                              setValue('licenzaAssegnata', '');
+                            }}
+                            companyId={watch('aziendaAssegnata')}
+                            initialClientId={watch('clienteAssegnato')}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
+                          <Select
+                            value={watch('licenzaAssegnata') || ''}
+                            onValueChange={(value) => {
+                              setValue('licenzaAssegnata', value);
+                              setValue('prodottoAssegnato', null);
+                            }}
+                            disabled={!watch('clienteAssegnato')}
+                          >
+                            <SelectTrigger data-testid="select-assign-license" className="h-9">
+                              <SelectValue placeholder="Seleziona licenza" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
+                              {safeLicenses
+                                .filter((license: License) => {
+                                  const selectedClientId = watch('clienteAssegnato');
+                                  const selectedCompanyId = watch('aziendaAssegnata');
+
+                                  return (
+                                    license.client?.id === selectedClientId &&
+                                    (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
+                                    ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
+                                  );
+                                })
+                                .map((license: License) => (
+                                  <SelectItem key={license.id} value={license.id}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{license.activationKey}</span>
+                                      <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="note" className="text-sm">Note</Label>
+                          <Textarea
+                            {...register('note')}
+                            placeholder="Aggiungi o modifica note..."
+                            rows={3}
+                            className="text-sm"
+                            defaultValue={selectedRegistration?.note || ''}
+                          />
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="authorizeDevice"
+                            checked={watch('authorizeDevice')}
+                            onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
+                          />
+                          <Label htmlFor="authorizeDevice" className="text-sm">
+                            Autorizza dispositivo (genera computer key)
+                          </Label>
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-2">
+                          <Button type="submit" size="sm" disabled={isSubmitting}>
+                            {isSubmitting ? 'Salvando...' : 'Salva Modifica'}
+                          </Button>
+                          {selectedRegistration?.licenzaAssegnata && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                setValue('aziendaAssegnata', '');
+                                setValue('clienteAssegnato', '');
+                                setValue('licenzaAssegnata', 'none');
+                                setValue('prodottoAssegnato', '');
+                              }}
+                            >
+                              Rimuovi Assegnazioni
+                            </Button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Form di gestione per superadmin - solo per edit e classify modal */}
                   {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">
