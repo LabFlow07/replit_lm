@@ -1249,39 +1249,59 @@ export default function SoftwareRegistrations() {
                       <div className="space-y-3">
                         <div>
                           <Label htmlFor="aziendaAssegnata" className="text-sm font-medium">Azienda</Label>
-                          <CompanySearchInput
-                            key={`company-${selectedRegistration?.id}-${watch('aziendaAssegnata')}`}
-                            companies={Array.isArray(companies) ? companies.map((c: any) => ({
-                              ...c,
-                              name: c.name || 'Nome non disponibile',
-                              partitaIva: c.partitaIva || 'N/A'
-                            })) : []}
-                            onCompanySelect={(companyId) => {
-                              setValue('aziendaAssegnata', companyId || null);
+                          <Select
+                            value={watch('aziendaAssegnata') || ''}
+                            onValueChange={(value) => {
+                              setValue('aziendaAssegnata', value || null);
                               setValue('clienteAssegnato', null);
                               setValue('licenzaAssegnata', null);
                               setValue('prodottoAssegnato', null);
                             }}
-                            placeholder="Cerca azienda per nome o P.IVA..."
-                            initialCompanyId={watch('aziendaAssegnata') || undefined}
-                          />
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona azienda..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Nessuna azienda</SelectItem>
+                              {safeCompanies.map((company: any) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                  {company.name} - {company.partitaIva || 'N/A'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div>
                           <Label htmlFor="clienteAssegnato" className="text-sm font-medium">Cliente</Label>
-                          <ClientSearchInput
-                            key={`client-${selectedRegistration?.id}-${watch('clienteAssegnato')}`}
-                            clients={clients}
-                            companies={Array.isArray(companies) ? companies : []}
-                            companyId={watch('aziendaAssegnata')}
-                            onClientSelect={(clientId) => {
-                              setValue('clienteAssegnato', clientId || null);
-                              setValue('licenzaAssegnata', null);
-                              setValue('prodottoAssegnato', null);
-                            }}
-                            placeholder="Cerca cliente per nome o email..."
-                            initialClientId={watch('clienteAssegnato') || undefined}
-                          />
+                          {watch('aziendaAssegnata') ? (
+                            <Select
+                              value={watch('clienteAssegnato') || ''}
+                              onValueChange={(value) => {
+                                setValue('clienteAssegnato', value || null);
+                                setValue('licenzaAssegnata', null);
+                                setValue('prodottoAssegnato', null);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona cliente..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Nessun cliente</SelectItem>
+                                {safeClients.filter((client: any) => 
+                                  (client.company_id || client.companyId) === watch('aziendaAssegnata')
+                                ).map((client: any) => (
+                                  <SelectItem key={client.id} value={client.id}>
+                                    {client.name} - {client.email}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="p-3 bg-gray-50 rounded-md border text-center">
+                              <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
