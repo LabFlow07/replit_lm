@@ -631,6 +631,35 @@ export default function SoftwareRegistrations() {
   };
 
   const onClassifySubmit = (data: any) => {
+    // Validazione: se ci sono assegnazioni esistenti ma non viene selezionata una licenza,
+    // chiedi conferma per rimuovere tutto
+    if (selectedRegistration?.clienteAssegnato && !data.licenzaAssegnata) {
+      const confirmMessage = 
+        `⚠️ Attenzione!\n\n` +
+        `Stai per rimuovere TUTTE le assegnazioni esistenti:\n` +
+        `- Cliente: ${selectedRegistration.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.name || 'Non trovato' : 'Nessuno'}\n` +
+        `- Licenza: ${selectedRegistration.licenzaAssegnata ? safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata)?.activationKey || 'Non trovata' : 'Nessuna'}\n` +
+        `- Computer Key: ${selectedRegistration.computerKey || 'Nessuna'}\n\n` +
+        `La registrazione tornerà allo stato "Non Assegnato".\n\n` +
+        `Vuoi continuare?`;
+
+      if (!confirm(confirmMessage)) {
+        return; // Annulla l'operazione
+      }
+    }
+
+    // Se non c'è cliente ma c'è una licenza, impedisci il salvataggio
+    if (data.licenzaAssegnata && !data.clienteAssegnato) {
+      alert('⚠️ Errore: Non puoi assegnare una licenza senza selezionare un cliente.');
+      return;
+    }
+
+    // Se non c'è azienda ma c'è un cliente, impedisci il salvataggio
+    if (data.clienteAssegnato && !data.aziendaAssegnata) {
+      alert('⚠️ Errore: Non puoi assegnare un cliente senza selezionare un\'azienda.');
+      return;
+    }
+
     classifyMutation.mutate(data);
   };
 
@@ -1185,7 +1214,14 @@ export default function SoftwareRegistrations() {
                 </div>
 
                 <div>
-                  <Label htmlFor="licenzaAssegnata">Licenza</Label>
+                  <Label htmlFor="licenzaAssegnata" className="flex items-center gap-2">
+                    Licenza
+                    {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
+                      <span className="text-red-500 text-xs font-medium">
+                        * Obbligatoria per mantenere le assegnazioni
+                      </span>
+                    )}
+                  </Label>
                   {(() => {
                     const selectedClientId = watch('clienteAssegnato');
                     const selectedCompanyId = watch('aziendaAssegnata');
@@ -1232,6 +1268,18 @@ export default function SoftwareRegistrations() {
                     return (
                       <>
                         <Select value={selectedLicenseId || 'none'} onValueChange={(value) => {
+                          // Se si seleziona "none" e ci sono assegnazioni esistenti, mostra avviso
+                          if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
+                            const confirmMessage = 
+                              `⚠️ Attenzione!\n\n` +
+                              `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
+                              `Vuoi continuare?`;
+                            
+                            if (!confirm(confirmMessage)) {
+                              return; // Non cambiare la selezione
+                            }
+                          }
+
                           setValue('licenzaAssegnata', value === 'none' ? null : value);
                           if (value !== 'none') {
                             const selectedLicense = safeLicenses.find(l => l.id === value);
@@ -1246,7 +1294,9 @@ export default function SoftwareRegistrations() {
                             <SelectValue placeholder="Seleziona licenza" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Nessuna Licenza</SelectItem>
+                            <SelectItem value="none" className="text-red-600 font-medium">
+                              ⚠️ Nessuna Licenza (rimuove tutto)
+                            </SelectItem>
                             {clientLicenses.map((license: License) => (
                               <SelectItem key={license.id} value={license.id}>
                                 <div className="flex flex-col">
