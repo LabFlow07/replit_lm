@@ -178,7 +178,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
       setSearchTerm("");
       onClientSelect('');
     }
-  }, [companyId, initialClientId]); // Only depend on the key props
+  }, [companyId, initialClientId, safeClients]); // Add safeClients dependency
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -708,12 +708,30 @@ export default function SoftwareRegistrations() {
     reset(); // Reset form state
 
     if (registrationToClassify) {
-      const client = safeClients.find(c => c.id === registrationToClassify.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || '';
+      // If registration has an assigned license, get client from license
+      let clientId = registrationToClassify.clienteAssegnato;
+      let companyId = '';
+
+      if (registrationToClassify.licenzaAssegnata && !clientId) {
+        const assignedLicense = safeLicenses.find(l => l.id === registrationToClassify.licenzaAssegnata);
+        
+        if (assignedLicense && assignedLicense.client) {
+          // Find the full client object from the clients list
+          const fullClient = safeClients.find(c => c.id === assignedLicense.client?.id);
+          
+          if (fullClient) {
+            clientId = fullClient.id;
+            companyId = fullClient.company_id || fullClient.companyId || '';
+          }
+        }
+      } else if (clientId) {
+        const client = safeClients.find(c => c.id === clientId);
+        companyId = client?.company_id || client?.companyId || '';
+      }
 
       // Set initial form values using setValue
       setValue('aziendaAssegnata', companyId || '');
-      setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || '');
+      setValue('clienteAssegnato', clientId || '');
       setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || '');
       setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || '');
       setValue('note', registrationToClassify.note || '');
@@ -728,12 +746,47 @@ export default function SoftwareRegistrations() {
     reset(); // Reset form state
 
     if (registration) {
-      const client = safeClients.find(c => c.id === registration.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || '';
+      // If registration has an assigned license, get client from license
+      let clientId = registration.clienteAssegnato;
+      let companyId = '';
+
+      if (registration.licenzaAssegnata && !clientId) {
+        console.log('Edit registration:', registration);
+        const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
+        console.log('Found assigned license:', assignedLicense);
+        
+        if (assignedLicense && assignedLicense.client) {
+          console.log('License client data:', assignedLicense.client);
+          // Find the full client object from the clients list
+          const fullClient = safeClients.find(c => c.id === assignedLicense.client?.id);
+          console.log('Found full client from list:', fullClient);
+          
+          if (fullClient) {
+            clientId = fullClient.id;
+            companyId = fullClient.company_id || fullClient.companyId || '';
+            console.log('Final client:', fullClient);
+            console.log('Final client ID:', clientId);
+            console.log('Final company ID:', companyId);
+          }
+        }
+      } else if (clientId) {
+        const client = safeClients.find(c => c.id === clientId);
+        companyId = client?.company_id || client?.companyId || '';
+      }
+
+      console.log('Computer Key:', registration.computerKey);
+      console.log('Form values set:', {
+        aziendaAssegnata: companyId || '',
+        clienteAssegnato: clientId || '',
+        prodottoAssegnato: registration.prodottoAssegnato || '',
+        licenzaAssegnata: registration.licenzaAssegnata || '',
+        note: registration.note || '',
+        authorizeDevice: !!registration.computerKey
+      });
 
       // Set initial form values using setValue
       setValue('aziendaAssegnata', companyId || '');
-      setValue('clienteAssegnato', registration.clienteAssegnato || '');
+      setValue('clienteAssegnato', clientId || '');
       setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
       setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
       setValue('note', registration.note || '');
@@ -752,12 +805,47 @@ export default function SoftwareRegistrations() {
     if (user?.role === 'superadmin' && registrationToView) {
       reset(); // Reset form state
 
-      const client = safeClients.find(c => c.id === registrationToView.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || '';
+      // If registration has an assigned license, get client from license
+      let clientId = registrationToView.clienteAssegnato;
+      let companyId = '';
+
+      if (registrationToView.licenzaAssegnata && !clientId) {
+        console.log('Edit registration:', registrationToView);
+        const assignedLicense = safeLicenses.find(l => l.id === registrationToView.licenzaAssegnata);
+        console.log('Found assigned license:', assignedLicense);
+        
+        if (assignedLicense && assignedLicense.client) {
+          console.log('License client data:', assignedLicense.client);
+          // Find the full client object from the clients list
+          const fullClient = safeClients.find(c => c.id === assignedLicense.client?.id);
+          console.log('Found full client from list:', fullClient);
+          
+          if (fullClient) {
+            clientId = fullClient.id;
+            companyId = fullClient.company_id || fullClient.companyId || '';
+            console.log('Final client:', fullClient);
+            console.log('Final client ID:', clientId);
+            console.log('Final company ID:', companyId);
+          }
+        }
+      } else if (clientId) {
+        const client = safeClients.find(c => c.id === clientId);
+        companyId = client?.company_id || client?.companyId || '';
+      }
+
+      console.log('Computer Key:', registrationToView.computerKey);
+      console.log('Form values set:', {
+        aziendaAssegnata: companyId || '',
+        clienteAssegnato: clientId || '',
+        prodottoAssegnato: registrationToView.prodottoAssegnato || '',
+        licenzaAssegnata: registrationToView.licenzaAssegnata || '',
+        note: registrationToView.note || '',
+        authorizeDevice: !!registrationToView.computerKey
+      });
 
       // Set initial form values using setValue
       setValue('aziendaAssegnata', companyId || '');
-      setValue('clienteAssegnato', registrationToView.clienteAssegnato || '');
+      setValue('clienteAssegnato', clientId || '');
       setValue('prodottoAssegnato', registrationToView.prodottoAssegnato || '');
       setValue('licenzaAssegnata', registrationToView.licenzaAssegnata || '');
       setValue('note', registrationToView.note || '');
