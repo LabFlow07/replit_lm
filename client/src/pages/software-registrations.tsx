@@ -1346,6 +1346,7 @@ export default function SoftwareRegistrations() {
                             setValue('prodottoAssegnato', null);
                           }
                         }}
+                        >
                           <SelectTrigger data-testid="select-assign-license">
                             <SelectValue placeholder="Seleziona licenza" />
                           </SelectTrigger>
