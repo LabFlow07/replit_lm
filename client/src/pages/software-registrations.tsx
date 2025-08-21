@@ -1420,7 +1420,7 @@ export default function SoftwareRegistrations() {
                     </div>
                   </div>
 
-                  {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && (
+                  {['admin', 'superadmin'].includes(user?.role || '') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && !selectedRegistration?.computerKey && (
                     <div className="flex items-center space-x-2 pt-4 border-t">
                       <input
                         type="checkbox"
@@ -1428,11 +1428,20 @@ export default function SoftwareRegistrations() {
                         {...register('authorizeDevice')}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         data-testid="checkbox-authorize-device"
-                        defaultChecked={!!selectedRegistration?.computerKey || watch('authorizeDevice')}
                       />
                       <Label htmlFor="authorizeDevice" className="font-medium">
-                        Autorizza dispositivo (genera/rimuovi computer key)
+                        Autorizza dispositivo (genera computer key)
                       </Label>
+                    </div>
+                  )}
+
+                  {/* Messaggio se il dispositivo è già autorizzato */}
+                  {selectedRegistration?.computerKey && (
+                    <div className="flex items-center space-x-2 pt-4 border-t bg-green-50 p-3 rounded-md">
+                      <div className="h-4 w-4 text-green-600">🔑</div>
+                      <span className="text-sm text-green-800 font-medium">
+                        Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
+                      </span>
                     </div>
                   )}
 
