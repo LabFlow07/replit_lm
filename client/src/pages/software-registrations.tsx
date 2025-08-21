@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -20,82 +23,6 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/hooks/use-auth"; // Import useAuth hook
 
 import { useToast } from "@/hooks/use-toast";
-
-// Mock user for role checking, replace with actual auth context in a real app
-// const user = {
-//   role: 'superadmin' // or 'admin', 'user', etc.
-// };
-// Use the actual user from useAuth hook
-// const { user } = useAuth();
-
-
-interface SoftwareRegistration {
-  id: string;
-  nomeSoftware: string;
-  versione: string;
-  ragioneSociale: string;
-  partitaIva?: string;
-  totaleOrdini: number;
-  totaleVenduto: number;
-  sistemaOperativo?: string;
-  indirizzoIp?: string;
-  computerKey?: string;
-  installationPath?: string;
-  status: 'non_assegnato' | 'classificato' | 'licenziato' | 'in_attesa_computer_key';
-  clienteAssegnato?: string;
-  licenzaAssegnata?: string;
-  prodottoAssegnato?: string; // Added to match the dialog
-  aziendaAssegnata?: string; // Added for company assignment
-  note?: string;
-  primaRegistrazione: string;
-  ultimaAttivita: string;
-  createdAt: string;
-  updatedAt: string;
-  // These fields are likely mapped or renamed from API response
-  softwareName?: string; // Assuming API returns this
-  version?: string; // Assuming API returns this
-  clientName?: string; // Assuming API returns this
-  clientId?: string; // Assuming API returns this
-  registrationDate?: string; // Assuming API returns this
-  lastSeen?: string; // Assuming API returns this
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-  company_id?: string;
-  companyId?: string; // Added for compatibility
-}
-
-interface License {
-  id: string;
-  activationKey: string;
-  client?: { id: string; name?: string; email?: string; company_id?: string; companyId?: string; }; // Updated to match typical API responses
-  company?: { id: string; name?: string; }; // Added company field for display
-  product: { name: string, version?: string, id: string }; // Added product id and version for completeness
-  status: string;
-  licenseType?: string; // Added for potential display
-  maxDevices?: number; // Added for display
-  expiryDate?: string; // Added for display
-  clientName?: string; // Added fallback if client object is not present
-  companyName?: string; // Added fallback if company object is not present
-  companyId?: string; // Added for compatibility
-}
-
-interface Product {
-  id: string;
-  name: string;
-  version: string;
-  description?: string;
-}
-
-interface Company {
-  id: string;
-  name: string;
-  partitaIva?: string;
-}
 
 // Componente per la ricerca intelligente delle aziende
 interface CompanySearchInputProps {
@@ -343,12 +270,14 @@ export default function SoftwareRegistrations() {
   const [searchTerm, setSearchTerm] = useState(''); // State for the actual search term after user action
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRegistration, setSelectedRegistration] = useState<SoftwareRegistration | null>(null);
-  const [isClassifyDialogOpen, setIsClassifyDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isClassifyModalOpen, setIsClassifyModalOpen] = useState(false); // Renamed for clarity
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // For toggling view vs edit mode
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false); // Separate dialog for view-only
   const [validatingId, setValidatingId] = useState<string | null>(null); // State for validating key
   const { contentMargin } = useSidebar();
   const { user } = useAuth(); // Use the actual user from useAuth hook
 
+  // Initialize form with default values
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm<any>({
     defaultValues: {
       authorizeDevice: false // Default value for the checkbox
@@ -375,7 +304,7 @@ export default function SoftwareRegistrations() {
 
   // Fetch software registrations
   const { data: registrations = [], isLoading } = useQuery({
-    queryKey: ['/api/software/registrazioni', { status: statusFilter, search: searchTerm }],
+    queryKey: ['/api/software/registrations', { status: statusFilter, search: searchTerm }],
     queryFn: async () => {
       const params = new URLSearchParams({
         ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
@@ -425,7 +354,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: isClassifyDialogOpen // Only fetch when the dialog is open
+    enabled: isClassifyModalOpen || isEditModalOpen // Fetch when either modal is open
   });
 
   // Fetch licenses for classification
@@ -450,7 +379,7 @@ export default function SoftwareRegistrations() {
         product: license.product || { id: license.productId, name: license.productName, version: license.productVersion }
       }));
     },
-    enabled: true
+    enabled: isClassifyModalOpen || isEditModalOpen
   });
 
   // Fetch products for classification
@@ -469,7 +398,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: true
+    enabled: isClassifyModalOpen || isEditModalOpen
   });
 
   // Fetch companies for classification
@@ -488,7 +417,7 @@ export default function SoftwareRegistrations() {
       }
       return response.json();
     },
-    enabled: true
+    enabled: isClassifyModalOpen || isEditModalOpen
   });
 
   // Safe arrays to prevent runtime errors
@@ -562,7 +491,8 @@ export default function SoftwareRegistrations() {
       queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-      setIsClassifyDialogOpen(false);
+      setIsClassifyModalOpen(false);
+      setIsEditModalOpen(false); // Close both modals on success
       setSelectedRegistration(null);
       reset();
     },
@@ -591,6 +521,44 @@ export default function SoftwareRegistrations() {
       alert(`Errore nella classificazione: ${error.message}`);
     }
   });
+
+  // Mutation for general edits (like updating notes)
+  const editMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const requestBody = {
+        note: data.note,
+        // Add other fields that can be edited by admin if needed
+      };
+
+      console.log('Editing registration with data:', requestBody);
+
+      const response = await fetch(`/api/software/registrazioni/${selectedRegistration?.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update registration');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/software/registrazioni'] });
+      setIsEditModalOpen(false);
+      setSelectedRegistration(null);
+      reset();
+    },
+    onError: (error: any) => {
+      alert(`Errore nell'aggiornamento: ${error.message}`);
+    }
+  });
+
 
   // Handle computer key validation
   const handleValidateKey = async (registration: any) => {
@@ -646,16 +614,26 @@ export default function SoftwareRegistrations() {
   };
 
   const onClassifySubmit = (data: any) => {
-    // Validazione: se ci sono assegnazioni esistenti ma non viene selezionata una licenza,
-    // chiedi conferma per rimuovere tutto
-    if (selectedRegistration?.clienteAssegnato && !data.licenzaAssegnata) {
+    // Validation checks for classification
+    const currentCompanyId = watch('aziendaAssegnata');
+    const currentClientId = watch('clienteAssegnato');
+    const currentLicenseId = watch('licenzaAssegnata');
+
+    if (currentClientId && !currentCompanyId) {
+      alert('⚠️ Errore: Non puoi assegnare un cliente senza selezionare un\'azienda.');
+      return;
+    }
+
+    if (currentLicenseId && !currentClientId) {
+      alert('⚠️ Errore: Non puoi assegnare una licenza senza selezionare un cliente.');
+      return;
+    }
+    
+    // Check if user wants to remove assignments
+    if (!currentLicenseId && (selectedRegistration?.licenzaAssegnata || selectedRegistration?.clienteAssegnato)) {
       const confirmMessage =
         `⚠️ Attenzione!\n\n` +
-        `Stai per rimuovere TUTTE le assegnazioni esistenti:\n` +
-        `- Cliente: ${selectedRegistration.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.name || 'Non trovato' : 'Nessuno'}\n` +
-        `- Licenza: ${selectedRegistration.licenzaAssegnata ? safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata)?.activationKey || 'Non trovata' : 'Nessuna'}\n` +
-        `- Computer Key: ${selectedRegistration.computerKey || 'Nessuna'}\n\n` +
-        `La registrazione tornerà allo stato "Non Assegnato".\n\n` +
+        `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti (Azienda, Cliente, Licenza).\n\n` +
         `Vuoi continuare?`;
 
       if (!confirm(confirmMessage)) {
@@ -663,19 +641,24 @@ export default function SoftwareRegistrations() {
       }
     }
 
-    // Se non c'è cliente ma c'è una licenza, impedisci il salvataggio
-    if (data.licenzaAssegnata && !data.clienteAssegnato) {
-      alert('⚠️ Errore: Non puoi assegnare una licenza senza selezionare un cliente.');
-      return;
-    }
-
-    // Se non c'è azienda ma c'è un cliente, impedisci il salvataggio
-    if (data.clienteAssegnato && !data.aziendaAssegnata) {
-      alert('⚠️ Errore: Non puoi assegnare un cliente senza selezionare un\'azienda.');
-      return;
-    }
-
     classifyMutation.mutate(data);
+  };
+
+  // Helper functions to get names for the modal
+  const getClientName = (clientId: string | undefined) => {
+    const client = safeClients.find(c => c.id === clientId);
+    return client?.name || 'Non assegnato';
+  };
+
+  const getClientCompanyName = (clientId: string | undefined) => {
+    const client = safeClients.find(c => c.id === clientId);
+    const company = safeCompanies.find(c => c.id === (client?.company_id || client?.companyId));
+    return company?.name || 'Non assegnata';
+  };
+
+  const getLicenseName = (licenseId: string | undefined) => {
+    const license = safeLicenses.find(l => l.id === licenseId);
+    return license?.activationKey || 'Non assegnata';
   };
 
   const getStatusBadge = (status: string) => {
@@ -721,81 +704,26 @@ export default function SoftwareRegistrations() {
     const registrationToClassify = safeRegistrations.find((r: SoftwareRegistration) => r.id === id);
     setSelectedRegistration(registrationToClassify || null);
 
-    reset();
+    reset(); // Reset form state
 
     if (registrationToClassify) {
       const client = safeClients.find(c => c.id === registrationToClassify.clienteAssegnato);
-      const companyId = client?.company_id || client?.companyId || ''; // Use empty string instead of null
+      const companyId = client?.company_id || client?.companyId || '';
 
-      // Set values using setValue
-      setValue('aziendaAssegnata', companyId);
+      // Set initial form values using setValue
+      setValue('aziendaAssegnata', companyId || '');
       setValue('clienteAssegnato', registrationToClassify.clienteAssegnato || '');
       setValue('prodottoAssegnato', registrationToClassify.prodottoAssegnato || '');
       setValue('licenzaAssegnata', registrationToClassify.licenzaAssegnata || '');
       setValue('note', registrationToClassify.note || '');
+      setValue('authorizeDevice', !!registrationToClassify.computerKey); // Set checkbox based on existing key
     }
-    setIsClassifyDialogOpen(true);
+    setIsClassifyModalOpen(true);
   };
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
-
-    console.log('Edit registration:', registration);
-
-    let client = null;
-    let companyId = '';
-    let clientId = '';
-
-    // Always try to get client from assigned license first (most reliable)
-    if (registration.licenzaAssegnata) {
-      const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
-      console.log('Found assigned license:', assignedLicense);
-
-      if (assignedLicense?.client) {
-        // Get the client ID from the license
-        clientId = assignedLicense.client.id;
-        companyId = assignedLicense.client.company_id || assignedLicense.client.companyId || '';
-
-        // Find the full client object for form population
-        client = safeClients.find(c => c.id === clientId);
-
-        console.log('License client data:', assignedLicense.client);
-        console.log('Found full client from list:', client);
-      }
-    }
-    // Fallback: try to get client from direct assignment (less reliable)
-    else if (registration.clienteAssegnato) {
-      client = safeClients.find(c => c.id === registration.clienteAssegnato);
-      clientId = registration.clienteAssegnato;
-      companyId = client?.company_id || client?.companyId || '';
-      console.log('Direct client assignment found:', client);
-    }
-
-    console.log('Final client:', client);
-    console.log('Final client ID:', clientId);
-    console.log('Final company ID:', companyId);
-    console.log('Computer Key:', registration.computerKey);
-
-    // Reset form first
-    reset({
-      aziendaAssegnata: companyId || '',
-      clienteAssegnato: clientId || '',
-      prodottoAssegnato: registration.prodottoAssegnato || '',
-      licenzaAssegnata: registration.licenzaAssegnata || '',
-      note: registration.note || '',
-      authorizeDevice: !!registration.computerKey
-    });
-
-    console.log('Form values set:', {
-      aziendaAssegnata: companyId || '',
-      clienteAssegnato: clientId || '',
-      prodottoAssegnato: registration.prodottoAssegnato || '',
-      licenzaAssegnata: registration.licenzaAssegnata || '',
-      note: registration.note || '',
-      authorizeDevice: !!registration.computerKey
-    });
-
-    setIsClassifyDialogOpen(true);
+    setIsEditModalOpen(true); // Open the edit modal
   };
 
   // Function to view registration details
@@ -832,11 +760,16 @@ export default function SoftwareRegistrations() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
-          ))}
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className={`flex-1 ${contentMargin} overflow-auto transition-all duration-300 ease-in-out p-6`}>
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse w-1/4" />
+            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse w-1/2" />
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -1175,898 +1108,406 @@ export default function SoftwareRegistrations() {
         </Card>
       )}
 
-      <Dialog open={isClassifyDialogOpen || isViewDialogOpen} onOpenChange={(open) => {
+      {/* Dialog for View Details */}
+      <Dialog open={isViewDialogOpen} onOpenChange={(open) => {
         if (!open) {
-          setIsClassifyDialogOpen(false);
           setIsViewDialogOpen(false);
           setSelectedRegistration(null);
-          reset();
         }
       }}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isViewDialogOpen ? 'Dettagli Registrazione Software' :
-               (user?.role === 'superadmin' ? 'Classifica Registrazione Software' : 'Convalida Computer Key')}
+            <DialogTitle className="flex items-center justify-between">
+              <span>Dettagli Registrazione Software</span>
+              {selectedRegistration && getStatusBadge(selectedRegistration.status)}
             </DialogTitle>
           </DialogHeader>
 
           {selectedRegistration && (
-            <div className="space-y-6">
-              {/* Informazioni Base */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
+            <div className="space-y-4">
+              {/* Header compatto con info principali */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Software</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.nomeSoftware}</p>
+                    <span className="font-medium text-blue-800">Software:</span>
+                    <div className="text-blue-900">{selectedRegistration.nomeSoftware || selectedRegistration.prodottoAssegnato}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Versione</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.versione}</p>
+                    <span className="font-medium text-blue-800">Versione:</span>
+                    <div className="text-blue-900">{selectedRegistration.versione}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Ragione Sociale</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.ragioneSociale}</p>
+                    <span className="font-medium text-blue-800">P. IVA:</span>
+                    <div className="text-blue-900">{selectedRegistration.partitaIva}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Partita IVA</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.partitaIva || 'Non specificata'}</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Stato</Label>
-                    <div className="p-2">
-                      {getStatusBadge(selectedRegistration.status)}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Computer Key</Label>
-                    <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
-                      {selectedRegistration.computerKey || 'Non assegnata'}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Sistema Operativo</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.sistemaOperativo || 'Non specificato'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Indirizzo IP</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">{selectedRegistration.indirizzoIp || 'Non specificato'}</p>
+                    <span className="font-medium text-blue-800">Computer Key:</span>
+                    <div className="text-blue-900 font-mono text-xs">{selectedRegistration.computerKey || 'Non assegnata'}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Informazioni Assegnazione - Modalità Visualizzazione con Controlli di Modifica */}
-              {isViewDialogOpen && selectedRegistration && (
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-4">Informazioni Assegnazione</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                          <div className="font-medium text-green-800">
-                            {selectedRegistration.clienteAssegnato ? (
-                              <>
-                                <span className="text-green-700">
-                                  {(() => {
-                                    const client = safeClients.find((c: any) => c.id === selectedRegistration.clienteAssegnato);
-                                    return client ? client.name : 'Cliente non trovato';
-                                  })()}
-                                </span>
-                                <div className="text-xs text-green-600 mt-1">
-                                  {(() => {
-                                    const client = safeClients.find((c: any) => c.id === selectedRegistration.clienteAssegnato);
-                                    return client ? client.email : '';
-                                  })()}
-                                </div>
-                              </>
-                            ) : (
-                              <span className="text-gray-500">Non assegnato</span>
-                            )}
-                          </div>
-                        </div>
+              {/* Due colonne principali per dettagli */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Colonna sinistra - Informazioni Dispositivo */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Informazioni Dispositivo</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ragione Sociale:</span>
+                        <span className="font-medium">{selectedRegistration.ragioneSociale}</span>
                       </div>
-
-                      <div>
-                        <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
-                        <div className="p-3 bg-gray-50 border rounded-md">
-                          <span className="text-sm">
-                            {selectedRegistration.prodottoAssegnato ? 
-                              `Prodotto: ${selectedRegistration.prodottoAssegnato}` : 
-                              'Nessun prodotto assegnato'
-                            }
-                          </span>
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sistema Operativo:</span>
+                        <span className="font-medium">{selectedRegistration.sistemaOperativo}</span>
                       </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-600">Azienda</Label>
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <div className="font-medium text-blue-800">
-                            {selectedRegistration.aziendaAssegnata ? (
-                              <>
-                                <span className="text-blue-700">
-                                  {(() => {
-                                    const company = safeCompanies.find((c: any) => c.id === selectedRegistration.aziendaAssegnata);
-                                    return company ? company.name : 'Azienda non trovata';
-                                  })()}
-                                </span>
-                                <div className="text-xs text-blue-600 mt-1">
-                                  P.IVA: {(() => {
-                                    const company = safeCompanies.find((c: any) => c.id === selectedRegistration.aziendaAssegnata);
-                                    return company ? (company.partitaIva || 'N/A') : 'N/A';
-                                  })()}
-                                </div>
-                              </>
-                            ) : (
-                              <span className="text-gray-500">Non assegnato</span>
-                            )}
-                          </div>
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Prima Registrazione:</span>
+                        <span className="font-medium">
+                          {selectedRegistration.primaRegistrazione ? 
+                            new Date(selectedRegistration.primaRegistrazione).toLocaleDateString('it-IT') : 
+                            'N/A'
+                          }
+                        </span>
                       </div>
-
-                      <div>
-                        <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
-                        <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-                          {selectedRegistration.licenzaAssegnata ? (
-                            <div>
-                              <span className="text-sm font-mono text-orange-700">
-                                {(() => {
-                                  const license = safeLicenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
-                                  return license ? license.activationKey : selectedRegistration.licenzaAssegnata;
-                                })()}
-                              </span>
-                              <div className="text-xs text-orange-600 mt-1">
-                                Stato: {(() => {
-                                  const license = safeLicenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
-                                  return license ? license.status : 'Sconosciuto';
-                                })()}
-                                | Max dispositivi: {(() => {
-                                  const license = safeLicenses.find((l: License) => l.id === selectedRegistration.licenzaAssegnata);
-                                  return license ? (license.maxDevices || 1) : 'N/A';
-                                })()}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500 text-sm">Nessuna licenza assegnata</span>
-                          )}
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ultima Attività:</span>
+                        <span className="font-medium">
+                          {selectedRegistration.ultimaAttivita ? 
+                            new Date(selectedRegistration.ultimaAttivita).toLocaleDateString('it-IT') : 
+                            'N/A'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Totale Venduto:</span>
+                        <span className="font-bold text-green-600">{selectedRegistration.totaleVenduto} crediti</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Informazioni Temporali e Statistiche */}
-                  <div className="mt-6">
-                    <h4 className="font-medium text-gray-900 mb-3">Informazioni Temporali e Statistiche</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                          {selectedRegistration.primaRegistrazione 
-                            ? format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm')
-                            : 'Non disponibile'
-                          }
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                          {selectedRegistration.ultimaAttivita 
-                            ? format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm')
-                            : 'Non disponibile'
-                          }
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium text-gray-600">Totale Venduto</Label>
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md text-green-600 font-medium">
-                          0 crediti
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Note */}
+                  {/* Note esistenti */}
                   {selectedRegistration.note && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium text-gray-600">Note</Label>
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <p className="text-sm text-yellow-800">{selectedRegistration.note}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Pulsanti di Modifica per Superadmin */}
-                  {user?.role === 'superadmin' && (
-                    <div className="flex justify-between items-center pt-4 border-t mt-6">
-                      <div className="flex gap-2">
-                        {selectedRegistration.licenzaAssegnata && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Rimuovere l\'assegnazione della licenza?')) {
-                                  classifyMutation.mutate({
-                                    aziendaAssegnata: null,
-                                    clienteAssegnato: null,
-                                    licenzaAssegnata: null,
-                                    prodottoAssegnato: null,
-                                    note: selectedRegistration.note,
-                                    authorizeDevice: false
-                                  });
-                                }
-                              }}
-                              disabled={classifyMutation.isPending}
-                            >
-                              <i className="fas fa-unlink mr-2"></i>
-                              Rimuovi Assegnazione
-                            </Button>
-                            {selectedRegistration.computerKey && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm('Rimuovere solo il Computer Key?')) {
-                                    classifyMutation.mutate({
-                                      aziendaAssegnata: selectedRegistration.aziendaAssegnata,
-                                      clienteAssegnato: selectedRegistration.clienteAssegnato,
-                                      licenzaAssegnata: selectedRegistration.licenzaAssegnata,
-                                      prodottoAssegnato: selectedRegistration.prodottoAssegnato,
-                                      note: selectedRegistration.note,
-                                      authorizeDevice: false
-                                    });
-                                  }
-                                }}
-                                disabled={classifyMutation.isPending}
-                              >
-                                <i className="fas fa-key mr-2"></i>
-                                Rimuovi Computer Key
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedRegistration(null);
-                            setIsViewDialogOpen(false);
-                            setIsClassifyDialogOpen(true);
-                          }}
-                        >
-                          <i className="fas fa-edit mr-2"></i>
-                          Modifica Assegnazioni
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setIsViewDialogOpen(false);
-                            setSelectedRegistration(null);
-                          }}
-                        >
-                          Chiudi
-                        </Button>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Note Esistenti</h3>
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
+                        {selectedRegistration.note}
                       </div>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Maschera di Modifica Semplificata */}
-              {isClassifyDialogOpen && user?.role === 'superadmin' && (
-                <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-semibold mb-4">Modifica Assegnazioni</h3>
-                    
-                    {/* Layout compatto responsivo */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {/* Colonna sinistra: Azienda e Cliente */}
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="aziendaAssegnata" className="text-sm font-medium">Azienda</Label>
-                          <Select
-                            value={watch('aziendaAssegnata') || ''}
-                            onValueChange={(value) => {
-                              setValue('aziendaAssegnata', value === 'none' ? null : value);
-                              setValue('clienteAssegnato', null);
-                              setValue('licenzaAssegnata', null);
-                              setValue('prodottoAssegnato', null);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona azienda..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nessuna azienda</SelectItem>
-                              {safeCompanies
-                                .filter((company: any) => 
-                                  // Filtra per mostrare solo le aziende principali (quelle senza parent_id o con parent_id null)
-                                  // e non i clienti individuali
-                                  !company.parent_id && company.type !== 'client'
-                                )
-                                .map((company: any) => (
-                                <SelectItem key={company.id} value={company.id}>
-                                  {company.name} - {company.partitaIva || 'N/A'}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                {/* Colonna destra - Assegnazioni */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="p-3 bg-gray-50 rounded-md">
+                      <div className="font-medium text-gray-700 mb-1">Azienda Assegnata</div>
+                      <div>{getClientCompanyName(selectedRegistration.clienteAssegnato) || 'Non assegnata'}</div>
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded-md">
+                      <div className="font-medium text-gray-700 mb-1">Cliente Assegnato</div>
+                      <div>{getClientName(selectedRegistration.clienteAssegnato) || 'Non assegnato'}</div>
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded-md">
+                      <div className="font-medium text-gray-700 mb-1">Licenza Assegnata</div>
+                      <div>{getLicenseName(selectedRegistration.licenzaAssegnata) || 'Non assegnata'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                        <div>
-                          <Label htmlFor="clienteAssegnato" className="text-sm font-medium">Cliente</Label>
-                          {watch('aziendaAssegnata') ? (
-                            <Select
-                              value={watch('clienteAssegnato') || ''}
-                              onValueChange={(value) => {
-                                setValue('clienteAssegnato', value === 'none' ? null : value);
-                                setValue('licenzaAssegnata', null);
-                                setValue('prodottoAssegnato', null);
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona cliente..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessun cliente</SelectItem>
-                                {safeClients.filter((client: any) => 
-                                  (client.company_id || client.companyId) === watch('aziendaAssegnata')
-                                ).map((client: any) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                    {client.name} - {client.email}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="p-3 bg-gray-50 rounded-md border text-center">
-                              <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
-                            </div>
-                          )}
-                        </div>
+              {/* Sezione tecnica collassabile in fondo */}
+              <Collapsible>
+                <div className="border-t pt-4">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 p-0 h-auto text-sm">
+                      <ChevronDown className="h-4 w-4" />
+                      <span>Informazioni Tecniche Aggiuntive</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Percorso Installazione</div>
+                        <div className="text-gray-600">Non specificato</div>
                       </div>
-
-                      {/* Colonna destra: Licenza e Note */}
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="licenzaAssegnata" className="text-sm font-medium flex items-center gap-2">
-                            Licenza
-                            {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
-                              <span className="text-red-500 text-xs font-medium">
-                                * Obbligatoria per mantenere le assegnazioni
-                              </span>
-                            )}
-                          </Label>
-                        {(() => {
-                          const selectedClientId = watch('clienteAssegnato');
-                          const selectedCompanyId = watch('aziendaAssegnata');
-
-                          if (!selectedCompanyId) {
-                            return (
-                              <div className="p-3 bg-gray-50 rounded-md border text-center">
-                                <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
-                              </div>
-                            );
-                          }
-
-                          if (!selectedClientId) {
-                            return (
-                              <div className="p-3 bg-gray-50 rounded-md border text-center">
-                                <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
-                              </div>
-                            );
-                          }
-
-                          const clientLicenses = safeLicenses.filter((license: License) => {
-                            const licenseClientId = license.client?.id;
-                            if (licenseClientId !== selectedClientId) return false;
-
-                            const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                            if (licenseClientCompanyId !== selectedCompanyId) return false;
-
-                            return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
-                          });
-
-                          if (clientLicenses.length === 0) {
-                            return (
-                              <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                                <p className="text-sm text-yellow-700">
-                                  <i className="fas fa-key mr-2"></i>
-                                  Nessuna licenza disponibile per questo cliente
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          const selectedLicenseId = watch('licenzaAssegnata');
-
-                          return (
-                            <>
-                              <Select
-                                value={selectedLicenseId || 'none'}
-                                onValueChange={(value) => {
-                                  if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
-                                    const confirmMessage =
-                                      `⚠️ Attenzione!\n\n` +
-                                      `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
-                                      `Vuoi continuare?`;
-
-                                    if (!confirm(confirmMessage)) {
-                                      return;
-                                    }
-                                  }
-
-                                  setValue('licenzaAssegnata', value === 'none' ? null : value);
-                                  if (value !== 'none') {
-                                    const selectedLicense = safeLicenses.find(l => l.id === value);
-                                    if (selectedLicense && selectedLicense.product) {
-                                      setValue('prodottoAssegnato', selectedLicense.product.id);
-                                    }
-                                  } else {
-                                    setValue('prodottoAssegnato', null);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger data-testid="select-assign-license">
-                                  <SelectValue placeholder="Seleziona licenza" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none" className="text-red-600 font-medium">
-                                    ⚠️ Nessuna Licenza (rimuove tutto)
-                                  </SelectItem>
-                                  {clientLicenses.map((license: License) => (
-                                    <SelectItem key={license.id} value={license.id}>
-                                      <div className="flex flex-col">
-                                        <span className="font-mono text-xs">{license.activationKey}</span>
-                                        <span className="text-xs text-gray-600">
-                                          {license.product?.name} ({license.status})
-                                        </span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-
-                              {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
-                                const selectedLicense = safeLicenses.find((license: License) => license.id === selectedLicenseId);
-
-                                if (!selectedLicense || !selectedLicense.product) {
-                                  return (
-                                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
-                                      <p className="text-sm text-yellow-700">
-                                        <i className="fas fa-key mr-2"></i>
-                                        Prodotto non trovato per questa licenza
-                                      </p>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div className="p-3 bg-green-50 rounded-md border border-green-200 mt-2">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-sm font-medium text-green-800">
-                                          <i className="fas fa-key mr-2"></i>
-                                          Licenza selezionata
-                                        </p>
-                                        <p className="text-xs text-green-600 mt-1">
-                                          {selectedLicense.product.name} v{selectedLicense.product.version || 'N/A'}
-                                        </p>
-                                        <p className="text-xs text-green-600">
-                                          Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
-                                        </p>
-                                      </div>
-                                      <i className="fas fa-key text-green-500 text-xl"></i>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </>
-                          );
-                        })()}
-                        </div>
-
-                        {/* Note compatte */}
-                        <div>
-                          <Label htmlFor="note" className="text-sm font-medium">Note</Label>
-                          <Textarea
-                            id="note"
-                            {...register('note')}
-                            placeholder="Aggiungi note sulla classificazione..."
-                            data-testid="textarea-classification-notes"
-                            className="min-h-[60px] text-sm"
-                            defaultValue={selectedRegistration?.note || ''}
-                          />
-                        </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Totale Ordini</div>
+                        <div className="text-gray-600">{selectedRegistration.totaleOrdini}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Indirizzo IP</div>
+                        <div className="text-gray-600">Non specificato</div>
                       </div>
                     </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
 
-                    {/* Autorizzazione dispositivo per superadmin */}
-                    {(selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && !selectedRegistration?.computerKey && (
-                      <div className="flex items-center space-x-2 pt-3 border-t">
-                        <input
-                          type="checkbox"
-                          id="authorizeDevice"
-                          {...register('authorizeDevice')}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          data-testid="checkbox-authorize-device"
-                        />
-                        <Label htmlFor="authorizeDevice" className="text-sm font-medium">
-                          Autorizza dispositivo (genera computer key)
-                        </Label>
+              {/* Footer - Pulsante Chiudi */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsViewDialogOpen(false);
+                    setSelectedRegistration(null);
+                  }}
+                >
+                  Chiudi
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for Classify/Edit */}
+      <Dialog open={isClassifyModalOpen || isEditModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsClassifyModalOpen(false);
+          setIsEditModalOpen(false);
+          reset();
+          setSelectedRegistration(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{isClassifyModalOpen ? "Classifica Registrazione Software" : "Modifica Registrazione Software"}</span>
+              {selectedRegistration && getStatusBadge(selectedRegistration.status)}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedRegistration && (
+            <div className="space-y-4">
+              {/* Header compatto con info principali */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-blue-800">Software:</span>
+                    <div className="text-blue-900">{selectedRegistration.nomeSoftware || selectedRegistration.prodottoAssegnato}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-800">Versione:</span>
+                    <div className="text-blue-900">{selectedRegistration.versione}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-800">P. IVA:</span>
+                    <div className="text-blue-900">{selectedRegistration.partitaIva}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-800">Computer Key:</span>
+                    <div className="text-blue-900 font-mono text-xs">{selectedRegistration.computerKey || 'Non assegnata'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Due colonne principali per dettagli e form */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Colonna sinistra - Informazioni Dispositivo (Visualizzazione) */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Informazioni Dispositivo</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ragione Sociale:</span>
+                        <span className="font-medium">{selectedRegistration.ragioneSociale}</span>
                       </div>
-                    )}
-
-                    {/* Messaggio se il dispositivo è già autorizzato */}
-                    {selectedRegistration?.computerKey && (
-                      <div className="flex items-center space-x-2 pt-3 border-t bg-green-50 p-3 rounded-md">
-                        <div className="h-4 w-4 text-green-600">🔑</div>
-                        <span className="text-sm text-green-800 font-medium">
-                          Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sistema Operativo:</span>
+                        <span className="font-medium">{selectedRegistration.sistemaOperativo}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Prima Registrazione:</span>
+                        <span className="font-medium">
+                          {selectedRegistration.primaRegistrazione ? 
+                            new Date(selectedRegistration.primaRegistrazione).toLocaleDateString('it-IT') : 
+                            'N/A'
+                          }
                         </span>
                       </div>
-                    )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Ultima Attività:</span>
+                        <span className="font-medium">
+                          {selectedRegistration.ultimaAttivita ? 
+                            new Date(selectedRegistration.ultimaAttivita).toLocaleDateString('it-IT') : 
+                            'N/A'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Totale Venduto:</span>
+                        <span className="font-bold text-green-600">{selectedRegistration.totaleVenduto} crediti</span>
+                      </div>
+                    </div>
+                  </div>
 
-                    {/* Pulsanti azione */}
-                    <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
-                      <div className="flex flex-wrap gap-2">
-                        {selectedRegistration?.licenzaAssegnata && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
-                                  const removeAssignmentData = {
-                                    aziendaAssegnata: null,
-                                    clienteAssegnato: null,
-                                    licenzaAssegnata: null,
-                                    prodottoAssegnato: null,
-                                    note: selectedRegistration.note,
-                                    authorizeDevice: false
-                                  };
-                                  classifyMutation.mutate(removeAssignmentData);
-                                }
+                  {/* Note esistenti */}
+                  {selectedRegistration.note && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Note Esistenti</h3>
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
+                        {selectedRegistration.note}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Colonna destra - Form di modifica/classificazione */}
+                {(isClassifyModalOpen || user?.role === 'admin') && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {isClassifyModalOpen ? "Classifica Registrazione" : "Gestione Computer Key"}
+                    </h3>
+                    <form onSubmit={handleSubmit(isClassifyModalOpen ? onClassifySubmit : onClassifySubmit)} className="space-y-4">
+                      
+                      {isClassifyModalOpen && (
+                        <>
+                          <div>
+                            <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
+                            <CompanySearchInput
+                              companies={safeCompanies}
+                              onCompanySelect={(companyId) => {
+                                setValue('aziendaAssegnata', companyId);
+                                setValue('clienteAssegnato', ''); // Reset cliente when company changes
+                                setValue('licenzaAssegnata', ''); // Reset license when company changes
                               }}
-                              disabled={classifyMutation.isPending}
-                            >
-                              <i className="fas fa-unlink mr-2"></i>
-                              Rimuovi Assegnazione
-                            </Button>
+                              initialCompanyId={watch('aziendaAssegnata')}
+                            />
+                          </div>
 
-                            {selectedRegistration?.computerKey && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non potrà più accedere al software.')) {
-                                    const removeKeyData = {
-                                      aziendaAssegnata: selectedRegistration.aziendaAssegnata,
-                                      clienteAssegnato: selectedRegistration.clienteAssegnato,
-                                      licenzaAssegnata: selectedRegistration.licenzaAssegnata,
-                                      prodottoAssegnato: selectedRegistration.prodottoAssegnato,
-                                      note: selectedRegistration.note,
-                                      removeComputerKey: true
-                                    };
-                                    classifyMutation.mutate(removeKeyData);
-                                  }
-                                }}
-                                disabled={classifyMutation.isPending}
-                                className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                              >
-                                <i className="fas fa-key mr-2"></i>
-                                Rimuovi Solo Computer Key
-                              </Button>
-                            )}
-                          </>
-                        )}
+                          <div>
+                            <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
+                            <ClientSearchInput
+                              clients={safeClients} // Use safeClients
+                              companies={safeCompanies}
+                              onClientSelect={(clientId) => {
+                                setValue('clienteAssegnato', clientId);
+                                setValue('licenzaAssegnata', ''); // Reset license when client changes
+                              }}
+                              companyId={watch('aziendaAssegnata')}
+                              initialClientId={watch('clienteAssegnato')}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      <div>
+                        <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
+                        <Select
+                          value={watch('licenzaAssegnata') || ''}
+                          onValueChange={(value) => {
+                            setValue('licenzaAssegnata', value);
+                            setValue('prodottoAssegnato', null); // Reset product when license changes
+                          }}
+                          disabled={!watch('clienteAssegnato') && isClassifyModalOpen}
+                        >
+                          <SelectTrigger data-testid="select-assign-license" className="h-9">
+                            <SelectValue placeholder="Seleziona licenza" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
+                            {safeLicenses
+                              .filter((license: License) => {
+                                // Filter licenses based on selected client and company (if in classify mode)
+                                const selectedClientId = watch('clienteAssegnato');
+                                const selectedCompanyId = watch('aziendaAssegnata');
+
+                                if (isClassifyModalOpen) {
+                                  return (
+                                    license.client?.id === selectedClientId &&
+                                    (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
+                                    ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
+                                  );
+                                }
+                                // In edit mode (admin), show already assigned license or available ones if any
+                                return license.id === selectedRegistration?.licenzaAssegnata || ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                              })
+                              .map((license: License) => (
+                                <SelectItem key={license.id} value={license.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{license.activationKey}</span>
+                                    <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsClassifyDialogOpen(false)}
-                          data-testid="button-cancel-classify"
+                      <div>
+                        <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
+                        <Textarea
+                          {...register('note')}
+                          placeholder="Aggiungi note..."
+                          rows={3}
+                          className="text-sm"
+                          defaultValue={selectedRegistration?.note || ''}
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="authorizeDevice"
+                          checked={watch('authorizeDevice')}
+                          onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
+                        />
+                        <Label htmlFor="authorizeDevice" className="text-sm">
+                          Autorizza dispositivo
+                        </Label>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
+                            reset();
+                            setSelectedRegistration(null);
+                          }}
                         >
                           Annulla
                         </Button>
-                        <Button
-                          type="submit"
-                          disabled={isSubmitting}
-                          data-testid="button-save-classify"
-                          className="px-6"
-                        >
-                          {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
+                        <Button type="submit" size="sm" disabled={isSubmitting || (isClassifyModalOpen && !watch('licenzaAssegnata') && selectedRegistration?.clienteAssegnato)}>
+                          {isSubmitting ? 'Salvando...' : (isClassifyModalOpen ? 'Salva Assegnazioni' : 'Salva Note')}
                         </Button>
                       </div>
-                    </div>
+                    </form>
                   </div>
-                </form>
-              )}
+                )}
+              </div>
 
-
-              {/* Sezione per Admin - Solo gestione Computer Key */}
-              {isClassifyDialogOpen && user?.role === 'admin' && (
-                <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-semibold mb-4">Gestione Computer Key</h3>
-                    
-                    {/* Mostra informazioni attuali readonly */}
-                    <div className="space-y-4 mb-6 bg-gray-50 p-4 rounded-md">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">Azienda Assegnata</Label>
-                          <p className="text-sm p-2 bg-white border rounded-md">
-                            {(() => {
-                              const company = companies?.find((c: Company) => c.id === selectedRegistration?.aziendaAssegnata);
-                              return company?.name || 'Non assegnata';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
-                          <p className="text-sm p-2 bg-white border rounded-md">
-                            {(() => {
-                              const client = clients?.find((c: Client) => c.id === selectedRegistration?.clienteAssegnato);
-                              return client?.name || 'Non assegnato';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
-                          <p className="text-sm p-2 bg-white border rounded-md">
-                            {(() => {
-                              const license = licenses?.find((l: License) => l.id === selectedRegistration?.licenzaAssegnata);
-                              return license?.activationKey || 'Non assegnata';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
-                          <p className="text-sm p-2 bg-white border rounded-md">
-                            {selectedRegistration?.prodottoAssegnato || 'Non assegnato'}
-                          </p>
-                        </div>
+              {/* Sezione tecnica collassabile in fondo */}
+              <Collapsible>
+                <div className="border-t pt-4">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 p-0 h-auto text-sm">
+                      <ChevronDown className="h-4 w-4" />
+                      <span>Informazioni Tecniche Aggiuntive</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Percorso Installazione</div>
+                        <div className="text-gray-600">{selectedRegistration.installationPath || 'Non specificato'}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Totale Ordini</div>
+                        <div className="text-gray-600">{selectedRegistration.totaleOrdini}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Indirizzo IP</div>
+                        <div className="text-gray-600">{selectedRegistration.indirizzoIp || 'Non specificato'}</div>
                       </div>
                     </div>
-
-                    {/* Note readonly per admin */}
-                    <div>
-                      <Label htmlFor="note-admin">Note</Label>
-                      <Textarea
-                        id="note-admin"
-                        placeholder="Solo visualizzazione..."
-                        className="min-h-[80px] bg-gray-50"
-                        value={selectedRegistration?.note || ''}
-                        readOnly
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
-                    </div>
-
-                    {/* Sezione Autorizzazione Dispositivo */}
-                    <div className="pt-4 border-t">
-                      {/* Autorizzazione dispositivo per Admin con licenza e senza computer key */}
-                      {selectedRegistration?.licenzaAssegnata && !selectedRegistration?.computerKey && (
-                        <div className="flex items-center space-x-2 mb-4">
-                          <input
-                            type="checkbox"
-                            id="authorizeDevice"
-                            {...register('authorizeDevice')}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            data-testid="checkbox-authorize-device"
-                          />
-                          <Label htmlFor="authorizeDevice" className="font-medium">
-                            Autorizza dispositivo (genera computer key)
-                          </Label>
-                        </div>
-                      )}
-
-                      {/* Messaggio se il dispositivo è già autorizzato */}
-                      {selectedRegistration?.computerKey && (
-                        <div className="flex items-center space-x-2 mb-4 bg-green-50 p-3 rounded-md">
-                          <div className="h-4 w-4 text-green-600">🔑</div>
-                          <span className="text-sm text-green-800 font-medium">
-                            Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Avviso se non c'è licenza */}
-                      {!selectedRegistration?.licenzaAssegnata && (
-                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
-                          <p className="text-sm text-yellow-800">
-                            <i className="fas fa-key mr-2"></i>
-                            Nessuna licenza assegnata. Solo il superadmin può assegnare licenze.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Controlli con pulsanti di azione */}
-                      <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
-                        <div className="flex flex-wrap gap-2">
-                          {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
-                            <>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
-                                    const removeAssignmentData = {
-                                      aziendaAssegnata: null,
-                                      clienteAssegnato: null,
-                                      licenzaAssegnata: null,
-                                      prodottoAssegnato: null,
-                                      note: selectedRegistration.note,
-                                      authorizeDevice: false
-                                    };
-                                    classifyMutation.mutate(removeAssignmentData);
-                                  }
-                                }}
-                                disabled={classifyMutation.isPending}
-                              >
-                                <i className="fas fa-unlink mr-2"></i>
-                                Rimuovi Assegnazione
-                              </Button>
-
-                              {selectedRegistration?.computerKey && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
-                                      const removeKeyData = {
-                                        aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
-                                        clienteAssegnato: selectedRegistration.clienteAssegnato || null,
-                                        licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
-                                        prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
-                                        note: selectedRegistration.note,
-                                        authorizeDevice: false
-                                      };
-                                      classifyMutation.mutate(removeKeyData);
-                                    }
-                                  }}
-                                  disabled={classifyMutation.isPending}
-                                  className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                                >
-                                  <i className="fas fa-key mr-2"></i>
-                                  Rimuovi Solo Computer Key
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        <div className="flex space-x-2 w-full md:w-auto">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              reset();
-                              setSelectedRegistration(null);
-                              setIsClassifyDialogOpen(false);
-                            }}
-                            className="flex-1 md:flex-none"
-                          >
-                            Annulla
-                          </Button>
-                          {(() => {
-                            const watchedAzienda = watch('aziendaAssegnata');
-                            const watchedCliente = watch('clienteAssegnato');
-                            const watchedLicenza = watch('licenzaAssegnata');
-
-                            const isFormIncomplete = watchedAzienda && watchedCliente && (!watchedLicenza || watchedLicenza === 'none');
-
-                            return (
-                              <Button
-                                type="submit"
-                                disabled={isSubmitting || isFormIncomplete}
-                                className={`flex-1 md:flex-none ${isFormIncomplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                title={isFormIncomplete ? "Devi selezionare una licenza per completare l'assegnazione" : ""}
-                              >
-                                {isSubmitting ? "Salvando..." : "Salva Assegnazione"}
-                              </Button>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </form>
-              )}
-
-              {/* Informazioni Temporali e Statistiche */}
-              {selectedRegistration && (
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-4">Informazioni Temporali e Statistiche</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                        {selectedRegistration.primaRegistrazione ?
-                          format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) :
-                          'N/A'
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                        {selectedRegistration.ultimaAttivita ?
-                          format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) :
-                          'Mai'
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Totale Venduto</Label>
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md font-medium text-green-600">
-                        {formatCurrency(selectedRegistration.totaleVenduto || 0)}
-                      </p>
-                    </div>
-                  </div>
+                  </CollapsibleContent>
                 </div>
-              )}
-
-              {/* Note */}
-              {selectedRegistration?.note && (
-                <div className="border-t pt-4">
-                  <Label className="text-sm font-medium text-gray-600">Note</Label>
-                  <div className="mt-2 p-3 bg-gray-50 border rounded-md">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRegistration.note}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Informazioni Tecniche */}
-              {selectedRegistration && (
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-4">Informazioni Tecniche</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Percorso Installazione</Label>
-                      <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
-                        {selectedRegistration.installationPath || 'Non specificato'}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Totale Ordini</Label>
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                        {selectedRegistration.totaleOrdini || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Footer - solo per modalità visualizzazione */}
-              {isViewDialogOpen && (
-                <div className="flex justify-end pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsViewDialogOpen(false);
-                      setSelectedRegistration(null);
-                    }}
-                  >
-                    Chiudi
-                  </Button>
-                </div>
-              )}
+              </Collapsible>
             </div>
           )}
         </DialogContent>
