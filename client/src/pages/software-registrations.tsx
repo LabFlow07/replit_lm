@@ -1083,8 +1083,8 @@ export default function SoftwareRegistrations() {
                                 <>
                                   <DropdownMenuSeparator />
                                   
-                                  {/* Convalida Computer Key - solo se non presente */}
-                                  {!registration.computerKey && (
+                                  {/* Convalida Computer Key - solo se ha licenza assegnata e non ha computer key */}
+                                  {!registration.computerKey && registration.licenzaAssegnata && (
                                     <DropdownMenuItem 
                                       onClick={() => handleValidateKey(registration)}
                                       disabled={validatingId === registration.id}
