@@ -112,14 +112,14 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
 
   // Set initial company if provided and not already selected
   useEffect(() => {
-    if (initialCompanyId && !selectedCompany) {
+    if (initialCompanyId) {
       const company = companies.find(c => c.id === initialCompanyId);
       if (company) {
         setSelectedCompany(company);
         setSearchTerm(company.name || '');
         onCompanySelect(company.id);
       }
-    } else if (!initialCompanyId && selectedCompany) {
+    } else if (!initialCompanyId) {
       // Clear selection only if we had a company selected before
       setSelectedCompany(null);
       setSearchTerm('');
@@ -214,9 +214,10 @@ interface ClientSearchInputProps {
   onClientSelect: (clientId: string) => void;
   companyId?: string;
   placeholder?: string;
+  initialClientId?: string; // Add initial client ID prop
 }
 
-function ClientSearchInput({ clients, companies, onClientSelect, companyId, placeholder = "Cerca cliente..." }: ClientSearchInputProps) {
+function ClientSearchInput({ clients, companies, onClientSelect, companyId, placeholder = "Cerca cliente...", initialClientId }: ClientSearchInputProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -231,12 +232,22 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     return company ? company.name : 'N/A';
   };
 
-  // Reset search term and selected client when companyId changes
+  // Handle initial client selection and company changes
   useEffect(() => {
-    setSearchTerm("");
-    setSelectedClient(null);
-    onClientSelect(''); // Also clear the selected client ID when company changes
-  }, [companyId]); // Removed onClientSelect from dependencies
+    if (initialClientId && companyId) {
+      const client = safeClients.find(c => c.id === initialClientId);
+      if (client) {
+        setSelectedClient(client);
+        setSearchTerm(client.name || '');
+        onClientSelect(client.id);
+      }
+    } else if (!companyId) {
+      // Reset when company changes or is cleared
+      setSearchTerm("");
+      setSelectedClient(null);
+      onClientSelect('');
+    }
+  }, [companyId, initialClientId, safeClients]); // Added initialClientId and safeClients
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -764,25 +775,22 @@ export default function SoftwareRegistrations() {
     // Reset form first
     reset();
 
-    // Wait for next tick to ensure form is reset, then set values
-    setTimeout(() => {
-      // Set values using setValue
-      setValue('aziendaAssegnata', companyId || '');
-      setValue('clienteAssegnato', clientId || '');
-      setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
-      setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
-      setValue('note', registration.note || '');
-      setValue('authorizeDevice', !!registration.computerKey);
+    // Set values immediately
+    setValue('aziendaAssegnata', companyId || '');
+    setValue('clienteAssegnato', clientId || '');
+    setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
+    setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
+    setValue('note', registration.note || '');
+    setValue('authorizeDevice', !!registration.computerKey);
 
-      console.log('Form values set:', {
-        aziendaAssegnata: companyId || '',
-        clienteAssegnato: clientId || '',
-        prodottoAssegnato: registration.prodottoAssegnato || '',
-        licenzaAssegnata: registration.licenzaAssegnata || '',
-        note: registration.note || '',
-        authorizeDevice: !!registration.computerKey
-      });
-    }, 100);
+    console.log('Form values set:', {
+      aziendaAssegnata: companyId || '',
+      clienteAssegnato: clientId || '',
+      prodottoAssegnato: registration.prodottoAssegnato || '',
+      licenzaAssegnata: registration.licenzaAssegnata || '',
+      note: registration.note || '',
+      authorizeDevice: !!registration.computerKey
+    });
 
     setIsClassifyDialogOpen(true);
   };
@@ -1227,6 +1235,7 @@ export default function SoftwareRegistrations() {
                       setValue('prodottoAssegnato', null);
                     }}
                     placeholder="Cerca cliente per nome o email..."
+                    initialClientId={watch('clienteAssegnato') || undefined}
                   />
                 </div>
 
