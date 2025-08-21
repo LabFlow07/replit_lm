@@ -1241,7 +1241,7 @@ export default function SoftwareRegistrations() {
                     </div>
                   )}
 
-                  {/* Form di gestione assegnazioni per edit modal - solo per superadmin */}
+                  {/* Form di gestione per superadmin - sia per edit che classify */}
                   {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">
@@ -1315,10 +1315,10 @@ export default function SoftwareRegistrations() {
                         </div>
 
                         <div>
-                          <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
+                          <Label htmlFor="note" className="text-sm">Note</Label>
                           <Textarea
                             {...register('note')}
-                            placeholder="Aggiungi note..."
+                            placeholder="Aggiungi o modifica note..."
                             rows={3}
                             className="text-sm"
                             defaultValue={selectedRegistration?.note || ''}
@@ -1352,12 +1352,27 @@ export default function SoftwareRegistrations() {
                           <Button type="submit" size="sm" disabled={isSubmitting}>
                             {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
                           </Button>
+                          {selectedRegistration?.licenzaAssegnata && (
+                            <Button 
+                              type="button" 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => {
+                                setValue('aziendaAssegnata', '');
+                                setValue('clienteAssegnato', '');
+                                setValue('licenzaAssegnata', 'none');
+                                setValue('prodottoAssegnato', '');
+                              }}
+                            >
+                              Rimuovi Assegnazioni
+                            </Button>
+                          )}
                         </div>
                       </form>
                     </div>
                   )}
 
-                  {/* Sezione solo note per admin non-superadmin */}
+                  {/* Form per admin (solo note) */}
                   {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'admin' && user?.role !== 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">
