@@ -114,18 +114,18 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
   useEffect(() => {
     if (initialCompanyId) {
       const company = companies.find(c => c.id === initialCompanyId);
-      if (company) {
+      if (company && company.id !== selectedCompany?.id) {
         setSelectedCompany(company);
         setSearchTerm(company.name || '');
         onCompanySelect(company.id);
       }
-    } else if (!initialCompanyId) {
+    } else if (!initialCompanyId && selectedCompany) {
       // Clear selection only if we had a company selected before
       setSelectedCompany(null);
       setSearchTerm('');
       onCompanySelect('');
     }
-  }, [initialCompanyId, companies]); // Removed onCompanySelect and selectedCompany from dependencies
+  }, [initialCompanyId, companies]); // Removed onCompanySelect from dependencies
 
 
   // Filtra le aziende in base al termine di ricerca
@@ -236,18 +236,20 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   useEffect(() => {
     if (initialClientId && companyId) {
       const client = safeClients.find(c => c.id === initialClientId);
-      if (client) {
+      if (client && client.id !== selectedClient?.id) {
         setSelectedClient(client);
         setSearchTerm(client.name || '');
         onClientSelect(client.id);
       }
-    } else if (!companyId) {
-      // Reset when company changes or is cleared
-      setSearchTerm("");
-      setSelectedClient(null);
-      onClientSelect('');
+    } else if (!companyId || !initialClientId) {
+      // Reset when company changes or client is cleared
+      if (selectedClient) {
+        setSearchTerm("");
+        setSelectedClient(null);
+        onClientSelect('');
+      }
     }
-  }, [companyId, initialClientId, safeClients]); // Added initialClientId and safeClients
+  }, [companyId, initialClientId, safeClients]); // Added proper dependencies
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -1207,6 +1209,7 @@ export default function SoftwareRegistrations() {
                 <div>
                   <Label htmlFor="aziendaAssegnata">Azienda</Label>
                   <CompanySearchInput
+                    key={`company-${selectedRegistration?.id}`}
                     companies={Array.isArray(companies) ? companies.map(c => ({
                       ...c,
                       name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
@@ -1226,6 +1229,7 @@ export default function SoftwareRegistrations() {
                 <div>
                   <Label htmlFor="clienteAssegnato">Cliente</Label>
                   <ClientSearchInput
+                    key={`client-${selectedRegistration?.id}`}
                     clients={clients}
                     companies={Array.isArray(companies) ? companies : []}
                     companyId={watch('aziendaAssegnata')}
