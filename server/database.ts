@@ -109,6 +109,17 @@ class Database {
         )
       `);
 
+      // Check and add company_id column to categories table if it doesn't exist
+      try {
+        const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'categories' AND COLUMN_NAME = 'company_id'`);
+        if (columnExists.length === 0) {
+          await this.query(`ALTER TABLE categories ADD COLUMN company_id VARCHAR(36)`);
+          console.log('✅ Added company_id column to categories table');
+        }
+      } catch (e: any) { 
+        console.log('⚠️  Error checking/adding company_id column to categories:', e.message);
+      }
+
       // Create products table with new pricing fields and category reference
       await this.query(`
         CREATE TABLE IF NOT EXISTS products (
@@ -387,8 +398,8 @@ class Database {
         console.log('⚠️  Errore controllo/rimozione colonna supported_license_types:', e.message);
       }
 
-      // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields to products
-      const productColumns = ['price', 'discount', 'license_type', 'max_users', 'max_devices', 'trial_days'];
+      // 🏗️ ARCHITECTURAL MIGRATION: Add pricing fields and category_id to products
+      const productColumns = ['price', 'discount', 'license_type', 'max_users', 'max_devices', 'trial_days', 'category_id'];
       for (const column of productColumns) {
         try {
           const columnExists = await this.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND COLUMN_NAME = ?`, [column]);
@@ -411,6 +422,9 @@ class Database {
                 break;
               case 'trial_days':
                 await this.query(`ALTER TABLE products ADD COLUMN trial_days INT DEFAULT 30`);
+                break;
+              case 'category_id':
+                await this.query(`ALTER TABLE products ADD COLUMN category_id VARCHAR(36)`);
                 break;
             }
           }

@@ -2973,14 +2973,32 @@ class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createCategory(categoryData: any): Promise<Category> {
-    const id = randomUUID();
-    await this.db.query(`
-      INSERT INTO categories (id, name, description, color, is_active, company_id)
-      VALUES (?, ?, ?, ?, TRUE, ?)
-    `, [id, categoryData.name, categoryData.description, categoryData.color, categoryData.companyId || null]);
+  async createCategory(category: any): Promise<Category> {
+    const id = nanoid();
 
-    return this.getCategoryById(id) as Promise<Category>;
+    // Check if company_id column exists in categories table
+    try {
+      const columnExists = await this.db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'categories' AND COLUMN_NAME = 'company_id'`);
+
+      if (columnExists.length > 0) {
+        // Column exists, use full insert
+        await this.db.query(`
+          INSERT INTO categories (id, name, description, color, is_active, company_id)
+          VALUES (?, ?, ?, ?, TRUE, ?)
+        `, [id, category.name, category.description, category.color, category.companyId]);
+      } else {
+        // Column doesn't exist, insert without company_id
+        await this.db.query(`
+          INSERT INTO categories (id, name, description, color, is_active)
+          VALUES (?, ?, ?, ?, TRUE)
+        `, [id, category.name, category.description, category.color]);
+      }
+
+      return this.getCategoryById(id) as Promise<Category>;
+    } catch (error) {
+      console.error('Create category error:', error);
+      throw error;
+    }
   }
 
   async getCategoryById(categoryId: string): Promise<Category | null> {
