@@ -723,7 +723,7 @@ export default function SoftwareRegistrations() {
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
-    
+
     reset(); // Reset form state
 
     if (registration) {
@@ -738,7 +738,7 @@ export default function SoftwareRegistrations() {
       setValue('note', registration.note || '');
       setValue('authorizeDevice', !!registration.computerKey); // Set checkbox based on existing key
     }
-    
+
     setIsEditModalOpen(true); // Open edit modal specifically
   };
 
@@ -1181,8 +1181,8 @@ export default function SoftwareRegistrations() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Prima Registrazione:</span>
                         <span className="font-medium">
-                          {selectedRegistration.primaRegistrazione ? 
-                            new Date(selectedRegistration.primaRegistrazione).toLocaleDateString('it-IT') : 
+                          {selectedRegistration.primaRegistrazione ?
+                            new Date(selectedRegistration.primaRegistrazione).toLocaleDateString('it-IT') :
                             'N/A'
                           }
                         </span>
@@ -1190,8 +1190,8 @@ export default function SoftwareRegistrations() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Ultima Attività:</span>
                         <span className="font-medium">
-                          {selectedRegistration.ultimaAttivita ? 
-                            new Date(selectedRegistration.ultimaAttivita).toLocaleDateString('it-IT') : 
+                          {selectedRegistration.ultimaAttivita ?
+                            new Date(selectedRegistration.ultimaAttivita).toLocaleDateString('it-IT') :
                             'N/A'
                           }
                         </span>
@@ -1337,9 +1337,9 @@ export default function SoftwareRegistrations() {
                         </div>
 
                         <div className="flex justify-end space-x-2 pt-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
@@ -1353,9 +1353,9 @@ export default function SoftwareRegistrations() {
                             {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
                           </Button>
                           {selectedRegistration?.licenzaAssegnata && (
-                            <Button 
-                              type="button" 
-                              variant="destructive" 
+                            <Button
+                              type="button"
+                              variant="destructive"
                               size="sm"
                               onClick={() => {
                                 setValue('aziendaAssegnata', '');
@@ -1373,7 +1373,7 @@ export default function SoftwareRegistrations() {
                   )}
 
                   {/* Form per admin (solo note) */}
-                  {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'admin' && user?.role !== 'superadmin' && (
+                  {user?.role === 'admin' && user?.role !== 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">
                         Modifica Note
@@ -1391,9 +1391,9 @@ export default function SoftwareRegistrations() {
                         </div>
 
                         <div className="flex justify-end space-x-2 pt-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             size="sm"
                             onClick={() => {
                               isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
@@ -1413,141 +1413,19 @@ export default function SoftwareRegistrations() {
                 </div>
               </div>
 
-              {/* Footer - Pulsante Chiudi */}
+              {/* Footer - Pulsante Chiudi per la modal di edit/classify */}
               <div className="flex justify-end pt-4 border-t">
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsViewDialogOpen(false);
+                    isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
+                    reset();
                     setSelectedRegistration(null);
                   }}
                 >
                   Chiudi
                 </Button>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for Classify/Edit */}
-      <Dialog open={isClassifyModalOpen || isEditModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsClassifyModalOpen(false);
-          setIsEditModalOpen(false);
-          reset();
-          setSelectedRegistration(null);
-        }
-      }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{isClassifyModalOpen ? "Classifica Registrazione Software" : "Modifica Registrazione Software"}</span>
-              {selectedRegistration && getStatusBadge(selectedRegistration.status)}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedRegistration && (
-            <div className="space-y-4">
-              {/* Header compatto con info principali */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-blue-800">Software:</span>
-                    <div className="text-blue-900">{selectedRegistration.nomeSoftware || selectedRegistration.prodottoAssegnato}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-800">Versione:</span>
-                    <div className="text-blue-900">{selectedRegistration.versione}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-800">P. IVA:</span>
-                    <div className="text-blue-900">{selectedRegistration.partitaIva}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-800">Computer Key:</span>
-                    <div className="text-blue-900 font-mono text-xs">{selectedRegistration.computerKey || 'Non assegnata'}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Due colonne principali per dettagli e form */}
-              <div className="grid grid-cols-2 gap-6">
-                {/* Colonna sinistra - Informazioni Dispositivo (Visualizzazione) */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Informazioni Dispositivo</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Ragione Sociale:</span>
-                        <span className="font-medium">{selectedRegistration.ragioneSociale}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Sistema Operativo:</span>
-                        <span className="font-medium">{selectedRegistration.sistemaOperativo}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Prima Registrazione:</span>
-                        <span className="font-medium">
-                          {selectedRegistration.primaRegistrazione ? 
-                            new Date(selectedRegistration.primaRegistrazione).toLocaleDateString('it-IT') : 
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Ultima Attività:</span>
-                        <span className="font-medium">
-                          {selectedRegistration.ultimaAttivita ? 
-                            new Date(selectedRegistration.ultimaAttivita).toLocaleDateString('it-IT') : 
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Totale Venduto:</span>
-                        <span className="font-bold text-green-600">{selectedRegistration.totaleVenduto} crediti</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Note esistenti */}
-                  {selectedRegistration.note && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Note Esistenti</h3>
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
-                        {selectedRegistration.note}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Colonna destra - Form di modifica/classificazione */}
-                <div className="space-y-4">
-                  {/* Sezione Assegnazioni Attuali */}
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni Attuali</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Azienda Assegnata</div>
-                        <div>{getClientCompanyName(selectedRegistration.clienteAssegnato) || 'Non assegnata'}</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Cliente Assegnato</div>
-                        <div>{getClientName(selectedRegistration.clienteAssegnato) || 'Non assegnato'}</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Licenza Assegnata</div>
-                        <div>{getLicenseName(selectedRegistration.licenzaAssegnata) || 'Non assegnata'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  
-                </div>
-              </div>
-
-
             </div>
           )}
         </DialogContent>
