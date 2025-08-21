@@ -98,10 +98,36 @@ export default function ProductsPage() {
     }
   });
 
+  // Fetch licenses
+  const { data: licenses = [] } = useQuery({
+    queryKey: ['/api/licenses'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/licenses', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch licenses');
+      }
+      return response.json();
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchOnWindowFocus: true // Refresh when window gains focus
+  });
+
+
   // Function to get license count for a product
-  const getProductLicenseCount = (productId: string) => {
-    // We'll get this from the product data itself if needed
-    return 0;
+  const getProductLicenseCount = (product: any) => {
+    // Count licenses for this specific product ID
+    const productLicenses = licenses.filter(license => 
+      license.product?.id === product.id || 
+      license.productId === product.id ||
+      license.product?.name === product.name
+    );
+    return productLicenses.length;
   };
 
   const createProductMutation = useMutation({
@@ -490,7 +516,7 @@ export default function ProductsPage() {
                   </TableRow>
                 ) : (
                   filteredProducts.map((product: any) => {
-                    const licenseCount = getProductLicenseCount(product.id);
+                    const licenseCount = getProductLicenseCount(product);
 
                     return (
                       <TableRow key={product.id} className="hover:bg-gray-50">
