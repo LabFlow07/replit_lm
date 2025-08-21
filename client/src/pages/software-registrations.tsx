@@ -224,7 +224,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   const [isOpen, setIsOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  // Safe arrays to prevent errors
+  // Safe arrays to prevent runtime errors
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeCompanies = Array.isArray(companies) ? companies : [];
 
@@ -649,7 +649,7 @@ export default function SoftwareRegistrations() {
     // Validazione: se ci sono assegnazioni esistenti ma non viene selezionata una licenza,
     // chiedi conferma per rimuovere tutto
     if (selectedRegistration?.clienteAssegnato && !data.licenzaAssegnata) {
-      const confirmMessage = 
+      const confirmMessage =
         `⚠️ Attenzione!\n\n` +
         `Stai per rimuovere TUTTE le assegnazioni esistenti:\n` +
         `- Cliente: ${selectedRegistration.clienteAssegnato ? safeClients.find(c => c.id === selectedRegistration.clienteAssegnato)?.name || 'Non trovato' : 'Nessuno'}\n` +
@@ -750,7 +750,7 @@ export default function SoftwareRegistrations() {
     if (registration.licenzaAssegnata) {
       const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
       console.log('Found assigned license:', assignedLicense);
-      
+
       if (assignedLicense?.client) {
         // Get the client ID from the license
         clientId = assignedLicense.client.id;
@@ -1334,11 +1334,11 @@ export default function SoftwareRegistrations() {
 
                           return (
                             <>
-                              <Select 
-                                value={selectedLicenseId && selectedLicenseId !== 'none' ? selectedLicenseId : 'none'} 
+                              <Select
+                                value={selectedLicenseId || 'none'}
                                 onValueChange={(value) => {
                                   if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
-                                    const confirmMessage = 
+                                    const confirmMessage =
                                       `⚠️ Attenzione!\n\n` +
                                       `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
                                       `Vuoi continuare?`;
@@ -1537,9 +1537,9 @@ export default function SoftwareRegistrations() {
                         const isFormIncomplete = watchedAzienda && watchedCliente && (!watchedLicenza || watchedLicenza === 'none');
 
                         return (
-                          <Button 
-                            type="submit" 
-                            disabled={isSubmitting || isFormIncomplete} 
+                          <Button
+                            type="submit"
+                            disabled={isSubmitting || isFormIncomplete}
                             className={`flex-1 md:flex-none ${isFormIncomplete ? 'opacity-50 cursor-not-allowed' : ''}`}
                             title={isFormIncomplete ? "Devi selezionare una licenza per completare l'assegnazione" : ""}
                           >
@@ -1656,8 +1656,8 @@ export default function SoftwareRegistrations() {
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
                     <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                      {selectedRegistration.primaRegistrazione ? 
-                        format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) : 
+                      {selectedRegistration.primaRegistrazione ?
+                        format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) :
                         'N/A'
                       }
                     </p>
@@ -1665,8 +1665,8 @@ export default function SoftwareRegistrations() {
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
                     <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                      {selectedRegistration.ultimaAttivita ? 
-                        format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) : 
+                      {selectedRegistration.ultimaAttivita ?
+                        format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) :
                         'Mai'
                       }
                     </p>
