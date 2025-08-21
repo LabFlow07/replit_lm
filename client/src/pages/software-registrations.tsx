@@ -1237,7 +1237,7 @@ export default function SoftwareRegistrations() {
                 </div>
               </div>
 
-              {/* Informazioni Assegnazione - Modalità Modifica */}
+              {/* Informazioni Assegnazione - Modalità Modifica per Superadmin */}
               {isClassifyDialogOpen && user?.role === 'superadmin' && (
                 <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
                   <div className="border-t pt-4">
@@ -1420,39 +1420,117 @@ export default function SoftwareRegistrations() {
                     </div>
                   </div>
 
-                  {['admin', 'superadmin'].includes(user?.role || '') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && !selectedRegistration?.computerKey && (
-                    <div className="flex items-center space-x-2 pt-4 border-t">
-                      <input
-                        type="checkbox"
-                        id="authorizeDevice"
-                        {...register('authorizeDevice')}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        data-testid="checkbox-authorize-device"
+
+
+              {/* Sezione per Admin - Solo gestione Computer Key */}
+              {isClassifyDialogOpen && user?.role === 'admin' && (
+                <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold mb-4">Gestione Computer Key</h3>
+                    
+                    {/* Mostra informazioni attuali readonly */}
+                    <div className="space-y-4 mb-6 bg-gray-50 p-4 rounded-md">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Azienda Assegnata</Label>
+                          <p className="text-sm p-2 bg-white border rounded-md">
+                            {(() => {
+                              const company = companies?.find(c => c.id === selectedRegistration?.aziendaAssegnata);
+                              return company?.name || 'Non assegnata';
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
+                          <p className="text-sm p-2 bg-white border rounded-md">
+                            {(() => {
+                              const client = clients?.find(c => c.id === selectedRegistration?.clienteAssegnato);
+                              return client?.name || 'Non assegnato';
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
+                          <p className="text-sm p-2 bg-white border rounded-md">
+                            {(() => {
+                              const license = licenses?.find(l => l.id === selectedRegistration?.licenzaAssegnata);
+                              return license?.activationKey || 'Non assegnata';
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
+                          <p className="text-sm p-2 bg-white border rounded-md">
+                            {selectedRegistration?.prodottoAssegnato || 'Non assegnato'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Note readonly per admin */}
+                    <div>
+                      <Label htmlFor="note-admin">Note</Label>
+                      <Textarea
+                        id="note-admin"
+                        placeholder="Solo visualizzazione..."
+                        className="min-h-[80px] bg-gray-50"
+                        value={selectedRegistration?.note || ''}
+                        readOnly
                       />
-                      <Label htmlFor="authorizeDevice" className="font-medium">
-                        Autorizza dispositivo (genera computer key)
-                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
                     </div>
-                  )}
 
-                  {/* Messaggio se il dispositivo è già autorizzato */}
-                  {selectedRegistration?.computerKey && (
-                    <div className="flex items-center space-x-2 pt-4 border-t bg-green-50 p-3 rounded-md">
-                      <div className="h-4 w-4 text-green-600">🔑</div>
-                      <span className="text-sm text-green-800 font-medium">
-                        Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
-                      </span>
-                    </div>
-                  )}
+                    {/* Sezione Autorizzazione Dispositivo */}
+                    <div className="pt-4 border-t">
+                      {/* Autorizzazione dispositivo per Admin con licenza e senza computer key */}
+                      {selectedRegistration?.licenzaAssegnata && !selectedRegistration?.computerKey && (
+                        <div className="flex items-center space-x-2 mb-4">
+                          <input
+                            type="checkbox"
+                            id="authorizeDevice"
+                            {...register('authorizeDevice')}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            data-testid="checkbox-authorize-device"
+                          />
+                          <Label htmlFor="authorizeDevice" className="font-medium">
+                            Autorizza dispositivo (genera computer key)
+                          </Label>
+                        </div>
+                      )}
 
-                  {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && !watch('licenzaAssegnata') && (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                      <p className="text-sm text-yellow-800">
-                        <i className="fas fa-key mr-2"></i>
-                        Nessuna licenza assegnata a questa registrazione. Solo il superadmin può assegnare licenze.
-                      </p>
+                      {/* Messaggio se il dispositivo è già autorizzato */}
+                      {selectedRegistration?.computerKey && (
+                        <div className="flex items-center space-x-2 mb-4 bg-green-50 p-3 rounded-md">
+                          <div className="h-4 w-4 text-green-600">🔑</div>
+                          <span className="text-sm text-green-800 font-medium">
+                            Dispositivo già autorizzato con Computer Key: {selectedRegistration.computerKey.substring(0, 15)}...
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Avviso se non c'è licenza */}
+                      {!selectedRegistration?.licenzaAssegnata && (
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
+                          <p className="text-sm text-yellow-800">
+                            <i className="fas fa-key mr-2"></i>
+                            Nessuna licenza assegnata. Solo il superadmin può assegnare licenze.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end">
+                        <Button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="px-6"
+                        >
+                          {isSubmitting ? 'Salvando...' : 'Salva Modifiche'}
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                </form>
+              )}
 
                   <div>
                     <Label htmlFor="note">Note</Label>
@@ -1461,13 +1539,9 @@ export default function SoftwareRegistrations() {
                       {...register('note')}
                       placeholder="Aggiungi note sulla classificazione..."
                       data-testid="textarea-classification-notes"
-                      className={user?.role === 'admin' ? "min-h-[80px] bg-gray-50" : "min-h-[80px]"}
+                      className="min-h-[80px]"
                       defaultValue={selectedRegistration?.note || ''}
-                      readOnly={user?.role === 'admin'}
                     />
-                    {user?.role === 'admin' && (
-                      <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
-                    )}
                   </div>
 
                   <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
