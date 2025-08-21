@@ -114,30 +114,25 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
   useEffect(() => {
     if (initialCompanyId) {
       const company = companies.find(c => c.id === initialCompanyId);
-      if (company && company.id !== selectedCompany?.id) {
+      if (company) {
+        console.log('Setting initial company:', company);
         setSelectedCompany(company);
         setSearchTerm(company.name || '');
-        onCompanySelect(company.id);
+        // Only call onCompanySelect if it's actually a different company
+        if (company.id !== selectedCompany?.id) {
+          onCompanySelect(company.id);
+        }
       }
-    } else if (!initialCompanyId && selectedCompany) {
-      // Clear selection only if we had a company selected before
+    } else if (!initialCompanyId) {
+      // Always clear when no initial company ID
+      console.log('Clearing company selection');
       setSelectedCompany(null);
       setSearchTerm('');
-      onCompanySelect('');
-    }
-  }, [initialCompanyId, companies]); // Removed onCompanySelect from dependencies
-
-  // Force update when initialCompanyId changes - this ensures proper sync
-  useEffect(() => {
-    if (initialCompanyId) {
-      const company = companies.find(c => c.id === initialCompanyId);
-      if (company) {
-        console.log('Force updating company search with:', company);
-        setSelectedCompany(company);
-        setSearchTerm(company.name || '');
+      if (selectedCompany) {
+        onCompanySelect('');
       }
     }
-  }, [initialCompanyId, companies]);
+  }, [initialCompanyId, companies]); // Removed onCompanySelect from dependencies
 
 
   // Filtra le aziende in base al termine di ricerca
@@ -248,32 +243,25 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   useEffect(() => {
     if (initialClientId && companyId) {
       const client = safeClients.find(c => c.id === initialClientId);
-      if (client && client.id !== selectedClient?.id) {
+      if (client) {
+        console.log('Setting initial client:', client);
         setSelectedClient(client);
         setSearchTerm(client.name || '');
-        onClientSelect(client.id);
+        // Only call onClientSelect if it's actually a different client
+        if (client.id !== selectedClient?.id) {
+          onClientSelect(client.id);
+        }
       }
     } else if (!companyId || !initialClientId) {
       // Reset when company changes or client is cleared
+      console.log('Clearing client selection');
+      setSelectedClient(null);
+      setSearchTerm("");
       if (selectedClient) {
-        setSearchTerm("");
-        setSelectedClient(null);
         onClientSelect('');
       }
     }
   }, [companyId, initialClientId, safeClients]); // Added proper dependencies
-
-  // Force update when initialClientId changes - this ensures proper sync
-  useEffect(() => {
-    if (initialClientId && companyId) {
-      const client = safeClients.find(c => c.id === initialClientId);
-      if (client) {
-        console.log('Force updating client search with:', client);
-        setSelectedClient(client);
-        setSearchTerm(client.name || '');
-      }
-    }
-  }, [initialClientId, companyId, safeClients]);
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -801,22 +789,24 @@ export default function SoftwareRegistrations() {
     // Reset form first
     reset();
 
-    // Set values immediately
-    setValue('aziendaAssegnata', companyId || '');
-    setValue('clienteAssegnato', clientId || '');
-    setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
-    setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
-    setValue('note', registration.note || '');
-    setValue('authorizeDevice', !!registration.computerKey);
+    // Use setTimeout to ensure the form is reset before setting new values
+    setTimeout(() => {
+      setValue('aziendaAssegnata', companyId || '');
+      setValue('clienteAssegnato', clientId || '');
+      setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
+      setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
+      setValue('note', registration.note || '');
+      setValue('authorizeDevice', !!registration.computerKey);
 
-    console.log('Form values set:', {
-      aziendaAssegnata: companyId || '',
-      clienteAssegnato: clientId || '',
-      prodottoAssegnato: registration.prodottoAssegnato || '',
-      licenzaAssegnata: registration.licenzaAssegnata || '',
-      note: registration.note || '',
-      authorizeDevice: !!registration.computerKey
-    });
+      console.log('Form values set after timeout:', {
+        aziendaAssegnata: companyId || '',
+        clienteAssegnato: clientId || '',
+        prodottoAssegnato: registration.prodottoAssegnato || '',
+        licenzaAssegnata: registration.licenzaAssegnata || '',
+        note: registration.note || '',
+        authorizeDevice: !!registration.computerKey
+      });
+    }, 100);
 
     setIsClassifyDialogOpen(true);
   };
@@ -1233,7 +1223,7 @@ export default function SoftwareRegistrations() {
                 <div>
                   <Label htmlFor="aziendaAssegnata">Azienda</Label>
                   <CompanySearchInput
-                    key={`company-${selectedRegistration?.id}`}
+                    key={`company-${selectedRegistration?.id}-${watch('aziendaAssegnata')}`}
                     companies={Array.isArray(companies) ? companies.map(c => ({
                       ...c,
                       name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
@@ -1253,7 +1243,7 @@ export default function SoftwareRegistrations() {
                 <div>
                   <Label htmlFor="clienteAssegnato">Cliente</Label>
                   <ClientSearchInput
-                    key={`client-${selectedRegistration?.id}`}
+                    key={`client-${selectedRegistration?.id}-${watch('clienteAssegnato')}-${watch('aziendaAssegnata')}`}
                     clients={clients}
                     companies={Array.isArray(companies) ? companies : []}
                     companyId={watch('aziendaAssegnata')}
