@@ -696,8 +696,27 @@ export default function SoftwareRegistrations() {
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
 
-    const client = safeClients.find(c => c.id === registration.clienteAssegnato);
-    const companyId = client?.company_id || client?.companyId || ''; // Use empty string instead of null
+    let client = null;
+    let companyId = '';
+
+    // First try to get client from clienteAssegnato
+    if (registration.clienteAssegnato) {
+      client = safeClients.find(c => c.id === registration.clienteAssegnato);
+      companyId = client?.company_id || client?.companyId || '';
+    } 
+    // If no direct client assignment, try to get from assigned license
+    else if (registration.licenzaAssegnata) {
+      const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
+      if (assignedLicense?.client) {
+        client = assignedLicense.client;
+        companyId = client.company_id || client.companyId || '';
+        // Also find the full client object for form population
+        const fullClient = safeClients.find(c => c.id === client.id);
+        if (fullClient) {
+          client = fullClient;
+        }
+      }
+    }
 
     console.log('Edit registration:', registration);
     console.log('Found client:', client);
@@ -708,7 +727,7 @@ export default function SoftwareRegistrations() {
 
     // Set values using setValue
     setValue('aziendaAssegnata', companyId);
-    setValue('clienteAssegnato', registration.clienteAssegnato || '');
+    setValue('clienteAssegnato', client?.id || '');
     setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
     setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
     setValue('note', registration.note || '');
