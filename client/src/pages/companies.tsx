@@ -295,16 +295,35 @@ export default function CompaniesPage() {
 
       const matchesSearch = !searchTerm || 
         company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (company.contact_info && JSON.parse(company.contact_info).email?.toLowerCase().includes(searchTerm.toLowerCase()));
+        company.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.partitaIva?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesType = typeFilter === "all" || company.type === typeFilter;
-
-      const filteredChildren = company.children?.map(filterCompany).filter(Boolean) || [];
+      // Include client companies in filtering - they should be visible when type is "all" or "cliente"
+      const matchesType = typeFilter === "all" || 
+                         company.type === typeFilter ||
+                         (typeFilter === "cliente" && company.type === "cliente");
 
       if (matchesSearch && matchesType) {
-        return { ...company, children: filteredChildren };
-      } else if (filteredChildren.length > 0) {
-        return { ...company, children: filteredChildren };
+        const filteredChildren = company.children
+          ?.map(filterCompany)
+          .filter(Boolean) || [];
+
+        return {
+          ...company,
+          children: filteredChildren
+        };
+      }
+
+      // If company doesn't match but has matching children, include it
+      const filteredChildren = company.children
+        ?.map(filterCompany)
+        .filter(Boolean) || [];
+
+      if (filteredChildren.length > 0) {
+        return {
+          ...company,
+          children: filteredChildren
+        };
       }
 
       return null;
@@ -664,7 +683,7 @@ export default function CompaniesPage() {
               </div>
             </div>
 
-            
+
           </CardContent>
         </Card>
 
