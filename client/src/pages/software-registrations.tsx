@@ -1175,359 +1175,20 @@ export default function SoftwareRegistrations() {
         </Card>
       )}
 
-      <Dialog open={isClassifyDialogOpen} onOpenChange={setIsClassifyDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {user?.role === 'superadmin' ? 'Classifica Registrazione Software' : 'Convalida Computer Key'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="software">Software</Label>
-                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.nomeSoftware}</p>
-              </div>
-              <div>
-                <Label htmlFor="versione">Versione</Label>
-                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.versione}</p>
-              </div>
-              <div>
-                <Label htmlFor="azienda">Azienda</Label>
-                <p className="text-sm text-gray-600 p-2 bg-gray-50 border rounded-md">{selectedRegistration?.ragioneSociale}</p>
-              </div>
-              <div>
-                <Label htmlFor="computerKey">Computer Key</Label>
-                <p className="text-sm text-gray-600 font-mono p-2 bg-gray-50 border rounded-md">
-                  {selectedRegistration?.computerKey || 'Non assegnata'}
-                </p>
-              </div>
-            </div>
-
-            {user?.role === 'superadmin' && (
-              <>
-                <div>
-                  <Label htmlFor="aziendaAssegnata">Azienda</Label>
-                  <CompanySearchInput
-                    key={`company-${selectedRegistration?.id}-${watch('aziendaAssegnata')}`}
-                    companies={Array.isArray(companies) ? companies.map(c => ({
-                      ...c,
-                      name: c.name || 'Nome non disponibile', // Provide default if name is null/undefined
-                      partitaIva: c.partitaIva || 'N/A' // Provide default if partitaIva is null/undefined
-                    })) : []}
-                    onCompanySelect={(companyId) => {
-                      setValue('aziendaAssegnata', companyId || null);
-                      setValue('clienteAssegnato', null);
-                      setValue('licenzaAssegnata', null);
-                      setValue('prodottoAssegnato', null);
-                    }}
-                    placeholder="Cerca azienda per nome o P.IVA..."
-                    initialCompanyId={watch('aziendaAssegnata') || undefined}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="clienteAssegnato">Cliente</Label>
-                  <ClientSearchInput
-                    key={`client-${selectedRegistration?.id}-${watch('clienteAssegnato')}-${watch('aziendaAssegnata')}`}
-                    clients={clients}
-                    companies={Array.isArray(companies) ? companies : []}
-                    companyId={watch('aziendaAssegnata')}
-                    onClientSelect={(clientId) => {
-                      setValue('clienteAssegnato', clientId || null);
-                      setValue('licenzaAssegnata', null);
-                      setValue('prodottoAssegnato', null);
-                    }}
-                    placeholder="Cerca cliente per nome o email..."
-                    initialClientId={watch('clienteAssegnato') || undefined}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="licenzaAssegnata" className="flex items-center gap-2">
-                    Licenza
-                    {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
-                      <span className="text-red-500 text-xs font-medium">
-                        * Obbligatoria per mantenere le assegnazioni
-                      </span>
-                    )}
-                  </Label>
-                  {(() => {
-                    const selectedClientId = watch('clienteAssegnato');
-                    const selectedCompanyId = watch('aziendaAssegnata');
-
-                    if (!selectedCompanyId) {
-                      return (
-                        <div className="p-3 bg-gray-50 rounded-md border text-center">
-                          <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
-                        </div>
-                      );
-                    }
-
-                    if (!selectedClientId) {
-                      return (
-                        <div className="p-3 bg-gray-50 rounded-md border text-center">
-                          <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
-                        </div>
-                      );
-                    }
-
-                    const clientLicenses = safeLicenses.filter((license: License) => {
-                      const licenseClientId = license.client?.id;
-                      if (licenseClientId !== selectedClientId) return false;
-
-                      const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                      if (licenseClientCompanyId !== selectedCompanyId) return false;
-
-                      return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
-                    });
-
-                    if (clientLicenses.length === 0) {
-                      return (
-                        <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                          <p className="text-sm text-yellow-700">
-                            <i className="fas fa-key mr-2"></i>
-                            Nessuna licenza disponibile per questo cliente
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    const selectedLicenseId = watch('licenzaAssegnata');
-
-                    return (
-                      <>
-                        <Select 
-                          value={selectedLicenseId && selectedLicenseId !== 'none' ? selectedLicenseId : 'none'} 
-                          onValueChange={(value) => {
-                          // Se si seleziona "none" e ci sono assegnazioni esistenti, mostra avviso
-                          if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
-                            const confirmMessage = 
-                              `⚠️ Attenzione!\n\n` +
-                              `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
-                              `Vuoi continuare?`;
-
-                            if (!confirm(confirmMessage)) {
-                              return; // Non cambiare la selezione
-                            }
-                          }
-
-                          setValue('licenzaAssegnata', value === 'none' ? null : value);
-                          if (value !== 'none') {
-                            const selectedLicense = safeLicenses.find(l => l.id === value);
-                            if (selectedLicense && selectedLicense.product) {
-                              setValue('prodottoAssegnato', selectedLicense.product.id);
-                            }
-                          } else {
-                            setValue('prodottoAssegnato', null);
-                          }
-                        }}
-                        >
-                          <SelectTrigger data-testid="select-assign-license">
-                            <SelectValue placeholder="Seleziona licenza" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none" className="text-red-600 font-medium">
-                              ⚠️ Nessuna Licenza (rimuove tutto)
-                            </SelectItem>
-                            {clientLicenses.map((license: License) => (
-                              <SelectItem key={license.id} value={license.id}>
-                                <div className="flex flex-col">
-                                  <span className="font-mono text-xs">{license.activationKey}</span>
-                                  <span className="text-xs text-gray-600">
-                                    {license.product?.name} ({license.status})
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
-                          const selectedLicense = safeLicenses.find((license: License) => license.id === selectedLicenseId);
-
-                          if (!selectedLicense || !selectedLicense.product) {
-                            return (
-                              <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
-                                <p className="text-sm text-yellow-700">
-                                  <i className="fas fa-key mr-2"></i>
-                                  Prodotto non trovato per questa licenza
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div className="p-3 bg-green-50 rounded-md border border-green-200 mt-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-green-800">
-                                    <i className="fas fa-key mr-2"></i>
-                                    Licenza selezionata
-                                  </p>
-                                  <p className="text-xs text-green-600 mt-1">
-                                    {selectedLicense.product.name} v{selectedLicense.product.version || 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-green-600">
-                                    Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
-                                  </p>
-                                </div>
-                                <i className="fas fa-key text-green-500 text-xl"></i>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-
-            <div className="space-y-4">
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="authorizeDevice"
-                    {...register('authorizeDevice')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    data-testid="checkbox-authorize-device"
-                    // Set initial checked state based on existing computerKey or form value if available
-                    defaultChecked={!!selectedRegistration?.computerKey || watch('authorizeDevice')}
-                  />
-                  <Label htmlFor="authorizeDevice" className="font-medium">
-                    Autorizza dispositivo (genera/rimuovi computer key)
-                  </Label>
-                </div>
-              )}
-
-              {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && !watch('licenzaAssegnata') && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <p className="text-sm text-yellow-800">
-                    <i className="fas fa-key mr-2"></i>
-                    Nessuna licenza assegnata a questa registrazione. Solo il superadmin può assegnare licenze.
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="note">Note</Label>
-                <Textarea
-                  id="note"
-                  {...register('note')}
-                  placeholder="Aggiungi note sulla classificazione..."
-                  data-testid="textarea-classification-notes"
-                  className={user?.role === 'admin' ? "min-h-[80px] bg-gray-50" : "min-h-[80px]"}
-                  defaultValue={selectedRegistration?.note || ''}
-                  readOnly={user?.role === 'admin'}
-                />
-                {user?.role === 'admin' && (
-                  <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
-                <div className="flex flex-wrap gap-2">
-                  {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
-                    <>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
-                            const removeAssignmentData = {
-                              aziendaAssegnata: null,
-                              clienteAssegnato: null,
-                              licenzaAssegnata: null,
-                              prodottoAssegnato: null,
-                              note: selectedRegistration.note,
-                              authorizeDevice: false
-                            };
-                            classifyMutation.mutate(removeAssignmentData);
-                          }
-                        }}
-                        disabled={classifyMutation.isPending}
-                      >
-                        <i className="fas fa-unlink mr-2"></i>
-                        Rimuovi Assegnazione
-                      </Button>
-
-                      {selectedRegistration?.computerKey && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
-                              const removeKeyData = {
-                                aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
-                                clienteAssegnato: selectedRegistration.clienteAssegnato || null,
-                                licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
-                                prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
-                                note: selectedRegistration.note,
-                                authorizeDevice: false
-                              };
-                              classifyMutation.mutate(removeKeyData);
-                            }
-                          }}
-                          disabled={classifyMutation.isPending}
-                          className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                        >
-                          <i className="fas fa-key mr-2"></i>
-                          Rimuovi Solo Computer Key
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className="flex space-x-2 w-full md:w-auto">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      reset();
-                      setSelectedRegistration(null);
-                      setIsClassifyDialogOpen(false);
-                    }}
-                    className="flex-1 md:flex-none"
-                  >
-                    Annulla
-                  </Button>
-                  {(() => {
-                    const watchedAzienda = watch('aziendaAssegnata');
-                    const watchedCliente = watch('clienteAssegnato');
-                    const watchedLicenza = watch('licenzaAssegnata');
-
-                    // Se hai azienda e cliente, la licenza è obbligatoria
-                    const isFormIncomplete = watchedAzienda && watchedCliente && (!watchedLicenza || watchedLicenza === 'none');
-
-                    return (
-                      <Button 
-                        type="submit" 
-                        disabled={isSubmitting || isFormIncomplete} 
-                        className={`flex-1 md:flex-none ${isFormIncomplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={isFormIncomplete ? "Devi selezionare una licenza per completare l'assegnazione" : ""}
-                      >
-                        {isSubmitting ? "Salvando..." : (
-                          user?.role === 'superadmin' ? "Salva Classificazione" : "Convalida Computer Key"
-                        )}
-                      </Button>
-                    );
-                  })()}
-                </div>
-              </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+      <Dialog open={isClassifyDialogOpen || isViewDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsClassifyDialogOpen(false);
+          setIsViewDialogOpen(false);
+          setSelectedRegistration(null);
+          reset();
+        }
+      }}>
         <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Dettagli Registrazione Software</DialogTitle>
+            <DialogTitle>
+              {isViewDialogOpen ? 'Dettagli Registrazione Software' :
+               (user?.role === 'superadmin' ? 'Classifica Registrazione Software' : 'Convalida Computer Key')}
+            </DialogTitle>
           </DialogHeader>
 
           {selectedRegistration && (
@@ -1576,102 +1237,417 @@ export default function SoftwareRegistrations() {
                 </div>
               </div>
 
-              {/* Informazioni Assegnazione */}
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Informazioni Assegnazione</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
-                    {(() => {
-                      // First try to get client from direct assignment
-                      let client = null;
-                      if (selectedRegistration.clienteAssegnato) {
-                        client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
-                      }
-                      // If no direct assignment, try to get from assigned license
-                      else if (selectedRegistration.licenzaAssegnata) {
-                        const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
-                        if (assignedLicense?.client) {
-                          client = safeClients.find(c => c.id === assignedLicense.client.id);
-                        }
-                      }
+              {/* Informazioni Assegnazione - Modalità Modifica */}
+              {isClassifyDialogOpen && user?.role === 'superadmin' && (
+                <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold mb-4">Modifica Assegnazioni</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="aziendaAssegnata">Azienda</Label>
+                        <CompanySearchInput
+                          key={`company-${selectedRegistration?.id}-${watch('aziendaAssegnata')}`}
+                          companies={Array.isArray(companies) ? companies.map(c => ({
+                            ...c,
+                            name: c.name || 'Nome non disponibile',
+                            partitaIva: c.partitaIva || 'N/A'
+                          })) : []}
+                          onCompanySelect={(companyId) => {
+                            setValue('aziendaAssegnata', companyId || null);
+                            setValue('clienteAssegnato', null);
+                            setValue('licenzaAssegnata', null);
+                            setValue('prodottoAssegnato', null);
+                          }}
+                          placeholder="Cerca azienda per nome o P.IVA..."
+                          initialCompanyId={watch('aziendaAssegnata') || undefined}
+                        />
+                      </div>
 
-                      return client ? (
-                        <div className="p-2 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-sm font-medium text-green-800">{client.name || 'Nome non disponibile'}</p>
-                          <p className="text-xs text-green-600">{client.email || ''}</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
-                      );
-                    })()}
+                      <div>
+                        <Label htmlFor="clienteAssegnato">Cliente</Label>
+                        <ClientSearchInput
+                          key={`client-${selectedRegistration?.id}-${watch('clienteAssegnato')}-${watch('aziendaAssegnata')}`}
+                          clients={clients}
+                          companies={Array.isArray(companies) ? companies : []}
+                          companyId={watch('aziendaAssegnata')}
+                          onClientSelect={(clientId) => {
+                            setValue('clienteAssegnato', clientId || null);
+                            setValue('licenzaAssegnata', null);
+                            setValue('prodottoAssegnato', null);
+                          }}
+                          placeholder="Cerca cliente per nome o email..."
+                          initialClientId={watch('clienteAssegnato') || undefined}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="licenzaAssegnata" className="flex items-center gap-2">
+                          Licenza
+                          {(selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata) && (
+                            <span className="text-red-500 text-xs font-medium">
+                              * Obbligatoria per mantenere le assegnazioni
+                            </span>
+                          )}
+                        </Label>
+                        {(() => {
+                          const selectedClientId = watch('clienteAssegnato');
+                          const selectedCompanyId = watch('aziendaAssegnata');
+
+                          if (!selectedCompanyId) {
+                            return (
+                              <div className="p-3 bg-gray-50 rounded-md border text-center">
+                                <p className="text-sm text-gray-500">Seleziona prima un'azienda</p>
+                              </div>
+                            );
+                          }
+
+                          if (!selectedClientId) {
+                            return (
+                              <div className="p-3 bg-gray-50 rounded-md border text-center">
+                                <p className="text-sm text-gray-500">Seleziona prima un cliente</p>
+                              </div>
+                            );
+                          }
+
+                          const clientLicenses = safeLicenses.filter((license: License) => {
+                            const licenseClientId = license.client?.id;
+                            if (licenseClientId !== selectedClientId) return false;
+
+                            const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                            if (licenseClientCompanyId !== selectedCompanyId) return false;
+
+                            return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                          });
+
+                          if (clientLicenses.length === 0) {
+                            return (
+                              <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                                <p className="text-sm text-yellow-700">
+                                  <i className="fas fa-key mr-2"></i>
+                                  Nessuna licenza disponibile per questo cliente
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          const selectedLicenseId = watch('licenzaAssegnata');
+
+                          return (
+                            <>
+                              <Select 
+                                value={selectedLicenseId && selectedLicenseId !== 'none' ? selectedLicenseId : 'none'} 
+                                onValueChange={(value) => {
+                                  if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
+                                    const confirmMessage = 
+                                      `⚠️ Attenzione!\n\n` +
+                                      `Selezionando "Nessuna Licenza" verranno rimosse TUTTE le assegnazioni esistenti.\n\n` +
+                                      `Vuoi continuare?`;
+
+                                    if (!confirm(confirmMessage)) {
+                                      return;
+                                    }
+                                  }
+
+                                  setValue('licenzaAssegnata', value === 'none' ? null : value);
+                                  if (value !== 'none') {
+                                    const selectedLicense = safeLicenses.find(l => l.id === value);
+                                    if (selectedLicense && selectedLicense.product) {
+                                      setValue('prodottoAssegnato', selectedLicense.product.id);
+                                    }
+                                  } else {
+                                    setValue('prodottoAssegnato', null);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger data-testid="select-assign-license">
+                                  <SelectValue placeholder="Seleziona licenza" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none" className="text-red-600 font-medium">
+                                    ⚠️ Nessuna Licenza (rimuove tutto)
+                                  </SelectItem>
+                                  {clientLicenses.map((license: License) => (
+                                    <SelectItem key={license.id} value={license.id}>
+                                      <div className="flex flex-col">
+                                        <span className="font-mono text-xs">{license.activationKey}</span>
+                                        <span className="text-xs text-gray-600">
+                                          {license.product?.name} ({license.status})
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {selectedLicenseId && selectedLicenseId !== 'none' && (() => {
+                                const selectedLicense = safeLicenses.find((license: License) => license.id === selectedLicenseId);
+
+                                if (!selectedLicense || !selectedLicense.product) {
+                                  return (
+                                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200 mt-2">
+                                      <p className="text-sm text-yellow-700">
+                                        <i className="fas fa-key mr-2"></i>
+                                        Prodotto non trovato per questa licenza
+                                      </p>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div className="p-3 bg-green-50 rounded-md border border-green-200 mt-2">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-green-800">
+                                          <i className="fas fa-key mr-2"></i>
+                                          Licenza selezionata
+                                        </p>
+                                        <p className="text-xs text-green-600 mt-1">
+                                          {selectedLicense.product.name} v{selectedLicense.product.version || 'N/A'}
+                                        </p>
+                                        <p className="text-xs text-green-600">
+                                          Stato: {selectedLicense.status} | Dispositivi: {selectedLicense.maxDevices || 1}
+                                        </p>
+                                      </div>
+                                      <i className="fas fa-key text-green-500 text-xl"></i>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </div>
+
+                  {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && (
+                    <div className="flex items-center space-x-2 pt-4 border-t">
+                      <input
+                        type="checkbox"
+                        id="authorizeDevice"
+                        {...register('authorizeDevice')}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        data-testid="checkbox-authorize-device"
+                        defaultChecked={!!selectedRegistration?.computerKey || watch('authorizeDevice')}
+                      />
+                      <Label htmlFor="authorizeDevice" className="font-medium">
+                        Autorizza dispositivo (genera/rimuovi computer key)
+                      </Label>
+                    </div>
+                  )}
+
+                  {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && !watch('licenzaAssegnata') && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm text-yellow-800">
+                        <i className="fas fa-key mr-2"></i>
+                        Nessuna licenza assegnata a questa registrazione. Solo il superadmin può assegnare licenze.
+                      </p>
+                    </div>
+                  )}
+
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Azienda</Label>
-                    {(() => {
-                      // First try to get company from client assignment
-                      let company = null;
-                      if (selectedRegistration.clienteAssegnato) {
-                        const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
-                        const companyId = client?.company_id || client?.companyId;
-                        company = safeCompanies.find(c => c.id === companyId);
-                      }
-                      // If no direct assignment, try to get from assigned license
-                      else if (selectedRegistration.licenzaAssegnata) {
-                        const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
-                        if (assignedLicense?.client) {
-                          const companyId = assignedLicense.client.company_id || assignedLicense.client.companyId;
+                    <Label htmlFor="note">Note</Label>
+                    <Textarea
+                      id="note"
+                      {...register('note')}
+                      placeholder="Aggiungi note sulla classificazione..."
+                      data-testid="textarea-classification-notes"
+                      className={user?.role === 'admin' ? "min-h-[80px] bg-gray-50" : "min-h-[80px]"}
+                      defaultValue={selectedRegistration?.note || ''}
+                      readOnly={user?.role === 'admin'}
+                    />
+                    {user?.role === 'admin' && (
+                      <p className="text-xs text-gray-500 mt-1">Solo il superadmin può modificare le note</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-3 pt-4 border-t">
+                    <div className="flex flex-wrap gap-2">
+                      {user?.role === 'superadmin' && selectedRegistration?.licenzaAssegnata && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Sei sicuro di voler rimuovere l\'assegnazione della licenza? Questa operazione resetterà la registrazione a "Non Assegnato".')) {
+                                const removeAssignmentData = {
+                                  aziendaAssegnata: null,
+                                  clienteAssegnato: null,
+                                  licenzaAssegnata: null,
+                                  prodottoAssegnato: null,
+                                  note: selectedRegistration.note,
+                                  authorizeDevice: false
+                                };
+                                classifyMutation.mutate(removeAssignmentData);
+                              }
+                            }}
+                            disabled={classifyMutation.isPending}
+                          >
+                            <i className="fas fa-unlink mr-2"></i>
+                            Rimuovi Assegnazione
+                          </Button>
+
+                          {selectedRegistration?.computerKey && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Sei sicuro di voler rimuovere solo la Computer Key? Il dispositivo non sarà più autorizzato ma la licenza rimarrà assegnata.')) {
+                                  const removeKeyData = {
+                                    aziendaAssegnata: selectedRegistration.aziendaAssegnata || null,
+                                    clienteAssegnato: selectedRegistration.clienteAssegnato || null,
+                                    licenzaAssegnata: selectedRegistration.licenzaAssegnata || null,
+                                    prodottoAssegnato: selectedRegistration.prodottoAssegnato || null,
+                                    note: selectedRegistration.note,
+                                    authorizeDevice: false
+                                  };
+                                  classifyMutation.mutate(removeKeyData);
+                                }
+                              }}
+                              disabled={classifyMutation.isPending}
+                              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                            >
+                              <i className="fas fa-key mr-2"></i>
+                              Rimuovi Solo Computer Key
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex space-x-2 w-full md:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          reset();
+                          setSelectedRegistration(null);
+                          setIsClassifyDialogOpen(false);
+                        }}
+                        className="flex-1 md:flex-none"
+                      >
+                        Annulla
+                      </Button>
+                      {(() => {
+                        const watchedAzienda = watch('aziendaAssegnata');
+                        const watchedCliente = watch('clienteAssegnato');
+                        const watchedLicenza = watch('licenzaAssegnata');
+
+                        const isFormIncomplete = watchedAzienda && watchedCliente && (!watchedLicenza || watchedLicenza === 'none');
+
+                        return (
+                          <Button 
+                            type="submit" 
+                            disabled={isSubmitting || isFormIncomplete} 
+                            className={`flex-1 md:flex-none ${isFormIncomplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={isFormIncomplete ? "Devi selezionare una licenza per completare l'assegnazione" : ""}
+                          >
+                            {isSubmitting ? "Salvando..." : (
+                              user?.role === 'superadmin' ? "Salva Assegnazione" : "Convalida Computer Key"
+                            )}
+                          </Button>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </form>
+              )}
+
+              {/* Informazioni Assegnazione - Modalità Visualizzazione */}
+              {isViewDialogOpen && (
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4">Informazioni Assegnazione</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
+                      {(() => {
+                        let client = null;
+                        if (selectedRegistration.clienteAssegnato) {
+                          client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                        }
+                        else if (selectedRegistration.licenzaAssegnata) {
+                          const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                          if (assignedLicense?.client) {
+                            client = safeClients.find(c => c.id === assignedLicense.client.id);
+                          }
+                        }
+
+                        return client ? (
+                          <div className="p-2 bg-green-50 border border-green-200 rounded-md">
+                            <p className="text-sm font-medium text-green-800">{client.name || 'Nome non disponibile'}</p>
+                            <p className="text-xs text-green-600">{client.email || ''}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Azienda</Label>
+                      {(() => {
+                        let company = null;
+                        if (selectedRegistration.clienteAssegnato) {
+                          const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                          const companyId = client?.company_id || client?.companyId;
                           company = safeCompanies.find(c => c.id === companyId);
                         }
-                      }
+                        else if (selectedRegistration.licenzaAssegnata) {
+                          const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                          if (assignedLicense?.client) {
+                            const companyId = assignedLicense.client.company_id || assignedLicense.client.companyId;
+                            company = safeCompanies.find(c => c.id === companyId);
+                          }
+                        }
 
-                      return company ? (
-                        <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-sm font-medium text-blue-800">{company.name}</p>
-                          <p className="text-xs text-blue-600">P.IVA: {company.partitaIva || 'N/A'}</p>
-                        </div>
-                      ) : (
+                        return company ? (
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                            <p className="text-sm font-medium text-blue-800">{company.name}</p>
+                            <p className="text-xs text-blue-600">P.IVA: {company.partitaIva || 'N/A'}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
+                      {selectedRegistration.prodottoAssegnato ? (() => {
+                        const product = safeProducts.find(p => p.id === selectedRegistration.prodottoAssegnato || p.name === selectedRegistration.prodottoAssegnato);
+                        return product ? (
+                          <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
+                            <p className="text-sm font-medium text-purple-800">{product.name}</p>
+                            <p className="text-xs text-purple-600">v{product.version || 'N/A'}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm p-2 bg-gray-50 border rounded-md">Prodotto: {selectedRegistration.prodottoAssegnato}</p>
+                        );
+                      })() : (
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
+                      {selectedRegistration.licenzaAssegnata ? (() => {
+                        const license = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                        return license ? (
+                          <div className="p-2 bg-orange-50 border border-orange-200 rounded-md">
+                            <p className="text-xs font-mono text-orange-800">{license.activationKey}</p>
+                            <p className="text-xs text-orange-600">Stato: {license.status}</p>
+                            {license.maxDevices && (
+                              <p className="text-xs text-orange-600">Max dispositivi: {license.maxDevices}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm p-2 bg-gray-50 border rounded-md">Licenza non trovata</p>
+                        );
+                      })() : (
                         <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
-                      );
-                    })()}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
-                    {selectedRegistration.prodottoAssegnato ? (() => {
-                      const product = safeProducts.find(p => p.id === selectedRegistration.prodottoAssegnato || p.name === selectedRegistration.prodottoAssegnato);
-                      return product ? (
-                        <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
-                          <p className="text-sm font-medium text-purple-800">{product.name}</p>
-                          <p className="text-xs text-purple-600">v{product.version || 'N/A'}</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Prodotto: {selectedRegistration.prodottoAssegnato}</p>
-                      );
-                    })() : (
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
-                    {selectedRegistration.licenzaAssegnata ? (() => {
-                      const license = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
-                      return license ? (
-                        <div className="p-2 bg-orange-50 border border-orange-200 rounded-md">
-                          <p className="text-xs font-mono text-orange-800">{license.activationKey}</p>
-                          <p className="text-xs text-orange-600">Stato: {license.status}</p>
-                          {license.maxDevices && (
-                            <p className="text-xs text-orange-600">Max dispositivi: {license.maxDevices}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Licenza non trovata</p>
-                      );
-                    })() : (
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Informazioni Temporali e Statistiche */}
               <div className="border-t pt-4">
@@ -1732,20 +1708,23 @@ export default function SoftwareRegistrations() {
                   </div>
                 </div>
               </div>
+
+              {/* Footer - solo per modalità visualizzazione */}
+              {isViewDialogOpen && (
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsViewDialogOpen(false);
+                      setSelectedRegistration(null);
+                    }}
+                  >
+                    Chiudi
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsViewDialogOpen(false);
-                setSelectedRegistration(null);
-              }}
-            >
-              Chiudi
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
         </div>
