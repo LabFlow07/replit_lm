@@ -1595,35 +1595,58 @@ export default function SoftwareRegistrations() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
-                    {selectedRegistration.clienteAssegnato ? (() => {
-                      const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
-                      return (
+                    {(() => {
+                      // First try to get client from direct assignment
+                      let client = null;
+                      if (selectedRegistration.clienteAssegnato) {
+                        client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                      }
+                      // If no direct assignment, try to get from assigned license
+                      else if (selectedRegistration.licenzaAssegnata) {
+                        const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                        if (assignedLicense?.client) {
+                          client = safeClients.find(c => c.id === assignedLicense.client.id);
+                        }
+                      }
+
+                      return client ? (
                         <div className="p-2 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-sm font-medium text-green-800">{client?.name || 'Cliente non trovato'}</p>
-                          <p className="text-xs text-green-600">{client?.email || ''}</p>
+                          <p className="text-sm font-medium text-green-800">{client.name || 'Nome non disponibile'}</p>
+                          <p className="text-xs text-green-600">{client.email || ''}</p>
                         </div>
+                      ) : (
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
                       );
-                    })() : (
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
-                    )}
+                    })()}
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Azienda</Label>
-                    {selectedRegistration.clienteAssegnato ? (() => {
-                      const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
-                      const companyId = client?.company_id || client?.companyId;
-                      const company = safeCompanies.find(c => c.id === companyId);
+                    {(() => {
+                      // First try to get company from client assignment
+                      let company = null;
+                      if (selectedRegistration.clienteAssegnato) {
+                        const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
+                        const companyId = client?.company_id || client?.companyId;
+                        company = safeCompanies.find(c => c.id === companyId);
+                      }
+                      // If no direct assignment, try to get from assigned license
+                      else if (selectedRegistration.licenzaAssegnata) {
+                        const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
+                        if (assignedLicense?.client) {
+                          const companyId = assignedLicense.client.company_id || assignedLicense.client.companyId;
+                          company = safeCompanies.find(c => c.id === companyId);
+                        }
+                      }
+
                       return company ? (
                         <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
                           <p className="text-sm font-medium text-blue-800">{company.name}</p>
                           <p className="text-xs text-blue-600">P.IVA: {company.partitaIva || 'N/A'}</p>
                         </div>
                       ) : (
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non specificata</p>
+                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
                       );
-                    })() : (
-                      <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
-                    )}
+                    })()}
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
