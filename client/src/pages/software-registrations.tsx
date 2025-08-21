@@ -1118,19 +1118,6 @@ export default function SoftwareRegistrations() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-
-                          {/* Modifica - disponibile per admin e superadmin */}
-                          {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              title={user?.role === 'superadmin' ? 'Modifica Registrazione' : 'Gestione Computer Key'}
-                              onClick={() => handleEdit(registration)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
                         </div>
                       </td>
                     </tr>
