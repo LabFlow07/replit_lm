@@ -756,15 +756,8 @@ export default function SoftwareRegistrations() {
     let companyId = '';
     let clientId = '';
 
-    // First try to get client from clienteAssegnato (direct assignment)
-    if (registration.clienteAssegnato) {
-      client = safeClients.find(c => c.id === registration.clienteAssegnato);
-      clientId = registration.clienteAssegnato;
-      companyId = client?.company_id || client?.companyId || '';
-      console.log('Direct client assignment found:', client);
-    } 
-    // If no direct client assignment, try to get from assigned license
-    else if (registration.licenzaAssegnata) {
+    // Always try to get client from assigned license first (most reliable)
+    if (registration.licenzaAssegnata) {
       const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
       console.log('Found assigned license:', assignedLicense);
       
@@ -779,6 +772,13 @@ export default function SoftwareRegistrations() {
         console.log('License client data:', assignedLicense.client);
         console.log('Found full client from list:', client);
       }
+    }
+    // Fallback: try to get client from direct assignment (less reliable)
+    else if (registration.clienteAssegnato) {
+      client = safeClients.find(c => c.id === registration.clienteAssegnato);
+      clientId = registration.clienteAssegnato;
+      companyId = client?.company_id || client?.companyId || '';
+      console.log('Direct client assignment found:', client);
     }
 
     console.log('Final client:', client);
