@@ -1184,6 +1184,10 @@ export default function SoftwareRegistrations() {
                         <span className="text-gray-600">Totale Venduto:</span>
                         <span className="font-bold text-green-600">{selectedRegistration.totaleVenduto} crediti</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Totale Ordini:</span>
+                        <span className="font-medium">{selectedRegistration.totaleOrdini}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1198,53 +1202,130 @@ export default function SoftwareRegistrations() {
                   )}
                 </div>
 
-                {/* Colonna destra - Assegnazioni */}
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="p-3 bg-gray-50 rounded-md">
-                      <div className="font-medium text-gray-700 mb-1">Azienda Assegnata</div>
-                      <div>{getClientCompanyName(selectedRegistration.clienteAssegnato) || 'Non assegnata'}</div>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-md">
-                      <div className="font-medium text-gray-700 mb-1">Cliente Assegnato</div>
-                      <div>{getClientName(selectedRegistration.clienteAssegnato) || 'Non assegnato'}</div>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-md">
-                      <div className="font-medium text-gray-700 mb-1">Licenza Assegnata</div>
-                      <div>{getLicenseName(selectedRegistration.licenzaAssegnata) || 'Non assegnata'}</div>
+                {/* Colonna destra - Assegnazioni e Form */}
+                <div className="space-y-4">
+                  {/* Sezione Assegnazioni Attuali */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni Attuali</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Azienda Assegnata</div>
+                        <div>{getClientCompanyName(selectedRegistration.clienteAssegnato) || 'Non assegnata'}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Cliente Assegnato</div>
+                        <div>{getClientName(selectedRegistration.clienteAssegnato) || 'Non assegnato'}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-md">
+                        <div className="font-medium text-gray-700 mb-1">Licenza Assegnata</div>
+                        <div>{getLicenseName(selectedRegistration.licenzaAssegnata) || 'Non assegnata'}</div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Sezione Gestione Assegnazioni - Solo per Superadmin */}
+                  {user?.role === 'superadmin' && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Gestione Assegnazioni</h3>
+                      <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
+                        <div>
+                          <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
+                          <CompanySearchInput
+                            companies={safeCompanies}
+                            onCompanySelect={(companyId) => {
+                              setValue('aziendaAssegnata', companyId);
+                              setValue('clienteAssegnato', '');
+                              setValue('licenzaAssegnata', '');
+                            }}
+                            initialCompanyId={watch('aziendaAssegnata')}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
+                          <ClientSearchInput
+                            clients={safeClients}
+                            companies={safeCompanies}
+                            onClientSelect={(clientId) => {
+                              setValue('clienteAssegnato', clientId);
+                              setValue('licenzaAssegnata', '');
+                            }}
+                            companyId={watch('aziendaAssegnata')}
+                            initialClientId={watch('clienteAssegnato')}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
+                          <Select
+                            value={watch('licenzaAssegnata') || ''}
+                            onValueChange={(value) => {
+                              setValue('licenzaAssegnata', value);
+                              setValue('prodottoAssegnato', null);
+                            }}
+                            disabled={!watch('clienteAssegnato')}
+                          >
+                            <SelectTrigger data-testid="select-assign-license" className="h-9">
+                              <SelectValue placeholder="Seleziona licenza" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
+                              {safeLicenses
+                                .filter((license: License) => {
+                                  const selectedClientId = watch('clienteAssegnato');
+                                  const selectedCompanyId = watch('aziendaAssegnata');
+                                  return (
+                                    license.client?.id === selectedClientId &&
+                                    (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
+                                    ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
+                                  );
+                                })
+                                .map((license: License) => (
+                                  <SelectItem key={license.id} value={license.id}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{license.activationKey}</span>
+                                      <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
+                          <Textarea
+                            {...register('note')}
+                            placeholder="Aggiungi note..."
+                            rows={3}
+                            className="text-sm"
+                            defaultValue={selectedRegistration?.note || ''}
+                          />
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="authorizeDevice"
+                            checked={watch('authorizeDevice')}
+                            onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
+                          />
+                          <Label htmlFor="authorizeDevice" className="text-sm">
+                            Autorizza dispositivo
+                          </Label>
+                        </div>
+
+                        <div className="flex space-x-2 pt-2">
+                          <Button type="submit" size="sm" disabled={isSubmitting} className="flex-1">
+                            {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Sezione tecnica collassabile in fondo */}
-              <Collapsible>
-                <div className="border-t pt-4">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2 p-0 h-auto text-sm">
-                      <ChevronDown className="h-4 w-4" />
-                      <span>Informazioni Tecniche Aggiuntive</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Percorso Installazione</div>
-                        <div className="text-gray-600">Non specificato</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Totale Ordini</div>
-                        <div className="text-gray-600">{selectedRegistration.totaleOrdini}</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Indirizzo IP</div>
-                        <div className="text-gray-600">Non specificato</div>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
+              
 
               {/* Footer - Pulsante Chiudi */}
               <div className="flex justify-end pt-4 border-t">
@@ -1356,158 +1437,152 @@ export default function SoftwareRegistrations() {
                 </div>
 
                 {/* Colonna destra - Form di modifica/classificazione */}
-                {(isClassifyModalOpen || user?.role === 'admin') && (
+                <div className="space-y-4">
+                  {/* Sezione Assegnazioni Attuali */}
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      {isClassifyModalOpen ? "Classifica Registrazione" : "Gestione Computer Key"}
-                    </h3>
-                    <form onSubmit={handleSubmit(isClassifyModalOpen ? onClassifySubmit : onClassifySubmit)} className="space-y-4">
-                      
-                      {isClassifyModalOpen && (
-                        <>
-                          <div>
-                            <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
-                            <CompanySearchInput
-                              companies={safeCompanies}
-                              onCompanySelect={(companyId) => {
-                                setValue('aziendaAssegnata', companyId);
-                                setValue('clienteAssegnato', ''); // Reset cliente when company changes
-                                setValue('licenzaAssegnata', ''); // Reset license when company changes
-                              }}
-                              initialCompanyId={watch('aziendaAssegnata')}
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
-                            <ClientSearchInput
-                              clients={safeClients} // Use safeClients
-                              companies={safeCompanies}
-                              onClientSelect={(clientId) => {
-                                setValue('clienteAssegnato', clientId);
-                                setValue('licenzaAssegnata', ''); // Reset license when client changes
-                              }}
-                              companyId={watch('aziendaAssegnata')}
-                              initialClientId={watch('clienteAssegnato')}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      <div>
-                        <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
-                        <Select
-                          value={watch('licenzaAssegnata') || ''}
-                          onValueChange={(value) => {
-                            setValue('licenzaAssegnata', value);
-                            setValue('prodottoAssegnato', null); // Reset product when license changes
-                          }}
-                          disabled={!watch('clienteAssegnato') && isClassifyModalOpen}
-                        >
-                          <SelectTrigger data-testid="select-assign-license" className="h-9">
-                            <SelectValue placeholder="Seleziona licenza" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
-                            {safeLicenses
-                              .filter((license: License) => {
-                                // Filter licenses based on selected client and company (if in classify mode)
-                                const selectedClientId = watch('clienteAssegnato');
-                                const selectedCompanyId = watch('aziendaAssegnata');
-
-                                if (isClassifyModalOpen) {
-                                  return (
-                                    license.client?.id === selectedClientId &&
-                                    (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
-                                    ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
-                                  );
-                                }
-                                // In edit mode (admin), show already assigned license or available ones if any
-                                return license.id === selectedRegistration?.licenzaAssegnata || ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
-                              })
-                              .map((license: License) => (
-                                <SelectItem key={license.id} value={license.id}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{license.activationKey}</span>
-                                    <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
-                        <Textarea
-                          {...register('note')}
-                          placeholder="Aggiungi note..."
-                          rows={3}
-                          className="text-sm"
-                          defaultValue={selectedRegistration?.note || ''}
-                        />
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="authorizeDevice"
-                          checked={watch('authorizeDevice')}
-                          onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
-                        />
-                        <Label htmlFor="authorizeDevice" className="text-sm">
-                          Autorizza dispositivo
-                        </Label>
-                      </div>
-
-                      <div className="flex justify-end space-x-2 pt-2">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
-                            reset();
-                            setSelectedRegistration(null);
-                          }}
-                        >
-                          Annulla
-                        </Button>
-                        <Button type="submit" size="sm" disabled={isSubmitting || (isClassifyModalOpen && !watch('licenzaAssegnata') && selectedRegistration?.clienteAssegnato)}>
-                          {isSubmitting ? 'Salvando...' : (isClassifyModalOpen ? 'Salva Assegnazioni' : 'Salva Note')}
-                        </Button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </div>
-
-              {/* Sezione tecnica collassabile in fondo */}
-              <Collapsible>
-                <div className="border-t pt-4">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2 p-0 h-auto text-sm">
-                      <ChevronDown className="h-4 w-4" />
-                      <span>Informazioni Tecniche Aggiuntive</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <h3 className="font-semibold text-gray-900 mb-3">Assegnazioni Attuali</h3>
+                    <div className="space-y-3 text-sm">
                       <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Percorso Installazione</div>
-                        <div className="text-gray-600">{selectedRegistration.installationPath || 'Non specificato'}</div>
+                        <div className="font-medium text-gray-700 mb-1">Azienda Assegnata</div>
+                        <div>{getClientCompanyName(selectedRegistration.clienteAssegnato) || 'Non assegnata'}</div>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Totale Ordini</div>
-                        <div className="text-gray-600">{selectedRegistration.totaleOrdini}</div>
+                        <div className="font-medium text-gray-700 mb-1">Cliente Assegnato</div>
+                        <div>{getClientName(selectedRegistration.clienteAssegnato) || 'Non assegnato'}</div>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-md">
-                        <div className="font-medium text-gray-700 mb-1">Indirizzo IP</div>
-                        <div className="text-gray-600">{selectedRegistration.indirizzoIp || 'Non specificato'}</div>
+                        <div className="font-medium text-gray-700 mb-1">Licenza Assegnata</div>
+                        <div>{getLicenseName(selectedRegistration.licenzaAssegnata) || 'Non assegnata'}</div>
                       </div>
                     </div>
-                  </CollapsibleContent>
+                  </div>
+
+                  {/* Sezione Gestione Assegnazioni */}
+                  {(isClassifyModalOpen || user?.role === 'admin') && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        {isClassifyModalOpen ? "Gestione Assegnazioni" : "Gestione Computer Key"}
+                      </h3>
+                      <form onSubmit={handleSubmit(isClassifyModalOpen ? onClassifySubmit : onClassifySubmit)} className="space-y-4">
+                        
+                        {isClassifyModalOpen && (
+                          <>
+                            <div>
+                              <Label htmlFor="aziendaAssegnata" className="text-sm">Azienda</Label>
+                              <CompanySearchInput
+                                companies={safeCompanies}
+                                onCompanySelect={(companyId) => {
+                                  setValue('aziendaAssegnata', companyId);
+                                  setValue('clienteAssegnato', '');
+                                  setValue('licenzaAssegnata', '');
+                                }}
+                                initialCompanyId={watch('aziendaAssegnata')}
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="clienteAssegnato" className="text-sm">Cliente</Label>
+                              <ClientSearchInput
+                                clients={safeClients}
+                                companies={safeCompanies}
+                                onClientSelect={(clientId) => {
+                                  setValue('clienteAssegnato', clientId);
+                                  setValue('licenzaAssegnata', '');
+                                }}
+                                companyId={watch('aziendaAssegnata')}
+                                initialClientId={watch('clienteAssegnato')}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        <div>
+                          <Label htmlFor="licenzaAssegnata" className="text-sm">Licenza</Label>
+                          <Select
+                            value={watch('licenzaAssegnata') || ''}
+                            onValueChange={(value) => {
+                              setValue('licenzaAssegnata', value);
+                              setValue('prodottoAssegnato', null);
+                            }}
+                            disabled={!watch('clienteAssegnato') && isClassifyModalOpen}
+                          >
+                            <SelectTrigger data-testid="select-assign-license" className="h-9">
+                              <SelectValue placeholder="Seleziona licenza" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuna Licenza (Rimuove assegnazioni)</SelectItem>
+                              {safeLicenses
+                                .filter((license: License) => {
+                                  const selectedClientId = watch('clienteAssegnato');
+                                  const selectedCompanyId = watch('aziendaAssegnata');
+
+                                  if (isClassifyModalOpen) {
+                                    return (
+                                      license.client?.id === selectedClientId &&
+                                      (license.client?.company_id || license.client?.companyId) === selectedCompanyId &&
+                                      ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status)
+                                    );
+                                  }
+                                  return license.id === selectedRegistration?.licenzaAssegnata || ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                                })
+                                .map((license: License) => (
+                                  <SelectItem key={license.id} value={license.id}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{license.activationKey}</span>
+                                      <span className="text-xs text-gray-500">{license.product?.name || 'N/A'}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="note" className="text-sm">Note Aggiuntive</Label>
+                          <Textarea
+                            {...register('note')}
+                            placeholder="Aggiungi note..."
+                            rows={3}
+                            className="text-sm"
+                            defaultValue={selectedRegistration?.note || ''}
+                          />
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="authorizeDevice"
+                            checked={watch('authorizeDevice')}
+                            onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
+                          />
+                          <Label htmlFor="authorizeDevice" className="text-sm">
+                            Autorizza dispositivo
+                          </Label>
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
+                              reset();
+                              setSelectedRegistration(null);
+                            }}
+                          >
+                            Annulla
+                          </Button>
+                          <Button type="submit" size="sm" disabled={isSubmitting || (isClassifyModalOpen && !watch('licenzaAssegnata') && selectedRegistration?.clienteAssegnato)}>
+                            {isSubmitting ? 'Salvando...' : (isClassifyModalOpen ? 'Salva Assegnazioni' : 'Salva Note')}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
                 </div>
-              </Collapsible>
+              </div>
+
+              
             </div>
           )}
         </DialogContent>
