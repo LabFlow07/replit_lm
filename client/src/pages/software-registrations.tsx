@@ -1241,11 +1241,11 @@ export default function SoftwareRegistrations() {
                     </div>
                   )}
 
-                  {/* Form di gestione assegnazioni per edit modal */}
-                  {(isClassifyModalOpen || isEditModalOpen) && (
+                  {/* Form di gestione assegnazioni per edit modal - solo per superadmin */}
+                  {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'superadmin' && (
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-3">
-                        {isClassifyModalOpen ? "Gestione Assegnazioni" : "Gestione Assegnazioni"}
+                        Gestione Assegnazioni
                       </h3>
                       <form onSubmit={handleSubmit(onClassifySubmit)} className="space-y-4">
 
@@ -1332,7 +1332,7 @@ export default function SoftwareRegistrations() {
                             onCheckedChange={(checked) => setValue('authorizeDevice', checked)}
                           />
                           <Label htmlFor="authorizeDevice" className="text-sm">
-                            Autorizza dispositivo
+                            Autorizza dispositivo (genera computer key)
                           </Label>
                         </div>
 
@@ -1351,6 +1351,45 @@ export default function SoftwareRegistrations() {
                           </Button>
                           <Button type="submit" size="sm" disabled={isSubmitting}>
                             {isSubmitting ? 'Salvando...' : 'Salva Assegnazioni'}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Sezione solo note per admin non-superadmin */}
+                  {(isClassifyModalOpen || isEditModalOpen) && user?.role === 'admin' && user?.role !== 'superadmin' && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        Modifica Note
+                      </h3>
+                      <form onSubmit={handleSubmit((data) => editMutation.mutate(data))} className="space-y-4">
+                        <div>
+                          <Label htmlFor="note" className="text-sm">Note</Label>
+                          <Textarea
+                            {...register('note')}
+                            placeholder="Aggiungi o modifica note..."
+                            rows={3}
+                            className="text-sm"
+                            defaultValue={selectedRegistration?.note || ''}
+                          />
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              isClassifyModalOpen ? setIsClassifyModalOpen(false) : setIsEditModalOpen(false);
+                              reset();
+                              setSelectedRegistration(null);
+                            }}
+                          >
+                            Annulla
+                          </Button>
+                          <Button type="submit" size="sm" disabled={isSubmitting}>
+                            {isSubmitting ? 'Salvando...' : 'Salva Note'}
                           </Button>
                         </div>
                       </form>
