@@ -1560,7 +1560,7 @@ export default function SoftwareRegistrations() {
                           <Label className="text-sm font-medium text-gray-600">Azienda Assegnata</Label>
                           <p className="text-sm p-2 bg-white border rounded-md">
                             {(() => {
-                              const company = companies?.find(c => c.id === selectedRegistration?.aziendaAssegnata);
+                              const company = companies?.find((c: Company) => c.id === selectedRegistration?.aziendaAssegnata);
                               return company?.name || 'Non assegnata';
                             })()}
                           </p>
@@ -1569,7 +1569,7 @@ export default function SoftwareRegistrations() {
                           <Label className="text-sm font-medium text-gray-600">Cliente Assegnato</Label>
                           <p className="text-sm p-2 bg-white border rounded-md">
                             {(() => {
-                              const client = clients?.find(c => c.id === selectedRegistration?.clienteAssegnato);
+                              const client = clients?.find((c: Client) => c.id === selectedRegistration?.clienteAssegnato);
                               return client?.name || 'Non assegnato';
                             })()}
                           </p>
@@ -1578,7 +1578,7 @@ export default function SoftwareRegistrations() {
                           <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
                           <p className="text-sm p-2 bg-white border rounded-md">
                             {(() => {
-                              const license = licenses?.find(l => l.id === selectedRegistration?.licenzaAssegnata);
+                              const license = licenses?.find((l: License) => l.id === selectedRegistration?.licenzaAssegnata);
                               return license?.activationKey || 'Non assegnata';
                             })()}
                           </p>
@@ -1657,6 +1657,9 @@ export default function SoftwareRegistrations() {
                 </form>
               )}
 
+              {/* Sezione Note e Controlli per Superadmin */}
+              {isClassifyDialogOpen && user?.role === 'superadmin' && (
+                <div className="space-y-4">
                   <div>
                     <Label htmlFor="note">Note</Label>
                     <Textarea
@@ -1759,11 +1762,11 @@ export default function SoftwareRegistrations() {
                       })()}
                     </div>
                   </div>
-                </form>
+                </div>
               )}
 
               {/* Informazioni Assegnazione - Modalità Visualizzazione */}
-              {isViewDialogOpen && (
+              {isViewDialogOpen && selectedRegistration && (
                 <div className="border-t pt-4">
                   <h3 className="text-lg font-semibold mb-4">Informazioni Assegnazione</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1795,12 +1798,12 @@ export default function SoftwareRegistrations() {
                       <Label className="text-sm font-medium text-gray-600">Azienda</Label>
                       {(() => {
                         let company = null;
-                        if (selectedRegistration.clienteAssegnato) {
+                        if (selectedRegistration?.clienteAssegnato) {
                           const client = safeClients.find(c => c.id === selectedRegistration.clienteAssegnato);
                           const companyId = client?.company_id || client?.companyId;
                           company = safeCompanies.find(c => c.id === companyId);
                         }
-                        else if (selectedRegistration.licenzaAssegnata) {
+                        else if (selectedRegistration?.licenzaAssegnata) {
                           const assignedLicense = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
                           if (assignedLicense?.client) {
                             const companyId = assignedLicense.client.company_id || assignedLicense.client.companyId;
@@ -1820,7 +1823,7 @@ export default function SoftwareRegistrations() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Prodotto Assegnato</Label>
-                      {selectedRegistration.prodottoAssegnato ? (() => {
+                      {selectedRegistration?.prodottoAssegnato ? (() => {
                         const product = safeProducts.find(p => p.id === selectedRegistration.prodottoAssegnato || p.name === selectedRegistration.prodottoAssegnato);
                         return product ? (
                           <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
@@ -1836,7 +1839,7 @@ export default function SoftwareRegistrations() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
-                      {selectedRegistration.licenzaAssegnata ? (() => {
+                      {selectedRegistration?.licenzaAssegnata ? (() => {
                         const license = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
                         return license ? (
                           <div className="p-2 bg-orange-50 border border-orange-200 rounded-md">
@@ -1858,38 +1861,40 @@ export default function SoftwareRegistrations() {
               )}
 
               {/* Informazioni Temporali e Statistiche */}
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Informazioni Temporali e Statistiche</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                      {selectedRegistration.primaRegistrazione ?
-                        format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) :
-                        'N/A'
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                      {selectedRegistration.ultimaAttivita ?
-                        format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) :
-                        'Mai'
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Totale Venduto</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md font-medium text-green-600">
-                      {formatCurrency(selectedRegistration.totaleVenduto || 0)}
-                    </p>
+              {selectedRegistration && (
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4">Informazioni Temporali e Statistiche</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Prima Registrazione</Label>
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                        {selectedRegistration.primaRegistrazione ?
+                          format(new Date(selectedRegistration.primaRegistrazione), 'dd/MM/yyyy HH:mm', { locale: it }) :
+                          'N/A'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Ultima Attività</Label>
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                        {selectedRegistration.ultimaAttivita ?
+                          format(new Date(selectedRegistration.ultimaAttivita), 'dd/MM/yyyy HH:mm', { locale: it }) :
+                          'Mai'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Totale Venduto</Label>
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md font-medium text-green-600">
+                        {formatCurrency(selectedRegistration.totaleVenduto || 0)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Note */}
-              {selectedRegistration.note && (
+              {selectedRegistration?.note && (
                 <div className="border-t pt-4">
                   <Label className="text-sm font-medium text-gray-600">Note</Label>
                   <div className="mt-2 p-3 bg-gray-50 border rounded-md">
@@ -1899,23 +1904,25 @@ export default function SoftwareRegistrations() {
               )}
 
               {/* Informazioni Tecniche */}
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Informazioni Tecniche</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Percorso Installazione</Label>
-                    <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
-                      {selectedRegistration.installationPath || 'Non specificato'}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Totale Ordini</Label>
-                    <p className="text-sm p-2 bg-gray-50 border rounded-md">
-                      {selectedRegistration.totaleOrdini || 0}
-                    </p>
+              {selectedRegistration && (
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4">Informazioni Tecniche</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Percorso Installazione</Label>
+                      <p className="text-xs font-mono p-2 bg-gray-50 border rounded-md break-all">
+                        {selectedRegistration.installationPath || 'Non specificato'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Totale Ordini</Label>
+                      <p className="text-sm p-2 bg-gray-50 border rounded-md">
+                        {selectedRegistration.totaleOrdini || 0}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Footer - solo per modalità visualizzazione */}
               {isViewDialogOpen && (
