@@ -707,6 +707,100 @@ router.get("/api/licenses/active/count", authenticateToken, async (req: Request,
   }
 });
 
+// Categories endpoints
+router.get("/api/categories", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const categories = await storage.getAllCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/api/categories", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { name, description, color } = req.body;
+
+    // Only superadmin can create categories
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo il superadmin può creare categorie" });
+    }
+
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    const categoryData = {
+      id: nanoid(),
+      name: name.trim(),
+      description: description?.trim() || null,
+      color: color || '#3B82F6'
+    };
+
+    const category = await storage.createCategory(categoryData);
+    console.log('Category created successfully:', category.name);
+    res.json(category);
+  } catch (error) {
+    console.error('Create category error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.put("/api/categories/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const categoryId = req.params.id;
+    const { name, description, color } = req.body;
+
+    // Only superadmin can update categories
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Solo il superadmin può modificare categorie" });
+    }
+
+    const existingCategory = await storage.getCategoryById(categoryId);
+    if (!existingCategory) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    const updatedCategory = await storage.updateCategory(categoryId, {
+      name,
+      description,
+      color
+    });
+
+    res.json(updatedCategory);
+  } catch (error) {
+    console.error('Update category error:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/api/categories/:id", authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const categoryId = req.params.id;
+
+    // Only superadmin can delete categories
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ message: "Only superadmin can delete categories" });
+    }
+
+    const existingCategory = await storage.getCategoryById(categoryId);
+    if (!existingCategory) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    await storage.deleteCategory(categoryId);
+    res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    console.error('Delete category error:', error);
+    res.status(500).json({ message: error.message || "Internal server error" });
+  }
+});
+
 router.get("/api/products", authenticateToken, async (req: Request, res: Response) => {
   try {
     const products = await storage.getAllProducts();
@@ -741,6 +835,13 @@ router.post("/api/products", authenticateToken, async (req: Request, res: Respon
       name: name.trim(),
       version: version.trim(),
       description: description?.trim() || null,
+      categoryId: req.body.categoryId || null,
+      licenseType: req.body.licenseType || 'permanente',
+      price: parseFloat(req.body.price) || 0,
+      discount: parseFloat(req.body.discount) || 0,
+      maxUsers: parseInt(req.body.maxUsers) || 1,
+      maxDevices: parseInt(req.body.maxDevices) || 1,
+      trialDays: parseInt(req.body.trialDays) || 30,
       supportedLicenseTypes: supportedLicenseTypes,
       createdAt: new Date().toISOString()
     };
@@ -2316,13 +2417,14 @@ router.put("/api/products/:id", authenticateToken, async (req: Request, res: Res
     }
 
     console.log('🔧 Updating product with new pricing data:', {
-      name, version, description, licenseType, price, discount, maxUsers, maxDevices, trialDays
+      name, version, description, categoryId: req.body.categoryId, licenseType, price, discount, maxUsers, maxDevices, trialDays
     });
 
     const updatedProduct = await storage.updateProduct(productId, {
       name,
       version,
       description,
+      categoryId: req.body.categoryId,
       licenseType,
       price: parseFloat(price) || 0,
       discount: parseFloat(discount) || 0,

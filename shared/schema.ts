@@ -41,12 +41,23 @@ export const agents = pgTable("agents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Categories for products
+export const categories = pgTable("categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  color: text("color").default('#3B82F6'), // hex color for UI
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Products/Applications
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   version: text("version").notNull(),
   description: text("description"),
+  categoryId: varchar("category_id"), // Foreign key to categories
   // Pricing and configuration (only modifiable by superadmin)
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 5, scale: 2 }).default('0'),
@@ -223,6 +234,11 @@ export const insertAgentSchema = createInsertSchema(agents).omit({
   createdAt: true 
 });
 
+export const insertCategorySchema = createInsertSchema(categories).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
 export const insertProductSchema = createInsertSchema(products).omit({ 
   id: true, 
   createdAt: true 
@@ -285,6 +301,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;

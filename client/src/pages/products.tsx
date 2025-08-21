@@ -45,6 +45,7 @@ export default function ProductsPage() {
     name: '',
     version: '',
     description: '',
+    categoryId: '',
     licenseType: '',
     price: 0,
     discount: 0,
@@ -56,6 +57,7 @@ export default function ProductsPage() {
     name: '',
     version: '',
     description: '',
+    categoryId: '',
     licenseType: '',
     price: 0,
     discount: 0,
@@ -95,6 +97,25 @@ export default function ProductsPage() {
       const data = await response.json();
       console.log('Products data received:', data);
       return data;
+    }
+  });
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+      return response.json();
     }
   });
 
@@ -160,6 +181,7 @@ export default function ProductsPage() {
         name: '',
         version: '',
         description: '',
+        categoryId: '',
         licenseType: '',
         price: 0,
         discount: 0,
@@ -328,6 +350,29 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select value={newProduct.categoryId} onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nessuna categoria</SelectItem>
+                      {categories.map((category: any) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.color }}
+                            ></div>
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
                   <Label htmlFor="licenseType">Tipo di Licenza *</Label>
                   <Select value={newProduct.licenseType} onValueChange={(value) => setNewProduct({ ...newProduct, licenseType: value })}>
                     <SelectTrigger>
@@ -470,6 +515,7 @@ export default function ProductsPage() {
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-semibold">Prodotto</TableHead>
                   <TableHead className="font-semibold">Versione</TableHead>
+                  <TableHead className="font-semibold">Categoria</TableHead>
                   <TableHead className="font-semibold">Descrizione</TableHead>
                   <TableHead className="font-semibold">Tipi Licenza</TableHead>
                   <TableHead className="font-semibold text-center">Licenze</TableHead>
@@ -482,9 +528,8 @@ export default function ProductsPage() {
                     <TableRow key={i}>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div></TableCell>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
-                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div></TableCell>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div></TableCell>
                       <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
@@ -492,7 +537,7 @@ export default function ProductsPage() {
                   ))
                 ) : filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
+                    <TableCell colSpan={7} className="text-center py-12">
                       {products.length === 0 ? (
                         <div>
                           <p className="text-gray-500 mb-4">Nessun prodotto trovato</p>
@@ -535,6 +580,20 @@ export default function ProductsPage() {
                           </Badge>
                         </TableCell>
 
+                        <TableCell>
+                          {product.category ? (
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: product.category.color }}
+                              ></div>
+                              <span className="text-sm">{product.category.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic text-sm">Nessuna categoria</span>
+                          )}
+                        </TableCell>
+
                         <TableCell className="max-w-xs">
                           <div className="truncate" title={product.description || ''}>
                             {product.description || (
@@ -570,6 +629,7 @@ export default function ProductsPage() {
                                       name: product.name,
                                       version: product.version,
                                       description: product.description || '',
+                                      categoryId: product.categoryId || '',
                                       licenseType: product.licenseType,
                                       price: product.price || 0,
                                       discount: product.discount || 0,
@@ -694,6 +754,33 @@ export default function ProductsPage() {
                 rows={3}
                 disabled={user.role !== 'superadmin'}
               />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-category">Categoria</Label>
+              <Select 
+                value={editProduct.categoryId || ''} 
+                onValueChange={(value) => setEditProduct({ ...editProduct, categoryId: value })}
+                disabled={user.role !== 'superadmin'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna categoria</SelectItem>
+                  {categories.map((category: any) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: category.color }}
+                        ></div>
+                        {category.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

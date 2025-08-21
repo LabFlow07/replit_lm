@@ -11,7 +11,7 @@ import type {
   WalletTransaction, InsertWalletTransaction,
   ActivationLog, InsertActivationLog,
   AccessLog, InsertAccessLog,
-  DashboardStats, UserWithCompany, TestaRegAzienda, InsertTestaRegAzienda, DettRegAzienda, InsertDettRegAzienda
+  DashboardStats, UserWithCompany, TestaRegAzienda, InsertTestaRegAzienda, DettRegAzienda, InsertDettRegAzienda, SoftwareRegistration, InsertSoftwareRegistration, Category
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -137,6 +137,13 @@ export interface IStorage {
   // Configuration methods
   saveStripeConfiguration(publicKey: string, secretKey: string, userId: string): Promise<void>;
   getStripeConfiguration(): Promise<{publicKey: string; secretKey: string} | null>;
+
+  // Category methods
+  getAllCategories(): Promise<Category[]>;
+  createCategory(category: any): Promise<Category>;
+  getCategoryById(categoryId: string): Promise<Category | null>;
+  updateCategory(categoryId: string, updates: Partial<Category>): Promise<Category | null>;
+  deleteCategory(categoryId: string): Promise<boolean>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -390,7 +397,40 @@ class DatabaseStorage implements IStorage {
   }
 
   async getAllProducts(): Promise<Product[]> {
-    return this.getProducts();
+    try {
+      const rows = await database.query(`
+        SELECT p.*, c.name as category_name, c.color as category_color
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.name, p.version
+      `);
+
+      // Map database fields to camelCase for frontend compatibility
+      return rows.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        description: row.description,
+        categoryId: row.category_id,
+        category: row.category_name ? {
+          id: row.category_id,
+          name: row.category_name,
+          color: row.category_color
+        } : null,
+        createdAt: row.created_at,
+        price: parseFloat(row.price || '0'),
+        discount: parseFloat(row.discount || '0'),
+        licenseType: row.license_type,
+        maxUsers: row.max_users,
+        maxDevices: row.max_devices,
+        trialDays: row.trial_days,
+        // Legacy fields for backward compatibility
+        supportedLicenseTypes: []
+      }));
+    } catch (error) {
+      console.error('Get all products error:', error);
+      throw error;
+    }
   }
 
   async getAllCompanies(): Promise<Company[]> {
@@ -443,26 +483,26 @@ class DatabaseStorage implements IStorage {
     return undefined;
   }
 
-  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+  async createProduct(productData: InsertProduct): Promise<Product> {
     const id = randomUUID();
     await this.db.query(`
-      INSERT INTO products (id, name, version, description, supported_license_types, price, discount, license_type, max_users, max_devices, trial_days)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO products (id, name, version, description, category_id, price, discount, license_type, max_users, max_devices, trial_days, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       id, 
-      insertProduct.name, 
-      insertProduct.version, 
-      insertProduct.description, 
-      JSON.stringify(insertProduct.supportedLicenseTypes),
-      insertProduct.price || 0,
-      insertProduct.discount || 0,
-      insertProduct.licenseType || 'permanente',
-      insertProduct.maxUsers || 1,
-      insertProduct.maxDevices || 1,
-      insertProduct.trialDays || 30
+      productData.name, 
+      productData.version, 
+      productData.description, 
+      productData.categoryId || null,
+      productData.price || 0,
+      productData.discount || 0,
+      productData.licenseType || 'permanente',
+      productData.maxUsers || 1,
+      productData.maxDevices || 1,
+      productData.trialDays || 30
     ]);
 
-    return { ...insertProduct, id, createdAt: new Date() };
+    return { ...productData, id, createdAt: new Date() };
   }
 
   async getModulesByProduct(productId: string): Promise<Module[]> {
@@ -657,74 +697,69 @@ class DatabaseStorage implements IStorage {
     return rows;
   }
 
-  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-    const updateFields = [];
-    const updateValues = [];
+  async updateProduct(productId: string, updateData: any): Promise<Product> {
+    try {
+      const setParts = [];
+      const values = [];
 
-    console.log('🔧 updateProduct called with updates:', updates);
+      if (updateData.name !== undefined) {
+        setParts.push('name = ?');
+        values.push(updateData.name);
+      }
+      if (updateData.version !== undefined) {
+        setParts.push('version = ?');
+        values.push(updateData.version);
+      }
+      if (updateData.description !== undefined) {
+        setParts.push('description = ?');
+        values.push(updateData.description);
+      }
+      if (updateData.categoryId !== undefined) {
+        setParts.push('category_id = ?');
+        values.push(updateData.categoryId);
+      }
+      if (updateData.licenseType !== undefined) {
+        setParts.push('license_type = ?');
+        values.push(updateData.licenseType);
+      }
+      if (updateData.price !== undefined) {
+        setParts.push('price = ?');
+        values.push(updateData.price);
+      }
+      if (updateData.discount !== undefined) {
+        setParts.push('discount = ?');
+        values.push(updateData.discount);
+      }
+      if (updateData.maxUsers !== undefined) {
+        setParts.push('max_users = ?');
+        values.push(updateData.maxUsers);
+      }
+      if (updateData.maxDevices !== undefined) {
+        setParts.push('max_devices = ?');
+        values.push(updateData.maxDevices);
+      }
+      if (updateData.trialDays !== undefined) {
+        setParts.push('trial_days = ?');
+        values.push(updateData.trialDays);
+      }
+      
+      if (setParts.length === 0) {
+        throw new Error('No fields to update');
+      }
 
-    if (updates.name !== undefined) {
-      updateFields.push('name = ?');
-      updateValues.push(updates.name);
-    }
-    if (updates.version !== undefined) {
-      updateFields.push('version = ?');
-      updateValues.push(updates.version);
-    }
-    if (updates.description !== undefined) {
-      updateFields.push('description = ?');
-      updateValues.push(updates.description);
-    }
-    if (updates.price !== undefined) {
-      updateFields.push('price = ?');
-      updateValues.push(updates.price);
-    }
-    if (updates.discount !== undefined) {
-      updateFields.push('discount = ?');
-      updateValues.push(updates.discount);
-    }
-    if (updates.licenseType !== undefined) {
-      updateFields.push('license_type = ?');
-      updateValues.push(updates.licenseType);
-    }
-    if (updates.maxUsers !== undefined) {
-      updateFields.push('max_users = ?');
-      updateValues.push(updates.maxUsers);
-    }
-    if (updates.maxDevices !== undefined) {
-      updateFields.push('max_devices = ?');
-      updateValues.push(updates.maxDevices);
-    }
-    if (updates.trialDays !== undefined) {
-      updateFields.push('trial_days = ?');
-      updateValues.push(updates.trialDays);
-    }
+      values.push(productId);
 
-    if (updateFields.length === 0) {
-      console.log('⚠️ No fields to update');
-      throw new Error('No fields to update');
+      await this.db.query(`
+        UPDATE products 
+        SET ${setParts.join(', ')}
+        WHERE id = ?
+      `, values);
+
+      return await this.getProduct(productId) as Product;
+    } catch (error) {
+      console.error('Update product error:', error);
+      throw error;
     }
-
-    updateValues.push(id);
-
-    const query = `UPDATE products SET ${updateFields.join(', ')} WHERE id = ?`;
-    console.log('🔍 Executing query:', query);
-    console.log('📝 With values:', updateValues);
-
-    await this.db.query(query, updateValues);
-
-    const updatedProduct = await this.getProductById(id);
-    console.log('✅ Product updated in database:', updatedProduct);
-    
-    return {
-      ...updatedProduct,
-      price: parseFloat(updatedProduct.price || '0'),
-      discount: parseFloat(updatedProduct.discount || '0'),
-      maxUsers: parseInt(updatedProduct.max_users || '1'),
-      maxDevices: parseInt(updatedProduct.max_devices || '1'),
-      trialDays: parseInt(updatedProduct.trial_days || '30'),
-      licenseType: updatedProduct.license_type
-    };
   }
 
   async deleteProduct(id: string): Promise<void> {
@@ -2896,6 +2931,105 @@ class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('❌ Database error retrieving Stripe config:', error);
       return null;
+    }
+  }
+
+  // Category methods
+  async getAllCategories(): Promise<Category[]> {
+    try {
+      const rows = await database.query('SELECT * FROM categories WHERE is_active = TRUE ORDER BY name');
+      return rows;
+    } catch (error) {
+      console.error('Get all categories error:', error);
+      throw error;
+    }
+  }
+
+  async createCategory(categoryData: any): Promise<Category> {
+    try {
+      const id = randomUUID(); // Generate ID if not provided
+      const result = await database.query(`
+        INSERT INTO categories (id, name, description, color, is_active, created_at)
+        VALUES (?, ?, ?, ?, TRUE, NOW())
+      `, [
+        categoryData.id || id,
+        categoryData.name,
+        categoryData.description || null,
+        categoryData.color || '#3B82F6'
+      ]);
+
+      return await this.getCategoryById(categoryData.id || id);
+    } catch (error) {
+      console.error('Create category error:', error);
+      throw error;
+    }
+  }
+
+  async getCategoryById(categoryId: string): Promise<Category | null> {
+    try {
+      const rows = await database.query('SELECT * FROM categories WHERE id = ?', [categoryId]);
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Get category by ID error:', error);
+      throw error;
+    }
+  }
+
+  async updateCategory(categoryId: string, updateData: Partial<Category>): Promise<Category | null> {
+    try {
+      const setParts = [];
+      const values = [];
+
+      if (updateData.name !== undefined) {
+        setParts.push('name = ?');
+        values.push(updateData.name);
+      }
+      if (updateData.description !== undefined) {
+        setParts.push('description = ?');
+        values.push(updateData.description);
+      }
+      if (updateData.color !== undefined) {
+        setParts.push('color = ?');
+        values.push(updateData.color);
+      }
+      if (updateData.isActive !== undefined) {
+        setParts.push('is_active = ?');
+        values.push(updateData.isActive);
+      }
+
+      if (setParts.length === 0) {
+        return await this.getCategoryById(categoryId); // Return current category if no updates
+      }
+
+      values.push(categoryId);
+
+      await database.query(`
+        UPDATE categories 
+        SET ${setParts.join(', ')}
+        WHERE id = ?
+      `, values);
+
+      return await this.getCategoryById(categoryId);
+    } catch (error) {
+      console.error('Update category error:', error);
+      throw error;
+    }
+  }
+
+  async deleteCategory(categoryId: string): Promise<boolean> {
+    try {
+      // Check if category has products
+      const products = await database.query('SELECT COUNT(*) as count FROM products WHERE category_id = ?', [categoryId]);
+
+      if (products[0].count > 0) {
+        throw new Error(`Cannot delete category: ${products[0].count} products are assigned to this category`);
+      }
+
+      await database.query('DELETE FROM categories WHERE id = ?', [categoryId]);
+      return true;
+    } catch (error) {
+      console.error('Delete category error:', error);
+      throw error;
     }
   }
 }
