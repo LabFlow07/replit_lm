@@ -127,6 +127,18 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
     }
   }, [initialCompanyId, companies]); // Removed onCompanySelect from dependencies
 
+  // Force update when initialCompanyId changes - this ensures proper sync
+  useEffect(() => {
+    if (initialCompanyId) {
+      const company = companies.find(c => c.id === initialCompanyId);
+      if (company) {
+        console.log('Force updating company search with:', company);
+        setSelectedCompany(company);
+        setSearchTerm(company.name || '');
+      }
+    }
+  }, [initialCompanyId, companies]);
+
 
   // Filtra le aziende in base al termine di ricerca
   // Safe arrays
@@ -250,6 +262,18 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
       }
     }
   }, [companyId, initialClientId, safeClients]); // Added proper dependencies
+
+  // Force update when initialClientId changes - this ensures proper sync
+  useEffect(() => {
+    if (initialClientId && companyId) {
+      const client = safeClients.find(c => c.id === initialClientId);
+      if (client) {
+        console.log('Force updating client search with:', client);
+        setSelectedClient(client);
+        setSearchTerm(client.name || '');
+      }
+    }
+  }, [initialClientId, companyId, safeClients]);
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -1297,7 +1321,9 @@ export default function SoftwareRegistrations() {
 
                     return (
                       <>
-                        <Select value={selectedLicenseId || 'none'} onValueChange={(value) => {
+                        <Select 
+                          value={selectedLicenseId && selectedLicenseId !== 'none' ? selectedLicenseId : 'none'} 
+                          onValueChange={(value) => {
                           // Se si seleziona "none" e ci sono assegnazioni esistenti, mostra avviso
                           if (value === 'none' && (selectedRegistration?.clienteAssegnato || selectedRegistration?.licenzaAssegnata)) {
                             const confirmMessage = 
@@ -1319,7 +1345,7 @@ export default function SoftwareRegistrations() {
                           } else {
                             setValue('prodottoAssegnato', null);
                           }
-                        }}>
+                        }}
                           <SelectTrigger data-testid="select-assign-license">
                             <SelectValue placeholder="Seleziona licenza" />
                           </SelectTrigger>
