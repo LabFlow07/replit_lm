@@ -1983,33 +1983,6 @@ export default function SoftwareRegistrations() {
                 </form>
               )}
 
-
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnato</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Licenza Assegnata</Label>
-                      {selectedRegistration?.licenzaAssegnata ? (() => {
-                        const license = safeLicenses.find(l => l.id === selectedRegistration.licenzaAssegnata);
-                        return license ? (
-                          <div className="p-2 bg-orange-50 border border-orange-200 rounded-md">
-                            <p className="text-xs font-mono text-orange-800">{license.activationKey}</p>
-                            <p className="text-xs text-orange-600">Stato: {license.status}</p>
-                            {license.maxDevices && (
-                              <p className="text-xs text-orange-600">Max dispositivi: {license.maxDevices}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm p-2 bg-gray-50 border rounded-md">Licenza non trovata</p>
-                        );
-                      })() : (
-                        <p className="text-sm p-2 bg-gray-50 border rounded-md">Non assegnata</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Informazioni Temporali e Statistiche */}
               {selectedRegistration && (
                 <div className="border-t pt-4">
