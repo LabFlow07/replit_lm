@@ -112,27 +112,22 @@ function CompanySearchInput({ companies, onCompanySelect, placeholder = "Cerca a
 
   // Set initial company if provided and not already selected
   useEffect(() => {
-    if (initialCompanyId) {
+    if (initialCompanyId && (!selectedCompany || selectedCompany.id !== initialCompanyId)) {
       const company = companies.find(c => c.id === initialCompanyId);
       if (company) {
         console.log('Setting initial company:', company);
         setSelectedCompany(company);
         setSearchTerm(company.name || '');
-        // Only call onCompanySelect if it's actually a different company
-        if (company.id !== selectedCompany?.id) {
-          onCompanySelect(company.id);
-        }
+        onCompanySelect(company.id);
       }
-    } else if (!initialCompanyId) {
-      // Always clear when no initial company ID
+    } else if (!initialCompanyId && selectedCompany) {
+      // Only clear when no initial company ID and there's currently a selection
       console.log('Clearing company selection');
       setSelectedCompany(null);
       setSearchTerm('');
-      if (selectedCompany) {
-        onCompanySelect('');
-      }
+      onCompanySelect('');
     }
-  }, [initialCompanyId, companies]); // Removed onCompanySelect from dependencies
+  }, [initialCompanyId]); // Only depend on initialCompanyId
 
 
   // Filtra le aziende in base al termine di ricerca
@@ -241,27 +236,22 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
   // Handle initial client selection and company changes
   useEffect(() => {
-    if (initialClientId && companyId) {
+    if (initialClientId && companyId && (!selectedClient || selectedClient.id !== initialClientId)) {
       const client = safeClients.find(c => c.id === initialClientId);
-      if (client) {
+      if (client && (client.company_id === companyId || client.companyId === companyId)) {
         console.log('Setting initial client:', client);
         setSelectedClient(client);
         setSearchTerm(client.name || '');
-        // Only call onClientSelect if it's actually a different client
-        if (client.id !== selectedClient?.id) {
-          onClientSelect(client.id);
-        }
+        onClientSelect(client.id);
       }
-    } else if (!companyId || !initialClientId) {
-      // Reset when company changes or client is cleared
+    } else if ((!companyId || !initialClientId) && selectedClient) {
+      // Only reset when company changes or client is cleared and there's currently a selection
       console.log('Clearing client selection');
       setSelectedClient(null);
       setSearchTerm("");
-      if (selectedClient) {
-        onClientSelect('');
-      }
+      onClientSelect('');
     }
-  }, [companyId, initialClientId, safeClients]); // Added proper dependencies
+  }, [companyId, initialClientId]); // Only depend on the key props
 
   // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
@@ -787,26 +777,23 @@ export default function SoftwareRegistrations() {
     console.log('Computer Key:', registration.computerKey);
 
     // Reset form first
-    reset();
+    reset({
+      aziendaAssegnata: companyId || '',
+      clienteAssegnato: clientId || '',
+      prodottoAssegnato: registration.prodottoAssegnato || '',
+      licenzaAssegnata: registration.licenzaAssegnata || '',
+      note: registration.note || '',
+      authorizeDevice: !!registration.computerKey
+    });
 
-    // Use setTimeout to ensure the form is reset before setting new values
-    setTimeout(() => {
-      setValue('aziendaAssegnata', companyId || '');
-      setValue('clienteAssegnato', clientId || '');
-      setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
-      setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
-      setValue('note', registration.note || '');
-      setValue('authorizeDevice', !!registration.computerKey);
-
-      console.log('Form values set after timeout:', {
-        aziendaAssegnata: companyId || '',
-        clienteAssegnato: clientId || '',
-        prodottoAssegnato: registration.prodottoAssegnato || '',
-        licenzaAssegnata: registration.licenzaAssegnata || '',
-        note: registration.note || '',
-        authorizeDevice: !!registration.computerKey
-      });
-    }, 100);
+    console.log('Form values set:', {
+      aziendaAssegnata: companyId || '',
+      clienteAssegnato: clientId || '',
+      prodottoAssegnato: registration.prodottoAssegnato || '',
+      licenzaAssegnata: registration.licenzaAssegnata || '',
+      note: registration.note || '',
+      authorizeDevice: !!registration.computerKey
+    });
 
     setIsClassifyDialogOpen(true);
   };
