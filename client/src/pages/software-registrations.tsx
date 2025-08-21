@@ -698,36 +698,41 @@ export default function SoftwareRegistrations() {
 
     let client = null;
     let companyId = '';
+    let clientId = '';
 
-    // First try to get client from clienteAssegnato
+    // First try to get client from clienteAssegnato (direct assignment)
     if (registration.clienteAssegnato) {
       client = safeClients.find(c => c.id === registration.clienteAssegnato);
+      clientId = registration.clienteAssegnato;
       companyId = client?.company_id || client?.companyId || '';
     } 
     // If no direct client assignment, try to get from assigned license
     else if (registration.licenzaAssegnata) {
       const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
       if (assignedLicense?.client) {
-        client = assignedLicense.client;
-        companyId = client.company_id || client.companyId || '';
-        // Also find the full client object for form population
-        const fullClient = safeClients.find(c => c.id === client.id);
-        if (fullClient) {
-          client = fullClient;
-        }
+        // Get the client ID from the license
+        clientId = assignedLicense.client.id;
+        companyId = assignedLicense.client.company_id || assignedLicense.client.companyId || '';
+        
+        // Find the full client object for form population
+        client = safeClients.find(c => c.id === clientId);
+        
+        console.log('Found license client:', assignedLicense.client);
+        console.log('Found full client from list:', client);
       }
     }
 
     console.log('Edit registration:', registration);
-    console.log('Found client:', client);
+    console.log('Final client:', client);
+    console.log('Final client ID:', clientId);
     console.log('Company ID:', companyId);
     console.log('Computer Key:', registration.computerKey);
 
     reset();
 
-    // Set values using setValue
+    // Set values using setValue - use clientId instead of client?.id to ensure we get the right ID
     setValue('aziendaAssegnata', companyId);
-    setValue('clienteAssegnato', client?.id || '');
+    setValue('clienteAssegnato', clientId);
     setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
     setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
     setValue('note', registration.note || '');
@@ -1297,7 +1302,7 @@ export default function SoftwareRegistrations() {
             )}
 
             <div className="space-y-4">
-              {(user?.role === 'admin' || user?.role === 'superadmin') && selectedRegistration?.licenzaAssegnata && (
+              {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedRegistration?.licenzaAssegnata || watch('licenzaAssegnata')) && (
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -1314,7 +1319,7 @@ export default function SoftwareRegistrations() {
                 </div>
               )}
 
-              {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && (
+              {user?.role === 'admin' && !selectedRegistration?.licenzaAssegnata && !watch('licenzaAssegnata') && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800">
                     <i className="fas fa-key mr-2"></i>
