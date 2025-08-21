@@ -2976,29 +2976,43 @@ class DatabaseStorage implements IStorage {
   async createCategory(category: any): Promise<Category> {
     const id = nanoid();
 
-    // Check if company_id column exists in categories table
-    try {
-      const columnExists = await this.db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'categories' AND COLUMN_NAME = 'company_id'`);
+    // Check for duplicate names within the same company scope
+    const existingCategory = await this.db.query(`
+      SELECT id FROM categories 
+      WHERE name = ? AND (
+        (company_id IS NULL AND ? IS NULL) OR 
+        (company_id = ?)
+      )
+    `, [
+      category.name,
+      category.companyId || null,
+      category.companyId || null
+    ]);
 
-      if (columnExists.length > 0) {
-        // Column exists, use full insert
-        await this.db.query(`
-          INSERT INTO categories (id, name, description, color, is_active, company_id)
-          VALUES (?, ?, ?, ?, TRUE, ?)
-        `, [id, category.name, category.description, category.color, category.companyId]);
-      } else {
-        // Column doesn't exist, insert without company_id
-        await this.db.query(`
-          INSERT INTO categories (id, name, description, color, is_active)
-          VALUES (?, ?, ?, ?, TRUE)
-        `, [id, category.name, category.description, category.color]);
-      }
-
-      return this.getCategoryById(id) as Promise<Category>;
-    } catch (error) {
-      console.error('Create category error:', error);
-      throw error;
+    if (existingCategory.length > 0) {
+      throw new Error(`A category with the name "${category.name}" already exists in this scope`);
     }
+
+    await this.db.query(`
+      INSERT INTO categories (id, name, description, color, is_active, company_id)
+      VALUES (?, ?, ?, ?, TRUE, ?)
+    `, [
+      id,
+      category.name,
+      category.description || null,
+      category.color || '#3B82F6',
+      category.companyId || null
+    ]);
+
+    return {
+      id,
+      name: category.name,
+      description: category.description || null,
+      color: category.color || '#3B82F6',
+      isActive: true,
+      companyId: category.companyId || null,
+      createdAt: new Date()
+    };
   }
 
   async getCategoryById(categoryId: string): Promise<Category | null> {

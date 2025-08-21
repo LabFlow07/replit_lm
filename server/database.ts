@@ -104,8 +104,7 @@ class Database {
           is_active BOOLEAN DEFAULT TRUE,
           company_id VARCHAR(36),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL,
-          UNIQUE KEY unique_name_per_company (name, company_id)
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
         )
       `);
 
@@ -118,6 +117,24 @@ class Database {
         }
       } catch (e: any) { 
         console.log('⚠️  Error checking/adding company_id column to categories:', e.message);
+      }
+
+      // Remove old unique constraint if it exists and add proper unique constraint
+      try {
+        // Check if the old constraint exists
+        const constraintExists = await this.query(`
+          SELECT CONSTRAINT_NAME 
+          FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+          WHERE TABLE_NAME = 'categories' 
+          AND CONSTRAINT_NAME = 'unique_name_per_company'
+        `);
+        
+        if (constraintExists.length > 0) {
+          await this.query(`ALTER TABLE categories DROP INDEX unique_name_per_company`);
+          console.log('✅ Removed old unique constraint from categories table');
+        }
+      } catch (e: any) { 
+        console.log('⚠️  Error removing old constraint:', e.message);
       }
 
       // Create products table with new pricing fields and category reference
