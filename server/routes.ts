@@ -837,7 +837,35 @@ router.delete("/api/categories/:id", authenticateToken, async (req: Request, res
 
 router.get("/api/products", authenticateToken, async (req: Request, res: Response) => {
   try {
-    const products = await storage.getAllProducts();
+    const user = (req as any).user;
+    let products = await storage.getAllProducts();
+
+    // Se l'utente non è superadmin, filtra i prodotti in base alle categorie aziendali
+    if (user.role !== 'superadmin' && user.companyId) {
+      // Ottieni tutte le categorie accessibili all'azienda dell'utente
+      const accessibleCategories = await storage.getCategoriesByCompanyHierarchy(user.companyId);
+      const accessibleCategoryIds = accessibleCategories.map(cat => cat.id);
+
+      // Filtra i prodotti:
+      // 1. Prodotti senza categoria (categoryId null/undefined) - sempre visibili
+      // 2. Prodotti con categoria accessibile all'azienda dell'utente
+      products = products.filter(product => {
+        const categoryId = product.categoryId || product.category_id;
+        
+        // Se il prodotto non ha categoria, è sempre visibile
+        if (!categoryId) {
+          return true;
+        }
+        
+        // Se il prodotto ha una categoria, verifica che sia accessibile
+        return accessibleCategoryIds.includes(categoryId);
+      });
+
+      console.log(`User ${user.username} (${user.role}) from company ${user.companyId}: filtered ${products.length} products from original set`);
+    } else {
+      console.log(`Superadmin ${user.username}: returning all ${products.length} products`);
+    }
+
     res.json(products);
   } catch (error) {
     console.error('Get products error:', error);

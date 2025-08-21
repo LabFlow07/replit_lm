@@ -2959,6 +2959,8 @@ class DatabaseStorage implements IStorage {
     const companyIds = await this.getCompanyHierarchy(companyId);
     const placeholders = companyIds.map(() => '?').join(',');
 
+    console.log(`getCategoriesByCompanyHierarchy: Company ${companyId} hierarchy: [${companyIds.join(', ')}]`);
+
     // Get categories that belong to companies in hierarchy + global categories (company_id IS NULL)
     const rows = await this.db.query(`
       SELECT * FROM categories
@@ -2967,7 +2969,7 @@ class DatabaseStorage implements IStorage {
       ORDER BY company_id IS NULL DESC, name ASC
     `, companyIds);
 
-    return rows.map((row: any) => ({
+    const categories = rows.map((row: any) => ({
       id: row.id,
       name: row.name,
       description: row.description,
@@ -2976,6 +2978,11 @@ class DatabaseStorage implements IStorage {
       companyId: row.company_id,
       createdAt: row.created_at
     }));
+
+    console.log(`getCategoriesByCompanyHierarchy: Found ${categories.length} accessible categories for company ${companyId}`);
+    console.log(`Categories: ${categories.map(c => `${c.name}(${c.companyId || 'global'})`).join(', ')}`);
+
+    return categories;
   }
 
   async createCategory(category: any): Promise<Category> {
