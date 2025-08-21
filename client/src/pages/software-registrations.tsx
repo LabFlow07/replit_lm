@@ -723,7 +723,54 @@ export default function SoftwareRegistrations() {
 
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
-    setIsEditModalOpen(true); // Open the edit modal
+
+    reset(); // Reset form state
+
+    if (registration) {
+      // For edit mode, we need to find the existing assignments and populate the form
+      const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
+      let clientId = registration.clienteAssegnato;
+      let companyId = '';
+
+      // If there's a license assigned, get client info from the license
+      if (assignedLicense && assignedLicense.client) {
+        console.log('Found assigned license:', assignedLicense);
+        console.log('License client data:', assignedLicense.client);
+        
+        // Find the full client from the clients list
+        const fullClient = safeClients.find(c => c.id === assignedLicense.client?.id);
+        console.log('Found full client from list:', fullClient);
+        
+        if (fullClient) {
+          console.log('Final client:', fullClient);
+          clientId = fullClient.id;
+          companyId = fullClient.company_id || fullClient.companyId || '';
+          console.log('Final client ID:', clientId);
+          console.log('Final company ID:', companyId);
+        }
+      }
+
+      console.log('Computer Key:', registration.computerKey);
+
+      // Set initial form values using setValue
+      setValue('aziendaAssegnata', companyId || '');
+      setValue('clienteAssegnato', clientId || '');
+      setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
+      setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
+      setValue('note', registration.note || '');
+      setValue('authorizeDevice', !!registration.computerKey); // Set checkbox based on existing key
+
+      console.log('Form values set:', {
+        aziendaAssegnata: companyId || '',
+        clienteAssegnato: clientId || '',
+        prodottoAssegnato: registration.prodottoAssegnato || '',
+        licenzaAssegnata: registration.licenzaAssegnata || '',
+        note: registration.note || '',
+        authorizeDevice: !!registration.computerKey
+      });
+    }
+    
+    setIsClassifyModalOpen(true); // Open classify modal for editing
   };
 
   // Function to view registration details
