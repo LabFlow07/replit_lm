@@ -725,6 +725,8 @@ export default function SoftwareRegistrations() {
   const handleEdit = (registration: SoftwareRegistration) => {
     setSelectedRegistration(registration);
 
+    console.log('Edit registration:', registration);
+
     let client = null;
     let companyId = '';
     let clientId = '';
@@ -734,10 +736,13 @@ export default function SoftwareRegistrations() {
       client = safeClients.find(c => c.id === registration.clienteAssegnato);
       clientId = registration.clienteAssegnato;
       companyId = client?.company_id || client?.companyId || '';
+      console.log('Direct client assignment found:', client);
     } 
     // If no direct client assignment, try to get from assigned license
     else if (registration.licenzaAssegnata) {
       const assignedLicense = safeLicenses.find(l => l.id === registration.licenzaAssegnata);
+      console.log('Found assigned license:', assignedLicense);
+      
       if (assignedLicense?.client) {
         // Get the client ID from the license
         clientId = assignedLicense.client.id;
@@ -746,26 +751,38 @@ export default function SoftwareRegistrations() {
         // Find the full client object for form population
         client = safeClients.find(c => c.id === clientId);
 
-        console.log('Found license client:', assignedLicense.client);
+        console.log('License client data:', assignedLicense.client);
         console.log('Found full client from list:', client);
       }
     }
 
-    console.log('Edit registration:', registration);
     console.log('Final client:', client);
     console.log('Final client ID:', clientId);
-    console.log('Company ID:', companyId);
+    console.log('Final company ID:', companyId);
     console.log('Computer Key:', registration.computerKey);
 
+    // Reset form first
     reset();
 
-    // Set values using setValue - use clientId instead of client?.id to ensure we get the right ID
-    setValue('aziendaAssegnata', companyId);
-    setValue('clienteAssegnato', clientId);
-    setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
-    setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
-    setValue('note', registration.note || '');
-    setValue('authorizeDevice', !!registration.computerKey);
+    // Wait for next tick to ensure form is reset, then set values
+    setTimeout(() => {
+      // Set values using setValue
+      setValue('aziendaAssegnata', companyId || '');
+      setValue('clienteAssegnato', clientId || '');
+      setValue('prodottoAssegnato', registration.prodottoAssegnato || '');
+      setValue('licenzaAssegnata', registration.licenzaAssegnata || '');
+      setValue('note', registration.note || '');
+      setValue('authorizeDevice', !!registration.computerKey);
+
+      console.log('Form values set:', {
+        aziendaAssegnata: companyId || '',
+        clienteAssegnato: clientId || '',
+        prodottoAssegnato: registration.prodottoAssegnato || '',
+        licenzaAssegnata: registration.licenzaAssegnata || '',
+        note: registration.note || '',
+        authorizeDevice: !!registration.computerKey
+      });
+    }, 100);
 
     setIsClassifyDialogOpen(true);
   };
