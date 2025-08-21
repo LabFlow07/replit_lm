@@ -40,6 +40,7 @@ export default function ProductsPage() {
   const { contentMargin } = useSidebar();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -64,6 +65,11 @@ export default function ProductsPage() {
     maxUsers: 1,
     maxDevices: 1,
     trialDays: 30
+  });
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    description: '',
+    color: '#3B82F6'
   });
 
   // Filter states
@@ -250,6 +256,51 @@ export default function ProductsPage() {
     }
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: async (categoryData: typeof newCategory) => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(categoryData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create category');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      setIsCategoryModalOpen(false);
+      setNewCategory({
+        name: '',
+        description: '',
+        color: '#3B82F6'
+      });
+      toast({
+        title: "Categoria creata",
+        description: "La categoria è stata creata con successo.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nella creazione della categoria",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Filter products based on search and license type
   const filteredProducts = products.filter((product: any) => {
     const matchesSearch = searchTerm === "" || 
@@ -278,6 +329,11 @@ export default function ProductsPage() {
     }
   };
 
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    createCategoryMutation.mutate(newCategory);
+  };
+
 
 
   if (loading) {
@@ -301,13 +357,318 @@ export default function ProductsPage() {
         </div>
 
         {user.role === 'superadmin' && (
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-blue-700">
-                <i className="fas fa-plus mr-2"></i>
-                Nuovo Prodotto
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-blue-700">
+                  <i className="fas fa-plus mr-2"></i>
+                  Nuovo Prodotto
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+            
+            <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
+                  <i className="fas fa-tag mr-2"></i>
+                  Nuova Categoria
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Crea Nuova Categoria</DialogTitle>
+                  <DialogDescription>
+                    Aggiungi una nuova categoria per organizzare i prodotti
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateCategory} className="space-y-4">
+                  <div>
+                    <Label htmlFor="category-name">Nome Categoria *</Label>
+                    <Input
+                      id="category-name"
+                      value={newCategory.name}
+                      onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                      placeholder="es. Software di Gestione"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="category-description">Descrizione</Label>
+                    <Textarea
+                      id="category-description"
+                      value={newCategory.description}
+                      onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                      placeholder="Descrizione della categoria..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="category-color">Colore</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="category-color"
+                        type="color"
+                        value={newCategory.color}
+                        onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
+                        className="w-16 h-10 p-1 border rounded"
+                      />
+                      <span className="text-sm text-gray-500">{newCategory.color}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsCategoryModalOpen(false)}>
+                      Annulla
+                    </Button>
+                    <Button type="submit" disabled={createCategoryMutation.isPending}>
+                      {createCategoryMutation.isPending ? 'Creazione...' : 'Crea Categoria'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+      </div>
+
+      {/* Create Product Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+      </div>
+
+      {/* Search and Filter Section */}
+      <Card className="mb-6">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <CardTitle>Prodotti ({filteredProducts.length} di {products.length})</CardTitle>
+
+            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+              <Input
+                placeholder="Cerca per nome, versione o descrizione..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="md:w-80"
+              />
+
+              <Select value={licenseTypeFilter} onValueChange={setLicenseTypeFilter}>
+                <SelectTrigger className="md:w-48">
+                  <SelectValue placeholder="Tipo licenza" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i tipi</SelectItem>
+                  <SelectItem value="permanente">Permanente</SelectItem>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="abbonamento">Abbonamento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Products Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold">Prodotto</TableHead>
+                  <TableHead className="font-semibold">Versione</TableHead>
+                  <TableHead className="font-semibold">Categoria</TableHead>
+                  <TableHead className="font-semibold">Descrizione</TableHead>
+                  <TableHead className="font-semibold">Tipi Licenza</TableHead>
+                  <TableHead className="font-semibold text-center">Licenze</TableHead>
+                  <TableHead className="font-semibold text-center">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
+                      {products.length === 0 ? (
+                        <div>
+                          <p className="text-gray-500 mb-4">Nessun prodotto trovato</p>
+                          <p className="text-sm text-gray-400">Crea il primo prodotto per iniziare</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-gray-500 mb-4">Nessun prodotto trovato con i filtri selezionati</p>
+                          <Button 
+                            variant="outline"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setLicenseTypeFilter("all");
+                            }}
+                          >
+                            Rimuovi filtri
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredProducts.map((product: any) => {
+                    const licenseCount = getProductLicenseCount(product);
+
+                    return (
+                      <TableRow key={product.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center">
+                              <i className="fas fa-cube text-primary text-sm"></i>
+                            </div>
+                            <span className="font-semibold">{product.name}</span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono">
+                            {product.version}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          {product.category ? (
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: product.category.color }}
+                              ></div>
+                              <span className="text-sm">{product.category.name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic text-sm">Nessuna categoria</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="max-w-xs">
+                          <div className="truncate" title={product.description || ''}>
+                            {product.description || (
+                              <span className="text-gray-400 italic">Nessuna descrizione</span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge 
+                            className={`text-xs ${licenseTypeColors[product.licenseType] || 'bg-gray-100 text-gray-800'}`}
+                          >
+                            {licenseTypeLabels[product.licenseType] || product.licenseType || 'Non definito'}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          <Badge variant={licenseCount > 0 ? "default" : "secondary"}>
+                            {licenseCount}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex justify-center space-x-1">
+                            {(user.role === 'superadmin' || user.role === 'admin') && (
+                              <>
+                                {/* View/Edit button - view only for admin, edit for superadmin */}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditProduct({
+                                      name: product.name,
+                                      version: product.version,
+                                      description: product.description || '',
+                                      categoryId: product.categoryId || '',
+                                      licenseType: product.licenseType,
+                                      price: product.price || 0,
+                                      discount: product.discount || 0,
+                                      maxUsers: product.maxUsers || 1,
+                                      maxDevices: product.maxDevices || 1,
+                                      trialDays: product.trialDays || 30
+                                    });
+                                    setSelectedProduct(product);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title={user.role === 'superadmin' ? "Modifica prodotto" : "Visualizza dettagli prodotto"}
+                                >
+                                  <i className={`fas ${user.role === 'superadmin' ? 'fa-edit' : 'fa-eye'} text-sm`}></i>
+                                </Button>
+
+                                {/* Delete button - only for superadmin */}
+                                {user.role === 'superadmin' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-800"
+                                    onClick={async () => {
+                                      if (confirm(`Sei sicuro di voler eliminare il prodotto "${product.name}"?`)) {
+                                        try {
+                                          const token = localStorage.getItem('token');
+                                          const response = await fetch(`/api/products/${product.id}`, {
+                                            method: 'DELETE',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`
+                                            }
+                                          });
+
+                                          if (response.ok) {
+                                            queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+                                            toast({
+                                              title: "Prodotto eliminato",
+                                              description: "Il prodotto è stato eliminato con successo.",
+                                            });
+                                          } else {
+                                            const error = await response.json();
+                                            toast({
+                                              title: "Errore",
+                                              description: `Errore nell'eliminazione: ${error.message}`,
+                                              variant: "destructive",
+                                            });
+                                          }
+                                        } catch (error) {
+                                          console.error('Error deleting product:', error);
+                                          toast({
+                                            title: "Errore",
+                                            description: "Errore di connessione durante l'eliminazione del prodotto",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }
+                                    }}
+                                    title="Elimina prodotto"
+                                  >
+                                    <i className="fas fa-trash text-sm"></i>
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Create Product Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Crea Nuovo Prodotto</DialogTitle>
