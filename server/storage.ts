@@ -1234,7 +1234,7 @@ class DatabaseStorage implements IStorage {
       ORDER BY t.created_at DESC
     `, [licenseId]);
 
-    return rows.map(this.mapTransactionFromDb);
+    return rows.map((row: any) => this.mapTransactionRow(row));
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
