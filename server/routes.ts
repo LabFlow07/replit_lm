@@ -6,6 +6,9 @@ import { database } from "./database";
 import { storage } from "./storage";
 import { calculateExpiryDate, generateRenewalTransaction, processAutomaticRenewals, updateMissingExpiryDates, startAutomaticRenewalScheduler } from "./license-utils";
 import Stripe from "stripe";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 
@@ -16,6 +19,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 // Initialize Stripe
+console.log(process.env.STRIPE_SECRET_KEY)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
 });

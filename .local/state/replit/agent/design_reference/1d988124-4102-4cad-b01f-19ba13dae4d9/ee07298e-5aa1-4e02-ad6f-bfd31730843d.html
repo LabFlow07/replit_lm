@@ -1,0 +1,610 @@
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QLM License Management Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    'roboto': ['Roboto', 'sans-serif'],
+                },
+                colors: {
+                    primary: '#1976D2',
+                    secondary: '#388E3C',
+                    accent: '#F57C00',
+                    error: '#D32F2F',
+                    surface: '#FAFAFA',
+                    'surface-variant': '#F5F5F5',
+                }
+            }
+        }
+    };
+    </script>
+</head>
+<body class="font-roboto bg-surface text-gray-900">
+    <!-- @COMPONENT: AppLayout -->
+    <div class="min-h-screen flex">
+        <!-- @COMPONENT: Sidebar -->
+        <aside class="w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full overflow-y-auto">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-key text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">QLM Platform</h1>
+                        <p class="text-sm text-gray-500">License Manager</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Role Selector -->
+            <div class="p-4 border-b border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Ruolo Attivo</label>
+                <select class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent" data-bind="currentUserRole">
+                    <option value="superadmin">Superadmin</option>
+                    <option value="rivenditore">Rivenditore</option>
+                    <option value="agente">Agente</option>
+                    <option value="cliente">Cliente</option>
+                </select>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="p-4 space-y-2">
+                <!-- @STATE: activeMenuItem:string = 'dashboard' -->
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg bg-primary text-white" data-event="click:setActiveMenu" data-implementation="Handle navigation between sections">
+                    <i class="fas fa-chart-dashboard text-sm"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+                
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                    <i class="fas fa-key text-sm"></i>
+                    <span class="font-medium">Licenze</span>
+                    <span class="ml-auto bg-secondary text-white text-xs px-2 py-1 rounded-full" data-bind="activeLicensesCount">245</span>
+                </a>
+                
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                    <i class="fas fa-users text-sm"></i>
+                    <span class="font-medium">Clienti</span>
+                </a>
+                
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                    <i class="fas fa-box text-sm"></i>
+                    <span class="font-medium">Prodotti</span>
+                </a>
+                
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                    <i class="fas fa-chart-line text-sm"></i>
+                    <span class="font-medium">Transazioni</span>
+                </a>
+                
+                <div class="pt-4 border-t border-gray-200">
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                        <i class="fas fa-cog text-sm"></i>
+                        <span class="font-medium">Impostazioni</span>
+                    </a>
+                    
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700" data-event="click:setActiveMenu">
+                        <i class="fas fa-file-alt text-sm"></i>
+                        <span class="font-medium">Log Attività</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- User Profile -->
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-gray-600 text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate" data-bind="currentUser.name">Mario Rossi</p>
+                        <p class="text-xs text-gray-500 truncate" data-bind="currentUser.company">Acme Corp</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-gray-600" data-event="click:logout">
+                        <i class="fas fa-sign-out-alt text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent -->
+        <main class="flex-1 ml-64 bg-surface">
+            <!-- @COMPONENT: TopBar -->
+            <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Dashboard Licenze</h2>
+                        <p class="text-sm text-gray-600 mt-1">Gestione e monitoraggio delle licenze software</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Quick Actions -->
+                        <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2" data-event="click:createLicense" data-implementation="Open license creation modal">
+                            <i class="fas fa-plus text-sm"></i>
+                            <span>Nuova Licenza</span>
+                        </button>
+                        
+                        <!-- Notifications -->
+                        <div class="relative">
+                            <button class="p-2 text-gray-400 hover:text-gray-600 relative" data-event="click:toggleNotifications">
+                                <i class="fas fa-bell text-lg"></i>
+                                <span class="absolute -top-1 -right-1 bg-error text-white text-xs w-5 h-5 rounded-full flex items-center justify-center" data-bind="pendingNotifications">3</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: TopBar -->
+
+            <!-- @COMPONENT: DashboardContent -->
+            <div class="p-6 space-y-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- @MAP: statsCards.map(card => ( -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Licenze Attive</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1" data-bind="stats.activeLicenses">1,247</p>
+                                <p class="text-sm text-secondary mt-1">
+                                    <i class="fas fa-arrow-up text-xs"></i>
+                                    <span>+12% questo mese</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-secondary bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-key text-secondary text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Licenze Demo</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1" data-bind="stats.demoLicenses">156</p>
+                                <p class="text-sm text-accent mt-1">
+                                    <span>34 scadono oggi</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-accent bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-accent text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Clienti Totali</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1" data-bind="stats.totalClients">892</p>
+                                <p class="text-sm text-secondary mt-1">
+                                    <i class="fas fa-arrow-up text-xs"></i>
+                                    <span>+8% questo mese</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-primary text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Fatturato Mensile</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1" data-bind="stats.monthlyRevenue">€24,560</p>
+                                <p class="text-sm text-secondary mt-1">
+                                    <i class="fas fa-arrow-up text-xs"></i>
+                                    <span>+18% vs scorso mese</span>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-secondary bg-opacity-10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-euro-sign text-secondary text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+
+                <!-- License Management Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Recent Licenses -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900">Licenze Recenti</h3>
+                                <div class="flex items-center space-x-2">
+                                    <select class="px-3 py-1 text-sm border border-gray-300 rounded-md" data-bind="licenseFilter">
+                                        <option value="all">Tutte</option>
+                                        <option value="active">Attive</option>
+                                        <option value="demo">Demo</option>
+                                        <option value="expired">Scadute</option>
+                                        <option value="pending">In Attesa</option>
+                                    </select>
+                                    <button class="text-primary hover:text-blue-700" data-event="click:refreshLicenses">
+                                        <i class="fas fa-refresh text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Licenza</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prodotto</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stato</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scadenza</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <!-- @MAP: recentLicenses.map(license => ( -->
+                                    <tr class="hover:bg-gray-50" data-mock="true">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900" data-bind="license.activationKey">LIC-2024-001</div>
+                                            <div class="text-sm text-gray-500" data-bind="license.computerKey">COMP-ABC123</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900" data-bind="license.client.name">TechSoft S.r.l.</div>
+                                            <div class="text-sm text-gray-500" data-bind="license.client.email">info@techsoft.it</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900" data-bind="license.product.name">ERP Suite Pro</div>
+                                            <div class="text-sm text-gray-500" data-bind="license.product.version">v3.2.1</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-secondary bg-opacity-10 text-secondary" data-bind="license.status">Attiva</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-bind="license.expiryDate">31/12/2024</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <button class="text-primary hover:text-blue-700 mr-3" data-event="click:viewLicense" data-implementation="Open license details modal">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="text-gray-400 hover:text-gray-600" data-event="click:editLicense">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="hover:bg-gray-50" data-mock="true">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">LIC-2024-002</div>
+                                            <div class="text-sm text-gray-500">COMP-DEF456</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Innovate Hub</div>
+                                            <div class="text-sm text-gray-500">admin@innovatehub.com</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">CRM Enterprise</div>
+                                            <div class="text-sm text-gray-500">v2.8.0</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-accent bg-opacity-10 text-accent">Demo</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">15/02/2024</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <button class="text-primary hover:text-blue-700 mr-3" data-event="click:viewLicense">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="text-gray-400 hover:text-gray-600" data-event="click:editLicense">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="hover:bg-gray-50" data-mock="true">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">LIC-2024-003</div>
+                                            <div class="text-sm text-gray-500">COMP-GHI789</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Digital Solutions</div>
+                                            <div class="text-sm text-gray-500">contact@digitalsol.eu</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">Analytics Suite</div>
+                                            <div class="text-sm text-gray-500">v1.5.2</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">In Attesa</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <button class="text-primary hover:text-blue-700 mr-3" data-event="click:viewLicense">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="text-gray-400 hover:text-gray-600" data-event="click:editLicense">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <!-- @END_MAP )) -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="px-6 py-3 border-t border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm text-gray-700">Mostrando <span class="font-medium">1-3</span> di <span class="font-medium">247</span> licenze</p>
+                                <div class="flex space-x-2">
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50" data-event="click:previousPage">Precedente</button>
+                                    <button class="px-3 py-1 text-sm bg-primary text-white rounded-md">1</button>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50">2</button>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50" data-event="click:nextPage">Successivo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Panel -->
+                    <div class="space-y-6">
+                        <!-- License Activation -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Attivazione Rapida</h3>
+                            <form class="space-y-4" data-implementation="Handle license activation API call">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Activation Key</label>
+                                    <input type="text" placeholder="LIC-XXXX-XXXX" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent text-sm" data-bind="activationForm.key">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Computer ID</label>
+                                    <input type="text" placeholder="COMP-XXXXXXXXX" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent text-sm" data-bind="activationForm.computerId">
+                                </div>
+                                <button type="submit" class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium" data-event="click:activateLicense">
+                                    <i class="fas fa-key mr-2"></i>
+                                    Attiva Licenza
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Alert Panel -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Avvisi Importanti</h3>
+                            <div class="space-y-3">
+                                <!-- @MAP: alerts.map(alert => ( -->
+                                <div class="flex items-start space-x-3 p-3 bg-accent bg-opacity-10 rounded-lg" data-mock="true">
+                                    <i class="fas fa-exclamation-triangle text-accent mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900" data-bind="alert.title">34 licenze demo scadono oggi</p>
+                                        <p class="text-xs text-gray-600 mt-1" data-bind="alert.description">Verificare rinnovi in sospeso</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start space-x-3 p-3 bg-error bg-opacity-10 rounded-lg" data-mock="true">
+                                    <i class="fas fa-times-circle text-error mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900">12 licenze scadute</p>
+                                        <p class="text-xs text-gray-600 mt-1">Contattare clienti per rinnovo</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg" data-mock="true">
+                                    <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900">5 nuovi clienti in attesa</p>
+                                        <p class="text-xs text-gray-600 mt-1">Verifica documenti necessaria</p>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Statistiche Veloci</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Attivazioni oggi</span>
+                                    <span class="text-sm font-semibold text-gray-900" data-bind="quickStats.todayActivations">23</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Conversioni demo</span>
+                                    <span class="text-sm font-semibold text-secondary" data-bind="quickStats.demoConversions">8</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Rinnovi in scadenza</span>
+                                    <span class="text-sm font-semibold text-accent" data-bind="quickStats.expiringRenewals">47</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Fatturato giornaliero</span>
+                                    <span class="text-sm font-semibold text-gray-900" data-bind="quickStats.dailyRevenue">€1,250</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- License Validation API Demo -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Test Validazione Licenza</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Parametri Richiesta</h4>
+                            <form class="space-y-4" data-implementation="Call license validation API endpoint">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Activation Key</label>
+                                    <input type="text" value="LIC-2024-001" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" data-bind="validationTest.activationKey">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Computer Key</label>
+                                    <input type="text" value="COMP-ABC123" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" data-bind="validationTest.computerKey">
+                                </div>
+                                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700" data-event="click:validateLicense">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    Valida Licenza
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Risposta API</h4>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <pre class="text-xs text-gray-800 whitespace-pre-wrap" data-mock="true" data-bind="validationResponse">{
+  "status": "valid",
+  "license": {
+    "id": "LIC-2024-001",
+    "product": "ERP Suite Pro",
+    "version": "v3.2.1",
+    "client": "TechSoft S.r.l.",
+    "expiryDate": "2024-12-31",
+    "activeModules": [
+      "inventory_management",
+      "financial_reporting",
+      "user_management"
+    ],
+    "deviceBound": true,
+    "maxUsers": 50,
+    "currentUsers": 23
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: DashboardContent -->
+        </main>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: AppLayout -->
+
+    <!-- Modal Overlay for License Details -->
+    <!-- @COMPONENT: LicenseModal -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 hidden" id="licenseModal" data-state="isLicenseModalOpen">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-semibold text-gray-900">Dettagli Licenza</h3>
+                        <button class="text-gray-400 hover:text-gray-600" data-event="click:closeLicenseModal">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-mock="true">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Activation Key</label>
+                                <p class="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded" data-bind="selectedLicense.activationKey">LIC-2024-001</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Computer Key</label>
+                                <p class="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded" data-bind="selectedLicense.computerKey">COMP-ABC123</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Cliente</label>
+                                <p class="mt-1 text-sm text-gray-900" data-bind="selectedLicense.client.name">TechSoft S.r.l.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Prodotto</label>
+                                <p class="mt-1 text-sm text-gray-900" data-bind="selectedLicense.product.name">ERP Suite Pro v3.2.1</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Stato</label>
+                                <span class="mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-secondary bg-opacity-10 text-secondary" data-bind="selectedLicense.status">Attiva</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Data Attivazione</label>
+                                <p class="mt-1 text-sm text-gray-900" data-bind="selectedLicense.activationDate">15/01/2024</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Data Scadenza</label>
+                                <p class="mt-1 text-sm text-gray-900" data-bind="selectedLicense.expiryDate">31/12/2024</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Moduli Attivi</label>
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    <!-- @MAP: selectedLicense.modules.map(module => ( -->
+                                    <span class="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded" data-bind="module.name">Gestione Inventario</span>
+                                    <span class="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Report Finanziari</span>
+                                    <span class="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Gestione Utenti</span>
+                                    <!-- @END_MAP )) -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" data-event="click:closeLicenseModal">Chiudi</button>
+                    <button class="px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-blue-700" data-event="click:editLicense" data-implementation="Open license editing form">Modifica</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LicenseModal -->
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        (function() {
+            // Simple demo interactions - replace with actual React implementation
+            const roleSelector = document.querySelector('select[data-bind="currentUserRole"]');
+            const notificationBtn = document.querySelector('[data-event="click:toggleNotifications"]');
+            const validateBtn = document.querySelector('[data-event="click:validateLicense"]');
+            const licenseModal = document.getElementById('licenseModal');
+            
+            // Role-based navigation visibility (demo)
+            if (roleSelector) {
+                roleSelector.addEventListener('change', function() {
+                    console.log('Role changed to:', this.value);
+                    // TODO: Update navigation and permissions based on role
+                });
+            }
+            
+            // Notification toggle (demo)
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', function() {
+                    console.log('Toggle notifications');
+                    // TODO: Show/hide notifications dropdown
+                });
+            }
+            
+            // License validation demo
+            if (validateBtn) {
+                validateBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Validating license...');
+                    // TODO: Call actual API endpoint /api/licenze/valida
+                });
+            }
+            
+            // License modal handlers
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('[data-event="click:viewLicense"]')) {
+                    e.preventDefault();
+                    licenseModal?.classList.remove('hidden');
+                }
+                
+                if (e.target.closest('[data-event="click:closeLicenseModal"]')) {
+                    licenseModal?.classList.add('hidden');
+                }
+            });
+            
+            // TODO: Implement actual API integrations:
+            // - License activation: POST /api/licenze/attiva
+            // - License validation: POST /api/licenze/valida  
+            // - Client registration: POST /api/clienti/registrazione
+            // - License renewal: POST /api/licenze/rinnova
+            // - Admin endpoints: /api/admin/licenze, /api/admin/clienti, /api/admin/agent
+            // - Statistics: GET /api/statistiche
+        })();
+    </script>
+</body>
+</html>

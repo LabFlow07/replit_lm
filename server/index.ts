@@ -4,6 +4,9 @@ import { setupVite, serveStatic, log } from "./vite";
 import { database } from "./database";
 import { startAutomaticRenewalScheduler } from "./license-utils";
 import { storage } from "./storage";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
