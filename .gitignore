@@ -65,3 +65,5 @@ coverage/
 
 # Optional eslint cache
 .eslintcache
+
+.local/
