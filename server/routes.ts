@@ -1301,7 +1301,14 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
         idLicenza: licenzaAssegnata
       });
 
-      // Generate automatic transaction and process payment for license assignment
+      // Check if this license already has a transaction from software registration classification
+      const existingTransactions = await storage.getTransactionsByLicense(licenzaAssegnata);
+      const hasClassificationTransaction = existingTransactions.some(tx => 
+        tx.notes && tx.notes.includes('registrazione software')
+      );
+
+      // Generate automatic transaction and process payment for license assignment ONLY if no classification transaction exists
+      if (!hasClassificationTransaction) {
         try {
           // Ottieni informazioni del client per la transazione
           const client = await storage.getClientById(clienteAssegnato);
@@ -1401,6 +1408,9 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           console.error('Error creating transaction for software registration:', transactionError);
           // Continue with license assignment even if transaction creation fails
         }
+      } else {
+        console.log(`💡 License ${licenzaAssegnata} already has a classification transaction - skipping duplicate creation`);
+      }
 
       console.log(`License ${licenzaAssegnata} activated and assigned to company ${partitaIva}`);
     } else if (licenzaAssegnata === null) {

@@ -1144,6 +1144,35 @@ class DatabaseStorage implements IStorage {
     }
   }
 
+  // Helper to map transaction rows from DB to Transaction object
+  private mapTransactionFromDb(row: any): Transaction {
+    return {
+      id: row.id,
+      licenseId: row.license_id,
+      clientId: row.client_id,
+      companyId: row.company_id,
+      client_name: row.client_name,
+      client_email: row.client_email,
+      company_name: row.company_name,
+      license_key: row.license_key,
+      type: row.type,
+      amount: parseFloat(row.amount || '0'),
+      discount: parseFloat(row.discount || '0'),
+      final_amount: parseFloat(row.final_amount || '0'),
+      paymentMethod: row.payment_method,
+      status: row.status,
+      paymentLink: row.payment_link,
+      paymentDate: row.payment_date,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      created_at: row.created_at,
+      creditsUsed: parseFloat(row.credits_used || '0'),
+      modifiedBy: row.modified_by
+    };
+  }
+
+
   async createTransaction(transactionData: InsertTransaction): Promise<Transaction> {
     const id = nanoid();
 
@@ -1193,11 +1222,19 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByLicense(licenseId: string): Promise<Transaction[]> {
-    const rows = await this.db.query(
-      'SELECT * FROM transactions WHERE license_id = ? ORDER BY created_at DESC',
-      [licenseId]
-    );
-    return rows;
+    const rows = await this.db.query(`
+      SELECT 
+        t.*,
+        c.name as client_name,
+        l.activation_key as license_key
+      FROM transactions t
+      LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN licenses l ON t.license_id = l.id
+      WHERE t.license_id = ?
+      ORDER BY t.created_at DESC
+    `, [licenseId]);
+
+    return rows.map(this.mapTransactionFromDb);
   }
 
   async getAllTransactions(): Promise<Transaction[]> {
@@ -1300,8 +1337,8 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
-    const query = `
-      SELECT
+    const rows = await this.db.query(`
+      SELECT 
         t.*,
         c.name as client_name,
         c.email as client_email,
@@ -1315,9 +1352,8 @@ class DatabaseStorage implements IStorage {
       LEFT JOIN users u ON t.modified_by = u.id
       WHERE t.company_id = ?
       ORDER BY t.created_at DESC
-    `;
+    `, [companyId]);
 
-    const rows = await this.db.query(query, [companyId]);
     return rows.map((row: any) => ({
       id: row.id,
       licenseId: row.license_id,
