@@ -556,7 +556,7 @@ function WalletContent() {
                         <SelectItem value="all">Tutti i tipi</SelectItem>
                         <SelectItem value="rivenditore">Rivenditore</SelectItem>
                         <SelectItem value="cliente">Cliente</SelectItem>
-                        <SelectItem value="sottoazienda">Sotto-azienda</SelectItem>
+                        <SelectItem value="sottoazienda">SottoAz.Rivenditore</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
