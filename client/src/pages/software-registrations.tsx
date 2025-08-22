@@ -1651,13 +1651,36 @@ export default function SoftwareRegistrations() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nessun cliente</SelectItem>
-                                {safeClients.filter((client: any) => 
-                                  (client.company_id || client.companyId) === watch('aziendaAssegnata')
-                                ).map((client: any) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                    {client.name} - {client.email}
-                                  </SelectItem>
-                                ))}
+                                {(() => {
+                                  const selectedCompanyId = watch('aziendaAssegnata');
+                                  
+                                  // Get direct clients of the selected company
+                                  const directClients = safeClients.filter((client: any) => 
+                                    (client.company_id || client.companyId) === selectedCompanyId
+                                  ).map((client: any) => ({
+                                    ...client,
+                                    displayType: 'Cliente Diretto'
+                                  }));
+                                  
+                                  // Get sub-companies of the selected company that act as clients
+                                  const subCompanyClients = safeCompanies.filter((company: any) => 
+                                    (company.parent_id || company.parentId) === selectedCompanyId
+                                  ).map((company: any) => ({
+                                    id: company.id,
+                                    name: company.name,
+                                    email: company.partitaIva || 'Azienda Cliente',
+                                    displayType: 'Azienda Cliente'
+                                  }));
+                                  
+                                  // Combine both lists
+                                  const allOptions = [...directClients, ...subCompanyClients];
+                                  
+                                  return allOptions.map((option: any) => (
+                                    <SelectItem key={option.id} value={option.id}>
+                                      {option.name} ({option.displayType})
+                                    </SelectItem>
+                                  ));
+                                })()}
                               </SelectContent>
                             </Select>
                           ) : (
