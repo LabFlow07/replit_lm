@@ -1295,13 +1295,17 @@ class DatabaseStorage implements IStorage {
         LEFT JOIN users u ON t.modified_by = u.id
         LEFT JOIN clients lic_client ON l.client_id = lic_client.id
         LEFT JOIN companies lic_comp ON lic_client.company_id = lic_comp.id
-        WHERE (t.company_id IN (${placeholders}) OR c.company_id IN (${placeholders}))
+        WHERE (
+          t.company_id IN (${placeholders}) OR 
+          c.company_id IN (${placeholders}) OR
+          lic_client.company_id IN (${placeholders})
+        )
         ORDER BY COALESCE(t.created_at, t.updated_at) DESC
       `;
 
       console.log(`getTransactionsByCompanyHierarchy: Executing query with company IDs: [${companyIds.join(', ')}]`);
 
-      const rows = await this.db.query(query, [...companyIds, ...companyIds]);
+      const rows = await this.db.query(query, [...companyIds, ...companyIds, ...companyIds]);
 
       console.log(`getTransactionsByCompanyHierarchy: Found ${rows.length} transactions`);
 
