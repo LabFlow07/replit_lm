@@ -234,43 +234,41 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     return company ? company.name : 'N/A';
   };
 
-  // Handle initial client selection and company changes
+  // Handle initial client selection
   useEffect(() => {
-    if (initialClientId && companyId && (!selectedClient || selectedClient.id !== initialClientId)) {
+    if (initialClientId && (!selectedClient || selectedClient.id !== initialClientId)) {
       const client = safeClients.find(c => c.id === initialClientId);
-      if (client && (client.company_id === companyId || client.companyId === companyId)) {
+      if (client) {
         console.log('Setting initial client:', client);
         setSelectedClient(client);
         setSearchTerm(client.name || '');
         onClientSelect(client.id);
       }
-    } else if ((!companyId || !initialClientId) && selectedClient) {
-      // Only reset when company changes or client is cleared and there's currently a selection
+    } else if (!initialClientId && selectedClient) {
       console.log('Clearing client selection');
       setSelectedClient(null);
       setSearchTerm("");
       onClientSelect('');
     }
-  }, [companyId, initialClientId]); // Only depend on the key props
+  }, [initialClientId]); // Only depend on initialClientId
 
-  // Filtra i clienti SOLO per l'azienda selezionata
+  // Filtra i clienti in base al termine di ricerca
   const filteredClients = safeClients.filter((client: Client) => {
-    // Filtra RIGOROSAMENTE per azienda - deve corrispondere esattamente
-    const clientCompanyId = client.companyId || client.company_id;
-    if (!companyId || clientCompanyId !== companyId) {
-      return false;
-    }
-
-    // Poi filtra per termine di ricerca se presente
-    if (!searchTerm) return true;
-
     const searchLower = searchTerm.toLowerCase();
     const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
                        client.email?.toLowerCase().includes(searchLower);
-
-    return clientMatch;
+    const companyName = getCompanyName(client.companyId || client.company_id || '');
+    const companyMatch = companyName.toLowerCase().includes(searchLower);
+    
+    return clientMatch || companyMatch;
   }).sort((a, b) => {
-    // Ordina per nome cliente
+    // Ordina prima per azienda, poi per nome cliente
+    const companyA = getCompanyName(a.companyId || a.company_id || '');
+    const companyB = getCompanyName(b.companyId || b.company_id || '');
+    
+    if (companyA !== companyB) {
+      return companyA.localeCompare(companyB);
+    }
     return (a.name || '').localeCompare(b.name || '');
   });
 
@@ -297,13 +295,12 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         value={searchTerm}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
-        placeholder={companyId ? placeholder : "Seleziona prima un'azienda"}
+        placeholder={placeholder}
         className="w-full"
         autoComplete="off"
-        disabled={!companyId}
       />
 
-      {isOpen && companyId && filteredClients.length > 0 && (
+      {isOpen && filteredClients.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
           {filteredClients.map((client: Client) => (
             <div
@@ -317,7 +314,8 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
                   {client.name}
                 </div>
                 <div className="text-xs text-gray-600">
-                  {client.email}
+                  <i className="fas fa-building mr-1 text-gray-400"></i>
+                  {getCompanyName(client.companyId || client.company_id || '')} • {client.email}
                 </div>
               </div>
             </div>
@@ -325,10 +323,10 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         </div>
       )}
 
-      {isOpen && companyId && filteredClients.length === 0 && (
+      {isOpen && filteredClients.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
           <div className="px-3 py-2 text-sm text-gray-500 text-center">
-            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda"}
+            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile"}
           </div>
         </div>
       )}
