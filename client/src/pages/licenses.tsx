@@ -1256,7 +1256,6 @@ export default function LicensesPage() {
             setIsLicenseModalOpen(false);
             setEditingLicense(null);
           }}
-          canEdit={user.role === 'superadmin'}
         />
 
       </main>

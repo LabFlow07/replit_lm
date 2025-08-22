@@ -163,66 +163,9 @@ interface LicenseModalProps {
   license: LicenseWithDetails | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit?: () => void;
-  isEditMode?: boolean;
-  canEdit?: boolean;
 }
 
-export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditMode, canEdit = false }: LicenseModalProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedLicense, setEditedLicense] = useState<Partial<LicenseWithDetails>>({});
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (license && isOpen) {
-      setEditedLicense({
-        // Solo i campi modificabili in una licenza
-        renewalEnabled: license.renewalEnabled || false,
-        renewalPeriod: license.renewalPeriod,
-        // NON includere: maxUsers, maxDevices, price, discount, licenseType, priceType
-        // perché sono ereditati dal prodotto e non devono essere modificabili
-      });
-      setIsEditing(false);
-    }
-  }, [license, isOpen]);
-
-  const handleSave = async () => {
-    if (!license || !editedLicense) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Prepara i dati per l'aggiornamento - SOLO campi modificabili
-      const updateData = {
-        // Solo i campi che possono essere modificati in una licenza
-        renewalEnabled: editedLicense.renewalEnabled || false,
-        renewalPeriod: editedLicense.renewalPeriod,
-        // NON includere: maxUsers, maxDevices, price, discount, licenseType, priceType
-        // perché sono ereditati dal prodotto
-      };
-
-      const response = await fetch(`/api/licenses/${license.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
-        setIsEditing(false);
-        alert('Licenza aggiornata con successo!');
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(`Errore nell'aggiornamento: ${errorData.message || 'Errore sconosciuto'}`);
-      }
-    } catch (error) {
-      console.error('Error updating license:', error);
-      alert('Errore nell\'aggiornamento della licenza');
-    }
-  };
+export default function LicenseModal({ license, isOpen, onClose }: LicenseModalProps) {
 
   if (!license) return null;
 
@@ -266,13 +209,13 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
         <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <i className={`fas ${isEditing ? 'fa-edit text-green-600' : 'fa-key text-blue-600'}`}></i>
-              {isEditing ? 'Modifica Licenza' : 'Dettagli Licenza'}
+              <i className="fas fa-key text-blue-600"></i>
+              Dettagli Licenza
             </div>
             {getStatusBadge(license.status)}
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {isEditing ? 'Modifica i parametri della licenza' : 'Informazioni complete sulla licenza selezionata'}
+            Informazioni complete sulla licenza selezionata
           </DialogDescription>
         </DialogHeader>
 
@@ -439,49 +382,21 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   <i className="fas fa-sync-alt text-purple-500 text-sm mr-2"></i>
                   <span className="text-xs text-gray-500 uppercase tracking-wide">Rinnovo Auto</span>
                 </div>
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={editedLicense.renewalEnabled || false}
-                        onChange={(e) => setEditedLicense({...editedLicense, renewalEnabled: e.target.checked})}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-900">Attivo</span>
-                    </label>
-                    {editedLicense.renewalEnabled && (
-                      <Select
-                        value={editedLicense.renewalPeriod || ''}
-                        onValueChange={(value) => setEditedLicense({...editedLicense, renewalPeriod: value})}
-                      >
-                        <SelectTrigger className="h-7 text-sm w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="monthly">Mensile</SelectItem>
-                          <SelectItem value="yearly">Annuale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    {license.renewalEnabled ? (
-                      <span className="flex items-center text-green-600">
-                        <i className="fas fa-check-circle mr-1"></i>
-                        <span className="text-sm font-medium">
-                          {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
-                        </span>
+                <div className="flex items-center">
+                  {license.renewalEnabled ? (
+                    <span className="flex items-center text-green-600">
+                      <i className="fas fa-check-circle mr-1"></i>
+                      <span className="text-sm font-medium">
+                        {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
                       </span>
-                    ) : (
-                      <span className="flex items-center text-red-600">
-                        <i className="fas fa-times-circle mr-1"></i>
-                        <span className="text-sm font-medium">Disattivo</span>
-                      </span>
-                    )}
-                  </div>
-                )}
+                    </span>
+                  ) : (
+                    <span className="flex items-center text-red-600">
+                      <i className="fas fa-times-circle mr-1"></i>
+                      <span className="text-sm font-medium">Disattivo</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -528,34 +443,6 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
           <Button variant="outline" onClick={onClose} size="sm">
             Chiudi
           </Button>
-          {canEdit && !isEditing && (
-            <Button onClick={() => setIsEditing(true)} className="bg-primary hover:bg-blue-700" size="sm">
-              <i className="fas fa-edit mr-1"></i>
-              Modifica
-            </Button>
-          )}
-          {isEditing && (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditedLicense({
-                    // Solo i campi modificabili
-                    renewalEnabled: license.renewalEnabled || false,
-                    renewalPeriod: license.renewalPeriod,
-                  });
-                }}
-              >
-                Annulla
-              </Button>
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" size="sm">
-                <i className="fas fa-save mr-1"></i>
-                Salva
-              </Button>
-            </>
-          )}
         </div>
       </DialogContent>
     </Dialog>
