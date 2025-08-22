@@ -1290,32 +1290,47 @@ class DatabaseStorage implements IStorage {
       const companyIds = await this.getCompanyHierarchy(companyId);
       const placeholders = companyIds.map(() => '?').join(',');
 
+      console.log(`getTransactionsByCompanyHierarchy: Looking for transactions in company hierarchy: [${companyIds.join(', ')}]`);
+
       const query = `
         SELECT
           t.*,
           c.name as client_name,
           c.email as client_email,
+          c.company_id as client_company_id,
           comp.name as company_name,
+          client_comp.name as client_company_name,
           l.activation_key as license_key,
           u.username as modified_by_username
         FROM transactions t
         LEFT JOIN clients c ON t.client_id = c.id
         LEFT JOIN companies comp ON t.company_id = comp.id
+        LEFT JOIN companies client_comp ON c.company_id = client_comp.id
         LEFT JOIN licenses l ON t.license_id = l.id
         LEFT JOIN users u ON t.modified_by = u.id
-        WHERE t.company_id IN (${placeholders})
+        WHERE (t.company_id IN (${placeholders}) OR c.company_id IN (${placeholders}))
         ORDER BY COALESCE(t.created_at, t.updated_at) DESC
       `;
 
-      const rows = await this.db.query(query, companyIds);
+      console.log(`getTransactionsByCompanyHierarchy: Executing query with company IDs: [${companyIds.join(', ')}]`);
+      
+      const rows = await this.db.query(query, [...companyIds, ...companyIds]);
+
+      console.log(`getTransactionsByCompanyHierarchy: Found ${rows.length} transactions`);
+      
+      // Debug: log transaction details
+      rows.forEach((row: any) => {
+        console.log(`Transaction ${row.id}: company_id=${row.company_id}, client_company_id=${row.client_company_id}, client_name=${row.client_name}`);
+      });
+
       return rows.map((row: any) => ({
         id: row.id,
         licenseId: row.license_id,
         clientId: row.client_id,
-        companyId: row.company_id,
+        companyId: row.company_id || row.client_company_id,
         client_name: row.client_name,
         client_email: row.client_email,
-        company_name: row.company_name,
+        company_name: row.company_name || row.client_company_name,
         license_key: row.license_key,
         type: row.type,
         amount: row.amount,
