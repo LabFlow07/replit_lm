@@ -234,41 +234,43 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     return company ? company.name : 'N/A';
   };
 
-  // Handle initial client selection
+  // Handle initial client selection and company changes
   useEffect(() => {
-    if (initialClientId && (!selectedClient || selectedClient.id !== initialClientId)) {
+    if (initialClientId && companyId && (!selectedClient || selectedClient.id !== initialClientId)) {
       const client = safeClients.find(c => c.id === initialClientId);
-      if (client) {
+      if (client && (client.company_id === companyId || client.companyId === companyId)) {
         console.log('Setting initial client:', client);
         setSelectedClient(client);
         setSearchTerm(client.name || '');
         onClientSelect(client.id);
       }
-    } else if (!initialClientId && selectedClient) {
+    } else if ((!companyId || !initialClientId) && selectedClient) {
+      // Only reset when company changes or client is cleared and there's currently a selection
       console.log('Clearing client selection');
       setSelectedClient(null);
       setSearchTerm("");
       onClientSelect('');
     }
-  }, [initialClientId]); // Only depend on initialClientId
+  }, [companyId, initialClientId]); // Only depend on the key props
 
-  // Filtra i clienti in base al termine di ricerca
+  // Filtra i clienti SOLO per l'azienda selezionata
   const filteredClients = safeClients.filter((client: Client) => {
+    // Filtra RIGOROSAMENTE per azienda - deve corrispondere esattamente
+    const clientCompanyId = client.companyId || client.company_id;
+    if (!companyId || clientCompanyId !== companyId) {
+      return false;
+    }
+
+    // Poi filtra per termine di ricerca se presente
+    if (!searchTerm) return true;
+
     const searchLower = searchTerm.toLowerCase();
     const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
                        client.email?.toLowerCase().includes(searchLower);
-    const companyName = getCompanyName(client.companyId || client.company_id || '');
-    const companyMatch = companyName.toLowerCase().includes(searchLower);
-    
-    return clientMatch || companyMatch;
+
+    return clientMatch;
   }).sort((a, b) => {
-    // Ordina prima per azienda, poi per nome cliente
-    const companyA = getCompanyName(a.companyId || a.company_id || '');
-    const companyB = getCompanyName(b.companyId || b.company_id || '');
-    
-    if (companyA !== companyB) {
-      return companyA.localeCompare(companyB);
-    }
+    // Ordina per nome cliente
     return (a.name || '').localeCompare(b.name || '');
   });
 
@@ -295,12 +297,13 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         value={searchTerm}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
-        placeholder={placeholder}
+        placeholder={companyId ? placeholder : "Seleziona prima un'azienda"}
         className="w-full"
         autoComplete="off"
+        disabled={!companyId}
       />
 
-      {isOpen && filteredClients.length > 0 && (
+      {isOpen && companyId && filteredClients.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
           {filteredClients.map((client: Client) => (
             <div
@@ -314,8 +317,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
                   {client.name}
                 </div>
                 <div className="text-xs text-gray-600">
-                  <i className="fas fa-building mr-1 text-gray-400"></i>
-                  {getCompanyName(client.companyId || client.company_id || '')} • {client.email}
+                  {client.email}
                 </div>
               </div>
             </div>
@@ -323,10 +325,10 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         </div>
       )}
 
-      {isOpen && filteredClients.length === 0 && (
+      {isOpen && companyId && filteredClients.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
           <div className="px-3 py-2 text-sm text-gray-500 text-center">
-            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile"}
+            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda"}
           </div>
         </div>
       )}
@@ -1489,19 +1491,13 @@ export default function SoftwareRegistrations() {
                               <SelectItem value="none">Nessuna azienda</SelectItem>
                               {safeCompanies
                                 .filter((company: any) => 
-                                  // Mostra tutte le aziende accessibili, incluse le sotto-aziende
-                                  // Esclude solo quelle marcate esplicitamente come 'client' nel type
-                                  company.type !== 'client'
+                                  // Filtra per mostrare solo le aziende principali (quelle senza parent_id o con parent_id null)
+                                  // e non i clienti individuali
+                                  !company.parent_id && company.type !== 'client'
                                 )
-                                .sort((a, b) => {
-                                  // Ordina per gerarchia: prima le aziende principali, poi le sotto-aziende
-                                  if (!a.parent_id && b.parent_id) return -1;
-                                  if (a.parent_id && !b.parent_id) return 1;
-                                  return (a.name || '').localeCompare(b.name || '');
-                                })
                                 .map((company: any) => (
                                 <SelectItem key={company.id} value={company.id}>
-                                  {company.parent_id ? '└─ ' : ''}{company.name} - {company.partitaIva || 'N/A'}
+                                  {company.name} - {company.partitaIva || 'N/A'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1524,20 +1520,11 @@ export default function SoftwareRegistrations() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nessun cliente</SelectItem>
-                                {/* Clienti diretti dell'azienda selezionata */}
                                 {safeClients.filter((client: any) => 
                                   (client.company_id || client.companyId) === watch('aziendaAssegnata')
                                 ).map((client: any) => (
                                   <SelectItem key={client.id} value={client.id}>
-                                    👤 {client.name} - {client.email}
-                                  </SelectItem>
-                                ))}
-                                {/* Sotto-aziende configurate come clienti */}
-                                {safeCompanies.filter((company: any) => 
-                                  company.parent_id === watch('aziendaAssegnata') && company.type === 'cliente'
-                                ).map((subCompany: any) => (
-                                  <SelectItem key={`company-${subCompany.id}`} value={`company-${subCompany.id}`}>
-                                    🏢 {subCompany.name} - {subCompany.partitaIva || 'N/A'}
+                                    {client.name} - {client.email}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1581,33 +1568,15 @@ export default function SoftwareRegistrations() {
                             );
                           }
 
-                          // Gestisce sia clienti che sotto-aziende
-                          const isSubCompanySelection = selectedClientId?.startsWith('company-');
-                          
-                          let clientLicenses: License[] = [];
-                          
-                          if (isSubCompanySelection) {
-                            // Se è selezionata una sotto-azienda, mostra un messaggio appropriato
-                            return (
-                              <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
-                                <p className="text-sm text-blue-700">
-                                  <i className="fas fa-building mr-2"></i>
-                                  Sotto-azienda selezionata. Le licenze devono essere assegnate ai clienti individuali.
-                                </p>
-                              </div>
-                            );
-                          } else {
-                            // Filtro normale per clienti
-                            clientLicenses = safeLicenses.filter((license: License) => {
-                              const licenseClientId = license.client?.id;
-                              if (licenseClientId !== selectedClientId) return false;
+                          const clientLicenses = safeLicenses.filter((license: License) => {
+                            const licenseClientId = license.client?.id;
+                            if (licenseClientId !== selectedClientId) return false;
 
-                              const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                              if (licenseClientCompanyId !== selectedCompanyId) return false;
+                            const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                            if (licenseClientCompanyId !== selectedCompanyId) return false;
 
-                              return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
-                            });
-                          }
+                            return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                          });
 
                           if (clientLicenses.length === 0) {
                             return (
