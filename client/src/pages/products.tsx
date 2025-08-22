@@ -102,7 +102,6 @@ export default function ProductsPage() {
       }
 
       const data = await response.json();
-      console.log('Products data received:', data);
       return data;
     }
   });
@@ -746,12 +745,7 @@ export default function ProductsPage() {
 
                         <TableCell>
                           {(() => {
-                            // Debug logging
-                            console.log(`Product ${product.name} category data:`, {
-                              category: product.category,
-                              categoryId: product.categoryId,
-                              category_id: product.category_id
-                            });
+
 
                             // Check if product has a category
                             const hasCategory = product.category && product.category.name;
