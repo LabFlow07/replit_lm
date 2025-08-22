@@ -176,15 +176,11 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
   useEffect(() => {
     if (license && isOpen) {
       setEditedLicense({
-        maxUsers: license.maxUsers,
-        maxDevices: license.maxDevices,
-        price: license.price,
-        discount: license.discount,
-        status: license.status,
-        licenseType: license.licenseType,
+        // Solo i campi modificabili in una licenza
         renewalEnabled: license.renewalEnabled || false,
         renewalPeriod: license.renewalPeriod,
-        priceType: license.priceType || 'crediti'
+        // NON includere: maxUsers, maxDevices, price, discount, licenseType, priceType
+        // perché sono ereditati dal prodotto e non devono essere modificabili
       });
       setIsEditing(false);
     }
@@ -196,15 +192,13 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
     try {
       const token = localStorage.getItem('token');
       
-      // Prepara i dati per l'aggiornamento
+      // Prepara i dati per l'aggiornamento - SOLO campi modificabili
       const updateData = {
-        ...editedLicense,
-        // Assicurati che i valori numerici siano corretti
-        maxUsers: parseInt(editedLicense.maxUsers?.toString() || '1'),
-        maxDevices: parseInt(editedLicense.maxDevices?.toString() || '1'),
-        price: parseFloat(editedLicense.price?.toString() || '0'),
-        discount: parseFloat(editedLicense.discount?.toString() || '0'),
-        priceType: editedLicense.priceType || 'crediti'
+        // Solo i campi che possono essere modificati in una licenza
+        renewalEnabled: editedLicense.renewalEnabled || false,
+        renewalPeriod: editedLicense.renewalPeriod,
+        // NON includere: maxUsers, maxDevices, price, discount, licenseType, priceType
+        // perché sono ereditati dal prodotto
       };
 
       const response = await fetch(`/api/licenses/${license.id}`, {
@@ -336,26 +330,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 uppercase tracking-wide">Tipologia</span>
-                    {isEditing ? (
-                      <Select 
-                        value={editedLicense.licenseType || license.licenseType} 
-                        onValueChange={(value) => setEditedLicense({...editedLicense, licenseType: value})}
-                      >
-                        <SelectTrigger className="h-8 text-sm w-full mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="permanente">Permanente</SelectItem>
-                          <SelectItem value="trial">Trial</SelectItem>
-                          <SelectItem value="abbonamento_mensile">Mensile</SelectItem>
-                          <SelectItem value="abbonamento_annuale">Annuale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-gray-700">
-                        {getLicenseTypeLabel(license.licenseType)}
-                      </p>
-                    )}
+                    <p className="text-sm text-gray-700">
+                      {getLicenseTypeLabel(license.licenseType)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -367,98 +344,38 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                   <h4 className="font-medium text-gray-900">Prezzo & Limiti</h4>
                 </div>
                 <div className="space-y-2">
-                  {isEditing && (
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Tipo Pagamento</span>
-                      <Select 
-                        value={editedLicense.priceType || license.priceType || 'crediti'} 
-                        onValueChange={(value) => setEditedLicense({...editedLicense, priceType: value})}
-                      >
-                        <SelectTrigger className="h-8 text-sm w-full mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="crediti">Crediti</SelectItem>
-                          <SelectItem value="prezzo">Euro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                   <div>
                     <span className="text-xs text-gray-500 uppercase tracking-wide">Prezzo</span>
-                    {isEditing ? (
-                      <div className="space-y-2 mt-1">
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="number"
-                            step="1"
-                            value={editedLicense.price || license.price || 0}
-                            onChange={(e) => setEditedLicense({...editedLicense, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                            className="h-8 text-sm font-mono flex-1"
-                            placeholder="0"
-                            min="0"
-                            max="9999999999"
-                          />
-                          <span className="text-sm text-gray-600 font-medium">
-                            {(editedLicense.priceType || license.priceType) === 'prezzo' ? '€' : 'cr'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={editedLicense.discount || license.discount || 0}
-                            onChange={(e) => setEditedLicense({...editedLicense, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
-                            className="h-8 text-sm font-mono flex-1"
-                            placeholder="0.00"
-                            max="100"
-                            min="0"
-                          />
-                          <span className="text-sm text-gray-600 font-medium">%</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm font-medium text-gray-900">
-                        {license.priceType === 'prezzo' 
-                          ? `€${parseFloat((license.price || 0).toString()).toFixed(2)}` 
-                          : `${Math.round(parseFloat((license.price || 0).toString()))} crediti`}
-                        {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
-                          <span className="text-green-600 ml-1 text-xs">
-                            (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
-                          </span>
-                        )}
-                      </p>
-                    )}
+                    <p className="text-sm font-medium text-gray-900">
+                      {license.priceType === 'prezzo' 
+                        ? `€${parseFloat((license.price || 0).toString()).toFixed(2)}` 
+                        : `${Math.round(parseFloat((license.price || 0).toString()))} crediti`}
+                      {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
+                        <span className="text-green-600 ml-1 text-xs">
+                          (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-xs text-gray-500 uppercase tracking-wide">Utenti</span>
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={editedLicense.maxUsers || 1}
-                          onChange={(e) => setEditedLicense({...editedLicense, maxUsers: parseInt(e.target.value) || 1})}
-                          className="h-7 text-sm w-full mt-1"
-                          min="1"
-                        />
-                      ) : (
-                        <p className="text-sm font-medium text-gray-900">{license.maxUsers || 1}</p>
-                      )}
+                      <p className="text-sm font-medium text-gray-900">{license.maxUsers || 1}</p>
                     </div>
                     <div>
                       <span className="text-xs text-gray-500 uppercase tracking-wide">Dispositivi</span>
-                      {isEditing ? (
-                        <Input
-                          type="number"
-                          value={editedLicense.maxDevices || 1}
-                          onChange={(e) => setEditedLicense({...editedLicense, maxDevices: parseInt(e.target.value) || 1})}
-                          className="h-7 text-sm w-full mt-1"
-                          min="1"
-                        />
-                      ) : (
-                        <p className="text-sm font-medium text-gray-900">{license.maxDevices || 1}</p>
-                      )}
+                      <p className="text-sm font-medium text-gray-900">{license.maxDevices || 1}</p>
                     </div>
+                  </div>
+                </div>
+                {/* Avviso per l'utente */}
+                <div className="bg-blue-50 border border-blue-200 p-2 rounded-lg mt-3">
+                  <div className="flex items-start">
+                    <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
+                    <p className="text-xs text-blue-800">
+                      <strong>Configurazione Ereditata:</strong> Prezzo, sconto e limiti sono ereditati dal prodotto associato. 
+                      Per modificarli, aggiorna la configurazione del prodotto nella sezione "Prodotti".
+                    </p>
                   </div>
                 </div>
               </div>
@@ -625,15 +542,9 @@ export default function LicenseModal({ license, isOpen, onClose, onEdit, isEditM
                 onClick={() => {
                   setIsEditing(false);
                   setEditedLicense({
-                    maxUsers: license.maxUsers,
-                    maxDevices: license.maxDevices,
-                    price: license.price,
-                    discount: license.discount,
-                    status: license.status,
-                    licenseType: license.licenseType,
+                    // Solo i campi modificabili
                     renewalEnabled: license.renewalEnabled || false,
                     renewalPeriod: license.renewalPeriod,
-                    priceType: license.priceType || 'crediti'
                   });
                 }}
               >
