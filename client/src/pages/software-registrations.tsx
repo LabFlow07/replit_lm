@@ -255,7 +255,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
   // Trova le aziende di tipo "cliente" che sono sotto-aziende dell'azienda selezionata
   const clientCompanies = safeCompanies.filter((c: any) => 
-    c.type === 'cliente' && c.parent_id === companyId
+    c.type === 'cliente' && (c.parent_id === companyId || c.parentId === companyId)
   ).map((company: any) => ({
     id: company.id,
     name: company.name,
@@ -264,6 +264,11 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     company_id: company.parent_id || company.parentId,
     isCompany: true
   }));
+
+  console.log('ClientSearchInput: Company selected:', companyId);
+  console.log('ClientSearchInput: Available companies:', safeCompanies.map(c => ({ id: c.id, name: c.name, type: c.type, parent_id: c.parent_id })));
+  console.log('ClientSearchInput: Client companies found:', clientCompanies);
+  console.log('ClientSearchInput: Available clients:', safeClients.map(c => ({ id: c.id, name: c.name, company_id: c.company_id || c.companyId })));
 
   // Combina clienti diretti e aziende cliente
   const allItems = [...safeClients, ...clientCompanies];
@@ -297,7 +302,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
     // Verifica se il cliente appartiene a una sotto-azienda di tipo "cliente"
     const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
-    if (clientCompany && clientCompany.type === 'cliente' && clientCompany.parent_id === companyId) {
+    if (clientCompany && clientCompany.type === 'cliente' && (clientCompany.parent_id === companyId || clientCompany.parentId === companyId)) {
       if (!searchTerm) return true;
 
       const searchLower = searchTerm.toLowerCase();
@@ -321,6 +326,8 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     // Poi per nome
     return (a.name || '').localeCompare(b.name || '');
   });
+
+  console.log('ClientSearchInput: Filtered clients:', filteredClients.map(c => ({ id: c.id, name: c.name, isCompany: c.isCompany })));
 
   // Funzione helper per verificare la gerarchia
   function isInClientHierarchy(targetCompanyId: string, currentCompanyId: string, depth: number = 0): boolean {
