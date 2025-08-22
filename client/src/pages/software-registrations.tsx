@@ -1491,13 +1491,19 @@ export default function SoftwareRegistrations() {
                               <SelectItem value="none">Nessuna azienda</SelectItem>
                               {safeCompanies
                                 .filter((company: any) => 
-                                  // Filtra per mostrare solo le aziende principali (quelle senza parent_id o con parent_id null)
-                                  // e non i clienti individuali
-                                  !company.parent_id && company.type !== 'client'
+                                  // Mostra tutte le aziende accessibili, incluse le sotto-aziende
+                                  // Esclude solo quelle marcate esplicitamente come 'client' nel type
+                                  company.type !== 'client'
                                 )
+                                .sort((a, b) => {
+                                  // Ordina per gerarchia: prima le aziende principali, poi le sotto-aziende
+                                  if (!a.parent_id && b.parent_id) return -1;
+                                  if (a.parent_id && !b.parent_id) return 1;
+                                  return (a.name || '').localeCompare(b.name || '');
+                                })
                                 .map((company: any) => (
                                 <SelectItem key={company.id} value={company.id}>
-                                  {company.name} - {company.partitaIva || 'N/A'}
+                                  {company.parent_id ? '└─ ' : ''}{company.name} - {company.partitaIva || 'N/A'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
