@@ -665,9 +665,9 @@ export default function LicensesPage() {
                                   size="sm"
                                   onClick={() => handleEditLicense(license)}
                                   className="h-8 w-8 p-0"
-                                  title={user.role === 'superadmin' ? "Visualizza/Modifica licenza" : "Visualizza dettagli licenza"}
+                                  title="Visualizza dettagli licenza"
                                 >
-                                  <i className="fas fa-pencil-alt text-xs"></i>
+                                  <i className="fas fa-eye text-xs"></i>
                                 </Button>
                                 {user.role === 'superadmin' && (
                                   <Button
