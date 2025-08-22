@@ -9,8 +9,11 @@ import Stripe from "stripe";
 
 const router = express.Router();
 
-// JWT Secret - Use a consistent secret
-const JWT_SECRET = "qlm-jwt-secret-key-2024-fixed";
+// JWT Secret - Use environment variable
+const JWT_SECRET = process.env.JWT_SECRET || "qlm-jwt-secret-key-2024-fixed";
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET not set in environment, using default (not secure for production)');
+}
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -23,18 +26,13 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    console.log('🔒 No token provided for:', req.path);
     return res.sendStatus(401);
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
-      console.error('🔒 Token verification error for', req.path + ':', err.message);
-      console.log('Token that failed:', token.substring(0, 20) + '...');
-      console.log('JWT_SECRET exists:', !!JWT_SECRET);
       return res.sendStatus(403);
     }
-    console.log('✅ Token verified successfully for user:', user.username, 'on path:', req.path);
     (req as any).user = user;
     next();
   });
@@ -88,7 +86,6 @@ router.post("/api/register", async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -119,14 +116,7 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
       { expiresIn: '24h' }
     );
 
-    console.log('Login successful for user:', user.username);
-    console.log('Full token payload:', { 
-      id: user.id, 
-      username: user.username, 
-      role: user.role,
-      companyId: user.companyId 
-    });
-    console.log('CompanyId from token payload:', user.companyId);
+
 
     res.json({ 
       token,
@@ -139,7 +129,6 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -193,7 +182,6 @@ router.get('/api/stripe/config', authenticateToken, async (req: Request, res: Re
       configured: true
     });
   } catch (error: any) {
-    console.error('Get Stripe config error:', error);
     res.status(500).json({ 
       success: false,
       message: 'Errore nel recupero configurazione Stripe: ' + error.message 
@@ -276,23 +264,23 @@ router.get("/api/user", authenticateToken, async (req: Request, res: Response) =
 router.get("/api/companies", authenticateToken, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    console.log('Fetching companies for user:', user.username, 'Role:', user.role, 'Company ID:', user.companyId);
+
 
     let companies;
 
     if (user.role === 'superadmin') {
       // Superadmin can see all companies
       companies = await storage.getAllCompanies();
-      console.log('Superadmin: fetched all', companies.length, 'companies');
+
     } else if (user.role === 'admin') {
       // Admin can see their company and all subsidiaries
       companies = await storage.getCompaniesInHierarchy(user.companyId);
-      console.log('Admin: fetched', companies.length, 'companies in hierarchy for company', user.companyId);
+
     } else {
       // Other roles can only see their own company
       const company = await storage.getCompanyById(user.companyId);
       companies = company ? [company] : [];
-      console.log('User role', user.role, ': fetched', companies.length, 'companies (own company only)');
+
     }
 
     res.json(companies);
@@ -319,7 +307,6 @@ router.post("/api/companies", authenticateToken, async (req: Request, res: Respo
     const company = await storage.createCompany(companyData);
     res.json(company);
   } catch (error) {
-    console.error('Create company error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -330,8 +317,7 @@ router.put("/api/companies/:id", authenticateToken, async (req: Request, res: Re
     const companyId = req.params.id;
     const { name, type, parentId, status, contactInfo } = req.body;
 
-    console.log(`Update company request for ID: ${companyId} by user: ${user.username} (${user.role})`);
-    console.log('Update data:', { name, type, parentId, status, contactInfo });
+
 
     // Check permissions based on user role
     if (user.role !== 'superadmin' && user.role !== 'admin') {
@@ -372,7 +358,7 @@ router.delete("/api/companies/:id", authenticateToken, async (req: Request, res:
     const user = (req as any).user;
     const companyId = req.params.id;
 
-    console.log(`Delete company request for ID: ${companyId} by user: ${user.username} (${user.role})`);
+
 
     // Only superadmin can delete companies
     if (user.role !== 'superadmin') {
@@ -384,7 +370,7 @@ router.delete("/api/companies/:id", authenticateToken, async (req: Request, res:
       return res.status(404).json({ message: "Company not found" });
     }
 
-    console.log(`Found company to delete: ${existingCompany.name} (${existingCompany.id})`);
+
 
     // Check if company has clients before attempting deletion
     const clients = await storage.getClientsByCompany(companyId);
@@ -415,7 +401,6 @@ router.delete("/api/companies/:id", authenticateToken, async (req: Request, res:
       }
     });
   } catch (error) {
-    console.error('Delete company error:', error);
     if (error instanceof Error) {
       return res.status(400).json({ message: error.message });
     }
@@ -551,11 +536,10 @@ router.get("/api/licenses", authenticateToken, async (req: Request, res: Respons
     });
 
     licenses = mappedLicenses;
-    console.log(`Licenses API returned ${licenses.length} licenses for user ${user.username}`);
+
 
     res.json(licenses);
   } catch (error) {
-    console.error('Get licenses error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -565,7 +549,7 @@ router.get("/api/licenses/:id", authenticateToken, async (req: Request, res: Res
     const user = (req as any).user;
     const licenseId = req.params.id;
 
-    console.log('Fetching license details for:', licenseId, 'by user:', user.username);
+
 
     // Enhanced query to get complete license details with client and company info
     const query = `

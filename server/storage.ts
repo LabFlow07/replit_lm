@@ -184,7 +184,7 @@ class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<UserWithCompany | undefined> {
-    console.log('getUserByUsername: Looking up user:', username);
+
 
     const rows = await database.query(`
       SELECT u.*, c.name as company_name, c.type as company_type, c.parent_id as company_parent_id
@@ -194,12 +194,11 @@ class DatabaseStorage implements IStorage {
     `, [username]);
 
     if (!rows[0]) {
-      console.log('getUserByUsername: User not found:', username);
       return undefined;
     }
 
     const user = rows[0];
-    console.log('getUserByUsername: Found user', user.username, 'with role:', user.role, ', company_id:', user.company_id, ', company_name:', user.company_name);
+
 
     return {
       id: user.id,
@@ -257,10 +256,9 @@ class DatabaseStorage implements IStorage {
         createdAt: row.created_at
       }));
 
-      console.log('getCompanies: Mapped companies:', mapped.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })));
+
       return mapped;
     } catch (error) {
-      console.error('Error in getCompanies:', error);
       throw error;
     }
   }
@@ -313,8 +311,7 @@ class DatabaseStorage implements IStorage {
 
     updateValues.push(id);
 
-    console.log('Executing update query:', `UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?`);
-    console.log('With values:', updateValues);
+
 
     await this.db.query(`
       UPDATE companies SET ${updateFields.join(', ')} WHERE id = ?
@@ -336,11 +333,11 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteCompany(id: string): Promise<void> {
-    console.log(`deleteCompany: Starting deletion for company ID: ${id}`);
+
 
     // First check if company has clients
     const clients = await this.db.query('SELECT COUNT(*) as count FROM clients WHERE company_id = ?', [id]);
-    console.log(`deleteCompany: Found ${clients[0].count} clients for company ${id}`);
+
 
     if (clients[0].count > 0) {
       throw new Error('Cannot delete company with existing clients');
@@ -354,14 +351,14 @@ class DatabaseStorage implements IStorage {
 
     const parentId = company[0].parent_id;
     const companyName = company[0].name;
-    console.log(`deleteCompany: Company ${companyName} has parent_id: ${parentId}`);
+
 
     // Check for subcompanies
     const subcompanies = await this.db.query('SELECT id, name FROM companies WHERE parent_id = ?', [id]);
-    console.log(`deleteCompany: Found ${subcompanies.length} subcompanies for company ${id}`);
+
 
     if (subcompanies.length > 0) {
-      console.log(`deleteCompany: Moving ${subcompanies.length} subcompanies to parent ${parentId || 'root'}`);
+
 
       // Move subcompanies to the parent company (or make them root if no parent)
       const result = await this.db.query(
@@ -879,24 +876,7 @@ class DatabaseStorage implements IStorage {
       ORDER BY l.created_at DESC
     `;
     const debugLicenses = await this.db.query(debugLicensesQuery);
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - All licenses with client companies:`, debugLicenses.map(l => ({
-      id: l.id.substring(0, 8),
-      activation_key: l.activation_key,
-      client_name: l.client_name,
-      client_company_id: l.company_id
-    })));
-
-    // Debug: specifically check which licenses should match our hierarchy
-    const matchingLicenses = debugLicenses.filter(l => companyIds.includes(l.company_id));
-    console.log(`getLicensesByCompanyHierarchy: DEBUG - Licenses that should match our hierarchy:`, matchingLicenses.map(l => ({
-      id: l.id.substring(0, 8),
-      activation_key: l.activation_key,
-      client_name: l.client_name,
-      client_company_id: l.company_id
-    })));
-
     const mappedLicenses = this.mapLicenseRows(rows);
-    console.log(`getLicensesByCompanyHierarchy: Final result - returning ${mappedLicenses.length} licenses for company hierarchy ${companyId}`);
 
     return mappedLicenses;
   }
@@ -914,26 +894,26 @@ class DatabaseStorage implements IStorage {
     // SOLO se la licenza viene creata GIÀ con computerKey (attivazione immediata)
     // allora calcola la data di scadenza, altrimenti rimane NULL
     if (insertLicense.computerKey && insertLicense.activationKey) {
-      console.log('🔄 Licenza creata con attivazione immediata - calcolo data scadenza');
+
       const baseDate = new Date();
 
       if (insertLicense.licenseType === 'abbonamento_mensile') {
         expiryDate = new Date(baseDate);
         expiryDate.setMonth(expiryDate.getMonth() + 1);
         expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8 -> 17/9
-        console.log('📅 Licenza mensile: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+
       } else if (insertLicense.licenseType === 'abbonamento_annuale') {
         expiryDate = new Date(baseDate);
         expiryDate.setFullYear(expiryDate.getFullYear() + 1);
         expiryDate.setDate(expiryDate.getDate() - 1); // Per 18/8/25 -> 17/8/26
-        console.log('📅 Licenza annuale: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+
       } else if (insertLicense.licenseType === 'trial') {
         expiryDate = new Date(baseDate);
         expiryDate.setDate(expiryDate.getDate() + 30); // Trial di 30 giorni
-        console.log('📅 Licenza trial: scadenza impostata a', expiryDate.toISOString().split('T')[0]);
+
       }
     } else {
-      console.log('⏳ Licenza creata senza attivazione - data scadenza sarà calcolata durante attivazione');
+
     }
 
     // Se viene fornita una chiave di attivazione e chiave computer, attiva automaticamente
@@ -981,7 +961,7 @@ class DatabaseStorage implements IStorage {
   }
 
   async updateLicense(id: string, updates: Partial<License>): Promise<void> {
-    console.log(`updateLicense called for license ${id} with updates:`, updates);
+
 
     const fieldMapping: { [key: string]: string } = {
       'maxUsers': 'max_users',
@@ -1014,12 +994,12 @@ class DatabaseStorage implements IStorage {
       if (field === 'activationDate' || field === 'expiryDate') {
         if (value instanceof Date) {
           const convertedValue = value.toISOString().slice(0, 19).replace('T', ' ');
-          console.log(`Converting ${field} from Date ${value.toISOString()} to MySQL format: ${convertedValue}`);
+
           value = convertedValue;
         } else if (typeof value === 'string' && value.includes('T')) {
           // Convert ISO string to MySQL datetime format
           const convertedValue = value.slice(0, 19).replace('T', ' ');
-          console.log(`Converting ${field} from ISO string ${value} to MySQL format: ${convertedValue}`);
+
           value = convertedValue;
         }
       }

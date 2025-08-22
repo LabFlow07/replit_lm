@@ -59,11 +59,11 @@ export default function ClientsPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('Raw clients data received:', data.length, 'clients');
+
 
       // Server already filters clients correctly for admin users by company hierarchy
       // No need for additional client-side filtering
-      console.log(`Clients API returned ${data.length} clients for user ${user?.username} (${user?.role})`);
+
       return data;
     }
   });
@@ -132,7 +132,7 @@ export default function ClientsPage() {
       license.client_id === clientId || 
       license.client?.id === clientId
     ).length;
-    console.log(`Client ${clientId} has ${count} licenses`);
+
     return count;
   };
 
@@ -147,7 +147,7 @@ export default function ClientsPage() {
       license.product?.name || license.productName
     ).filter(Boolean);
     const uniqueProducts = Array.from(new Set(products)); // Remove duplicates
-    console.log(`Client ${clientId} has products:`, uniqueProducts);
+
     return uniqueProducts;
   };
 

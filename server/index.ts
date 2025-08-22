@@ -9,33 +9,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging middleware (simplified for production)
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    if (req.path.startsWith("/api") && process.env.NODE_ENV === 'development') {
+      log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
     }
   });
-
   next();
 });
 
@@ -43,9 +25,8 @@ app.use((req, res, next) => {
   // Initialize database tables
   try {
     await database.initTables();
-    console.log('Database initialization completed');
   } catch (error) {
-    console.error('Database initialization failed:', error);
+    throw error;
   }
 
   // Register API routes
@@ -68,7 +49,9 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
   const server = app.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
+    if (process.env.NODE_ENV === 'development') {
+      log(`serving on port ${port}`);
+    }
   });
 
   // importantly only setup vite in development and after

@@ -56,7 +56,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentTime = Math.floor(Date.now() / 1000);
       return payload.exp > currentTime;
     } catch (e) {
-      console.error('Error parsing or validating token:', e);
       localStorage.removeItem('token');
       setUser(null);
       return false;
@@ -81,7 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (response.ok) {
         const userData = await response.json();
-        console.log('User data after refresh:', userData);
+
         setUser({
           id: userData.id,
           username: userData.username,
@@ -93,12 +92,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
         return true;
       } else {
-        console.log('Token refresh failed (API returned error), clearing and redirecting to login...');
         logout();
         return false;
       }
     } catch (error) {
-      console.error('Token refresh failed (network error):', error);
+
       logout();
       return false;
     }
@@ -110,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('token');
     localStorage.removeItem('token'); // Remove old token key as well
     setUser(null);
-    console.log('User logged out, redirecting to login...');
+
     setLocation('/login');
   };
 
@@ -133,7 +131,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setLocation('/login');
           }
         } else {
-          console.log('Token invalid on initial load, redirecting to login...');
+
           setLocation('/login'); // Redirect to login if token is invalid on initial load
         }
       } else {
@@ -151,7 +149,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (user) { // Only check if there's a user logged in
         const isValid = checkTokenValidity();
         if (!isValid) {
-          console.log('Token expired, user will be logged out and redirected to login');
+
           logout(); // Use logout to handle state reset and redirection
         } else {
           // Optionally refresh auth data if token is valid but might be stale
@@ -179,8 +177,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const data = await response.json();
-      console.log('Login response user data:', data.user);
-      console.log('User role:', data.user.role, 'Company ID:', data.user.companyId);
+
+
       localStorage.setItem('token', data.token);
 
       // Ensure companyId is properly set from login response
@@ -198,16 +196,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         company: userData.company
       });
 
-      console.log('User state set with company info:', {
-        role: userData.role,
-        companyId: userData.companyId || userData.company_id,
-        company: userData.company
-      });
-
       setLoading(false);
-      console.log('Login successful, token saved:', data.token.substring(0, 20) + '...');
     } catch (error) {
-      console.error('Login error:', error);
       setUser(null);
       setLoading(false);
       throw error;

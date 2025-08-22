@@ -34,7 +34,7 @@ export default function ExpiringLicensesList() {
       if (!response.ok) throw new Error('Failed to fetch expiring licenses');
       const data = await response.json();
       
-      console.log(`Expiring licenses API returned ${data.length} licenses for user ${user?.username}`);
+
       return data;
     },
     refetchInterval: 5 * 60 * 1000, // Aggiorna ogni 5 minuti

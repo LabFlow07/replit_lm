@@ -116,7 +116,7 @@ class Database {
           console.log('✅ Added company_id column to categories table');
         }
       } catch (e: any) { 
-        console.log('⚠️  Error checking/adding company_id column to categories:', e.message);
+
       }
 
       // Remove old unique constraint if it exists and add proper unique constraint
@@ -409,7 +409,7 @@ class Database {
           await this.query(`ALTER TABLE products DROP COLUMN supported_license_types`);
           console.log('✅ Rimossa colonna supported_license_types dalla tabella products');
         } else {
-          console.log('⚠️  Colonna supported_license_types già rimossa o non esistente');
+  
         }
       } catch (e: any) { 
         console.log('⚠️  Errore controllo/rimozione colonna supported_license_types:', e.message);
@@ -465,7 +465,7 @@ class Database {
         )
       `);
 
-      console.log('Database tables initialized successfully');
+
     } catch (error) {
       console.error('Error initializing database tables:', error);
       throw error;
