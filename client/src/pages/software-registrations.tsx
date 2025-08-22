@@ -1723,11 +1723,22 @@ export default function SoftwareRegistrations() {
                           }
 
                           const clientLicenses = safeLicenses.filter((license: License) => {
-                            const licenseClientId = license.client?.id;
-                            if (licenseClientId !== selectedClientId) return false;
+                            // Check if the selected "client" is actually a company (sub-company)
+                            const selectedIsCompany = safeCompanies.some((company: any) => company.id === selectedClientId);
+                            
+                            if (selectedIsCompany) {
+                              // If selected client is a company, find licenses for clients within that company
+                              const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                              if (licenseClientCompanyId !== selectedClientId) return false;
+                            } else {
+                              // If selected client is a direct client, find licenses for that specific client
+                              const licenseClientId = license.client?.id;
+                              if (licenseClientId !== selectedClientId) return false;
 
-                            const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                            if (licenseClientCompanyId !== selectedCompanyId) return false;
+                              // Also ensure the client belongs to the selected parent company
+                              const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                              if (licenseClientCompanyId !== selectedCompanyId) return false;
+                            }
 
                             return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
                           });
