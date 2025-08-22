@@ -1310,9 +1310,25 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
       // Generate automatic transaction and process payment for license assignment ONLY if no classification transaction exists
       if (!hasClassificationTransaction) {
         try {
-          // Ottieni informazioni del client per la transazione
-          const client = await storage.getClientById(clienteAssegnato);
-          const clientCompanyId = client?.companyId || client?.companyId;
+          // Ottieni informazioni del client e dell'azienda per la transazione
+          // Priorità: client esplicito -> client dalla licenza -> null
+          let client = null;
+          let clientCompanyId = null;
+          
+          if (clienteAssegnato) {
+            // Cliente esplicitamente assegnato
+            client = await storage.getClientById(clienteAssegnato);
+            clientCompanyId = client?.companyId || client?.company_id;
+          } else if (license.client && license.client.id) {
+            // Usa il cliente dalla licenza se disponibile
+            client = await storage.getClientById(license.client.id);
+            clientCompanyId = client?.companyId || client?.company_id || license.client.company_id;
+          }
+          
+          // Se non abbiamo un'azienda dal cliente, usa quella dalla licenza
+          if (!clientCompanyId && license.assignedCompany) {
+            clientCompanyId = license.assignedCompany;
+          }
 
           // Calcola l'importo finale
           const transactionAmount = parseFloat(license.price?.toString() || '0');
@@ -1321,6 +1337,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
           const finalAmount = Math.max(0, transactionAmount - discountAmount);
 
           console.log(`💳 Software registration classification: Processing payment for license ${licenzaAssegnata}, Amount: ${finalAmount} crediti`);
+          console.log(`💳 Transaction will be assigned to: Client ID: ${client?.id || 'null'}, Company ID: ${clientCompanyId || 'null'}`);
 
           if (finalAmount > 0 && clientCompanyId) {
             // Tenta il pagamento automatico con crediti wallet
@@ -1335,7 +1352,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
               // Pagamento con crediti riuscito - crea transazione pagata
               const transaction = await storage.createTransaction({
                 licenseId: licenzaAssegnata,
-                clientId: clienteAssegnato || null,
+                clientId: client?.id || null,
                 companyId: clientCompanyId,
                 type: 'attivazione',
                 amount: transactionAmount,
@@ -1354,7 +1371,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
               // Saldo insufficiente - crea transazione in attesa
               const transaction = await storage.createTransaction({
                 licenseId: licenzaAssegnata,
-                clientId: clienteAssegnato || null,
+                clientId: client?.id || null,
                 companyId: clientCompanyId,
                 type: 'attivazione',
                 amount: transactionAmount,
@@ -1371,7 +1388,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             // Licenza gratuita
             const transaction = await storage.createTransaction({
               licenseId: licenzaAssegnata,
-              clientId: clienteAssegnato || null,
+              clientId: client?.id || null,
               companyId: clientCompanyId || null,
               type: 'attivazione',
               amount: transactionAmount,
@@ -1390,7 +1407,7 @@ router.patch("/api/software/registrazioni/:id/classifica", authenticateToken, as
             // Crea transazione manuale se non c'è azienda
             const transaction = await storage.createTransaction({
               licenseId: licenzaAssegnata,
-              clientId: clienteAssegnato || null,
+              clientId: client?.id || null,
               companyId: clientCompanyId || null,
               type: 'attivazione',
               amount: transactionAmount,

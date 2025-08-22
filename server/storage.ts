@@ -1145,30 +1145,30 @@ class DatabaseStorage implements IStorage {
   }
 
   // Helper to map transaction rows from DB to Transaction object
-  private mapTransactionFromDb(row: any): Transaction {
+  private mapTransactionRow(row: any) {
     return {
       id: row.id,
       licenseId: row.license_id,
       clientId: row.client_id,
       companyId: row.company_id,
-      client_name: row.client_name,
-      client_email: row.client_email,
-      company_name: row.company_name,
-      license_key: row.license_key,
       type: row.type,
-      amount: parseFloat(row.amount || '0'),
-      discount: parseFloat(row.discount || '0'),
-      final_amount: parseFloat(row.final_amount || '0'),
+      amount: row.amount,
+      discount: row.discount || 0,
+      finalAmount: row.final_amount || row.amount,
       paymentMethod: row.payment_method,
       status: row.status,
       paymentLink: row.payment_link,
       paymentDate: row.payment_date,
+      creditsUsed: row.credits_used,
       notes: row.notes,
+      modifiedBy: row.modified_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      created_at: row.created_at,
-      creditsUsed: parseFloat(row.credits_used || '0'),
-      modifiedBy: row.modified_by
+      // Additional fields for display - with fallback to license data
+      client_name: row.client_name || row.license_client_name,
+      client_email: row.client_email || row.license_client_email,
+      company_name: row.company_name || row.license_company_name,
+      license_key: row.license_key
     };
   }
 
@@ -1246,38 +1246,20 @@ class DatabaseStorage implements IStorage {
           c.email as client_email,
           comp.name as company_name,
           l.activation_key as license_key,
-          u.username as modified_by_username
+          lic_client.name as license_client_name,
+          lic_client.email as license_client_email,
+          lic_comp.name as license_company_name
         FROM transactions t
         LEFT JOIN clients c ON t.client_id = c.id
         LEFT JOIN companies comp ON t.company_id = comp.id
         LEFT JOIN licenses l ON t.license_id = l.id
-        LEFT JOIN users u ON t.modified_by = u.id
-        ORDER BY COALESCE(t.created_at, t.updated_at) DESC
+        LEFT JOIN clients lic_client ON l.client_id = lic_client.id
+        LEFT JOIN companies lic_comp ON lic_client.company_id = lic_comp.id
+        ORDER BY t.created_at DESC
       `;
 
       const rows = await this.db.query(query);
-      return rows.map((row: any) => ({
-        id: row.id,
-        licenseId: row.license_id,
-        clientId: row.client_id,
-        companyId: row.company_id,
-        client_name: row.client_name,
-        client_email: row.client_email,
-        company_name: row.company_name,
-        license_key: row.license_key,
-        type: row.type,
-        amount: row.amount,
-        discount: row.discount,
-        final_amount: row.final_amount,
-        paymentMethod: row.payment_method,
-        status: row.status,
-        paymentLink: row.payment_link,
-        paymentDate: row.payment_date,
-        notes: row.notes,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        modifiedBy: row.modified_by_username
-      }));
+      return rows.map((row: any) => this.mapTransactionRow(row));
     } catch (error) {
       console.error('Error getting all transactions:', error);
       throw error;
@@ -1301,23 +1283,28 @@ class DatabaseStorage implements IStorage {
           comp.name as company_name,
           client_comp.name as client_company_name,
           l.activation_key as license_key,
-          u.username as modified_by_username
+          u.username as modified_by_username,
+          lic_client.name as license_client_name,
+          lic_client.email as license_client_email,
+          lic_comp.name as license_company_name
         FROM transactions t
         LEFT JOIN clients c ON t.client_id = c.id
         LEFT JOIN companies comp ON t.company_id = comp.id
         LEFT JOIN companies client_comp ON c.company_id = client_comp.id
         LEFT JOIN licenses l ON t.license_id = l.id
         LEFT JOIN users u ON t.modified_by = u.id
+        LEFT JOIN clients lic_client ON l.client_id = lic_client.id
+        LEFT JOIN companies lic_comp ON lic_client.company_id = lic_comp.id
         WHERE (t.company_id IN (${placeholders}) OR c.company_id IN (${placeholders}))
         ORDER BY COALESCE(t.created_at, t.updated_at) DESC
       `;
 
       console.log(`getTransactionsByCompanyHierarchy: Executing query with company IDs: [${companyIds.join(', ')}]`);
-      
+
       const rows = await this.db.query(query, [...companyIds, ...companyIds]);
 
       console.log(`getTransactionsByCompanyHierarchy: Found ${rows.length} transactions`);
-      
+
       // Debug: log transaction details
       rows.forEach((row: any) => {
         console.log(`Transaction ${row.id}: company_id=${row.company_id}, client_company_id=${row.client_company_id}, client_name=${row.client_name}`);
@@ -1343,7 +1330,11 @@ class DatabaseStorage implements IStorage {
         notes: row.notes,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        modifiedBy: row.modified_by_username
+        modifiedBy: row.modified_by_username,
+        // Fallback data from license
+        license_client_name: row.license_client_name,
+        license_client_email: row.license_client_email,
+        license_company_name: row.license_company_name
       }));
     } catch (error) {
       console.error('Error getting transactions by company hierarchy:', error);
@@ -1352,45 +1343,28 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTransactionsByCompany(companyId: string): Promise<Transaction[]> {
-    const rows = await this.db.query(`
+    const query = `
       SELECT 
         t.*,
         c.name as client_name,
         c.email as client_email,
         comp.name as company_name,
         l.activation_key as license_key,
-        u.username as modified_by_username
+        lic_client.name as license_client_name,
+        lic_client.email as license_client_email,
+        lic_comp.name as license_company_name
       FROM transactions t
       LEFT JOIN clients c ON t.client_id = c.id
       LEFT JOIN companies comp ON t.company_id = comp.id
       LEFT JOIN licenses l ON t.license_id = l.id
-      LEFT JOIN users u ON t.modified_by = u.id
+      LEFT JOIN clients lic_client ON l.client_id = lic_client.id
+      LEFT JOIN companies lic_comp ON lic_client.company_id = lic_comp.id
       WHERE t.company_id = ?
       ORDER BY t.created_at DESC
-    `, [companyId]);
+    `;
 
-    return rows.map((row: any) => ({
-      id: row.id,
-      licenseId: row.license_id,
-      clientId: row.client_id,
-      companyId: row.company_id,
-      client_name: row.client_name,
-      client_email: row.client_email,
-      company_name: row.company_name,
-      license_key: row.license_key,
-      type: row.type,
-      amount: parseFloat(row.amount || '0'),
-      discount: parseFloat(row.discount || '0'),
-      final_amount: parseFloat(row.final_amount || '0'),
-      paymentMethod: row.payment_method,
-      status: row.status,
-      paymentLink: row.payment_link,
-      paymentDate: row.payment_date,
-      notes: row.notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      modifiedBy: row.modified_by_username
-    }));
+    const rows = await database.query(query, [companyId]);
+    return rows.map((row: any) => this.mapTransactionRow(row));
   }
 
   async getTransactionById(id: string): Promise<Transaction | null> {
