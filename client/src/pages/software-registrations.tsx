@@ -253,9 +253,9 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     }
   }, [companyId, initialClientId]); // Only depend on the key props
 
-  // Filtra i clienti per l'azienda selezionata E le aziende di tipo "client" nella gerarchia
-  const filteredClients = [...safeClients, ...safeCompanies.filter((c: any) => 
-    c.type === 'client' && (c.parent_id === companyId || isInHierarchy(companyId, c.id))
+  // Trova le aziende di tipo "cliente" che sono sotto-aziende dell'azienda selezionata
+  const clientCompanies = safeCompanies.filter((c: any) => 
+    c.type === 'cliente' && c.parent_id === companyId
   ).map((company: any) => ({
     id: company.id,
     name: company.name,
@@ -263,58 +263,51 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     companyId: company.parent_id || company.parentId,
     company_id: company.parent_id || company.parentId,
     isCompany: true
-  }))].filter((client: any) => {
-    // Prima verifica: clienti diretti dell'azienda selezionata
+  }));
+
+  // Combina clienti diretti e aziende cliente
+  const allItems = [...safeClients, ...clientCompanies];
+
+  // Filtra i clienti per l'azienda selezionata
+  const filteredClients = allItems.filter((client: any) => {
     const clientCompanyId = client.companyId || client.company_id;
     
-    // Se è una azienda di tipo client
+    // Se è una azienda di tipo cliente
     if (client.isCompany) {
+      // Deve essere una sotto-azienda dell'azienda selezionata
+      if (clientCompanyId === companyId) {
+        if (!searchTerm) return true;
+        
+        const searchLower = searchTerm.toLowerCase();
+        return client.name?.toLowerCase().includes(searchLower) ||
+               client.email?.toLowerCase().includes(searchLower);
+      }
+      return false;
+    }
+    
+    // Se è un cliente normale, verifica se appartiene all'azienda selezionata o alle sue sotto-aziende di tipo cliente
+    if (clientCompanyId === companyId) {
+      // Cliente diretto dell'azienda selezionata
       if (!searchTerm) return true;
-      
+
       const searchLower = searchTerm.toLowerCase();
       return client.name?.toLowerCase().includes(searchLower) ||
              client.email?.toLowerCase().includes(searchLower);
     }
-    
-    // Se è un cliente normale
-    if (clientCompanyId === companyId) {
+
+    // Verifica se il cliente appartiene a una sotto-azienda di tipo "cliente"
+    const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
+    if (clientCompany && clientCompany.type === 'cliente' && clientCompany.parent_id === companyId) {
       if (!searchTerm) return true;
 
       const searchLower = searchTerm.toLowerCase();
-      const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
-                         client.email?.toLowerCase().includes(searchLower);
-      return clientMatch;
-    }
-
-    // Seconda verifica: clienti che appartengono a sotto-aziende di tipo "client" nella gerarchia
-    if (companyId && clientCompanyId) {
-      // Trova l'azienda del cliente
-      const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
-      
-      // Se l'azienda del cliente è di tipo "client" e ha come parent l'azienda selezionata
-      if (clientCompany && clientCompany.type === 'client' && clientCompany.parent_id === companyId) {
-        if (!searchTerm) return true;
-
-        const searchLower = searchTerm.toLowerCase();
-        const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
-                           client.email?.toLowerCase().includes(searchLower);
-        return clientMatch;
-      }
-
-      // Verifica ricorsiva per sotto-aziende di tipo client a più livelli
-      if (isInClientHierarchy(companyId, clientCompanyId)) {
-        if (!searchTerm) return true;
-
-        const searchLower = searchTerm.toLowerCase();
-        const clientMatch = client.name?.toLowerCase().includes(searchLower) ||
-                           client.email?.toLowerCase().includes(searchLower);
-        return clientMatch;
-      }
+      return client.name?.toLowerCase().includes(searchLower) ||
+             client.email?.toLowerCase().includes(searchLower);
     }
 
     return false;
   }).sort((a, b) => {
-    // Ordina: prima aziende di tipo client, poi clienti diretti, poi clienti di sotto-aziende
+    // Ordina: prima aziende di tipo cliente, poi clienti diretti, poi clienti di sotto-aziende
     if (a.isCompany && !b.isCompany) return -1;
     if (!a.isCompany && b.isCompany) return 1;
     
