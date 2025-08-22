@@ -253,12 +253,31 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     }
   }, [companyId, initialClientId]); // Only depend on the key props
 
-  // Filtra i clienti per l'azienda selezionata E le sue sotto-aziende di tipo "client"
-  const filteredClients = safeClients.filter((client: Client) => {
+  // Filtra i clienti per l'azienda selezionata E le aziende di tipo "client" nella gerarchia
+  const filteredClients = [...safeClients, ...safeCompanies.filter((c: any) => 
+    c.type === 'client' && (c.parent_id === companyId || isInHierarchy(companyId, c.id))
+  ).map((company: any) => ({
+    id: company.id,
+    name: company.name,
+    email: company.partitaIva ? `P.IVA: ${company.partitaIva}` : '',
+    companyId: company.parent_id || company.parentId,
+    company_id: company.parent_id || company.parentId,
+    isCompany: true
+  }))].filter((client: any) => {
     // Prima verifica: clienti diretti dell'azienda selezionata
     const clientCompanyId = client.companyId || client.company_id;
+    
+    // Se è una azienda di tipo client
+    if (client.isCompany) {
+      if (!searchTerm) return true;
+      
+      const searchLower = searchTerm.toLowerCase();
+      return client.name?.toLowerCase().includes(searchLower) ||
+             client.email?.toLowerCase().includes(searchLower);
+    }
+    
+    // Se è un cliente normale
     if (clientCompanyId === companyId) {
-      // Poi filtra per termine di ricerca se presente
       if (!searchTerm) return true;
 
       const searchLower = searchTerm.toLowerCase();
@@ -274,7 +293,6 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
       
       // Se l'azienda del cliente è di tipo "client" e ha come parent l'azienda selezionata
       if (clientCompany && clientCompany.type === 'client' && clientCompany.parent_id === companyId) {
-        // Poi filtra per termine di ricerca se presente
         if (!searchTerm) return true;
 
         const searchLower = searchTerm.toLowerCase();
@@ -284,26 +302,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
       }
 
       // Verifica ricorsiva per sotto-aziende di tipo client a più livelli
-      const isInClientHierarchy = (targetCompanyId: string, currentCompanyId: string, depth: number = 0): boolean => {
-        // Limite di ricorsione per evitare loop infiniti
-        if (depth > 10) return false;
-        
-        const company = safeCompanies.find((c: any) => c.id === currentCompanyId);
-        if (!company) return false;
-        
-        // Se abbiamo trovato l'azienda target
-        if (currentCompanyId === targetCompanyId) return true;
-        
-        // Se l'azienda corrente è di tipo client e ha un parent, continua la ricerca
-        if (company.type === 'client' && company.parent_id) {
-          return isInClientHierarchy(targetCompanyId, company.parent_id, depth + 1);
-        }
-        
-        return false;
-      };
-
       if (isInClientHierarchy(companyId, clientCompanyId)) {
-        // Poi filtra per termine di ricerca se presente
         if (!searchTerm) return true;
 
         const searchLower = searchTerm.toLowerCase();
@@ -315,20 +314,55 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
 
     return false;
   }).sort((a, b) => {
-    // Ordina prima per tipo (clienti diretti, poi aziende-client), poi per nome
+    // Ordina: prima aziende di tipo client, poi clienti diretti, poi clienti di sotto-aziende
+    if (a.isCompany && !b.isCompany) return -1;
+    if (!a.isCompany && b.isCompany) return 1;
+    
     const clientCompanyIdA = a.companyId || a.company_id;
     const clientCompanyIdB = b.companyId || b.company_id;
     
-    const companyA = safeCompanies.find((c: any) => c.id === clientCompanyIdA);
-    const companyB = safeCompanies.find((c: any) => c.id === clientCompanyIdB);
-    
-    // Clienti diretti vengono prima
+    // Clienti diretti vengono prima dei clienti di sotto-aziende
     if (clientCompanyIdA === companyId && clientCompanyIdB !== companyId) return -1;
     if (clientCompanyIdB === companyId && clientCompanyIdA !== companyId) return 1;
     
-    // Poi per nome cliente
+    // Poi per nome
     return (a.name || '').localeCompare(b.name || '');
   });
+
+  // Funzione helper per verificare la gerarchia
+  function isInClientHierarchy(targetCompanyId: string, currentCompanyId: string, depth: number = 0): boolean {
+    if (depth > 10) return false;
+    
+    const company = safeCompanies.find((c: any) => c.id === currentCompanyId);
+    if (!company) return false;
+    
+    if (currentCompanyId === targetCompanyId) return true;
+    
+    if (company.type === 'client' && company.parent_id) {
+      return isInClientHierarchy(targetCompanyId, company.parent_id, depth + 1);
+    }
+    
+    return false;
+  }
+
+  // Funzione helper per verificare se un'azienda è nella gerarchia
+  function isInHierarchy(parentId: string, companyId: string): boolean {
+    const company = safeCompanies.find((c: any) => c.id === companyId);
+    if (!company) return false;
+    
+    let current = company;
+    let depth = 0;
+    
+    while (current && depth < 10) {
+      if (current.parent_id === parentId || current.parentId === parentId) {
+        return true;
+      }
+      current = safeCompanies.find((c: any) => c.id === (current.parent_id || current.parentId));
+      depth++;
+    }
+    
+    return false;
+  }
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
@@ -375,9 +409,14 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
               >
                 <div className="flex flex-col">
                   <div className="font-medium text-sm text-gray-900">
-                    <i className={`fas ${isDirect ? 'fa-user' : 'fa-building-user'} mr-2 ${isDirect ? 'text-green-600' : 'text-blue-600'}`}></i>
+                    <i className={`fas ${client.isCompany ? 'fa-building' : (isDirect ? 'fa-user' : 'fa-building-user')} mr-2 ${client.isCompany ? 'text-purple-600' : (isDirect ? 'text-green-600' : 'text-blue-600')}`}></i>
                     {client.name}
-                    {isFromClientSubcompany && (
+                    {client.isCompany && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                        Azienda Cliente
+                      </span>
+                    )}
+                    {isFromClientSubcompany && !client.isCompany && (
                       <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                         da {clientCompany.name}
                       </span>
@@ -386,7 +425,7 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
                   <div className="text-xs text-gray-600">
                     {client.email}
                   </div>
-                  {isFromClientSubcompany && (
+                  {isFromClientSubcompany && !client.isCompany && (
                     <div className="text-xs text-blue-600 font-medium">
                       Azienda cliente: {clientCompany.name}
                     </div>
