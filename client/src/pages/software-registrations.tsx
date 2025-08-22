@@ -256,26 +256,27 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
   // Trova i clienti diretti dell'azienda selezionata
   const directClients = safeClients.filter((client: any) => {
     const clientCompanyId = client.companyId || client.company_id;
-    if (clientCompanyId !== companyId) return false;
-    
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return client.name?.toLowerCase().includes(searchLower) ||
-           client.email?.toLowerCase().includes(searchLower);
-  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return clientCompanyId === companyId;
+  }).map((client: any) => ({
+    ...client,
+    isCompany: false,
+    displayType: 'cliente_diretto'
+  }));
 
   // Trova le aziende di tipo "cliente" che sono sotto-aziende dell'azienda selezionata
   const clientCompanies = safeCompanies.filter((c: any) => {
-    if (c.type !== 'cliente') return false;
-    if ((c.parent_id || c.parentId) !== companyId) return false;
-    
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return c.name?.toLowerCase().includes(searchLower) ||
-           c.partitaIva?.toLowerCase().includes(searchLower);
-  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const parentId = c.parent_id || c.parentId;
+    return c.type === 'cliente' && parentId === companyId;
+  }).map((company: any) => ({
+    id: company.id,
+    name: company.name,
+    email: company.partitaIva ? `P.IVA: ${company.partitaIva}` : '',
+    companyId: company.parent_id || company.parentId,
+    company_id: company.parent_id || company.parentId,
+    isCompany: true,
+    displayType: 'azienda_cliente',
+    partitaIva: company.partitaIva
+  }));
 
   // Trova i clienti delle sotto-aziende di tipo "cliente"
   const subCompanyClients = safeClients.filter((client: any) => {
@@ -285,19 +286,46 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     // Verifica se il cliente appartiene a una sotto-azienda di tipo "cliente"
     const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
     if (!clientCompany || clientCompany.type !== 'cliente') return false;
-    if ((clientCompany.parent_id || clientCompany.parentId) !== companyId) return false;
-    
+    const parentId = clientCompany.parent_id || clientCompany.parentId;
+    return parentId === companyId;
+  }).map((client: any) => ({
+    ...client,
+    isCompany: false,
+    displayType: 'cliente_sottoadienda'
+  }));
+
+  // Combina tutti i risultati e filtra per il termine di ricerca se presente
+  const allAvailableClients = [...directClients, ...clientCompanies, ...subCompanyClients];
+  
+  const filteredOptions = allAvailableClients.filter((item: any) => {
     if (!searchTerm) return true;
     
     const searchLower = searchTerm.toLowerCase();
-    return client.name?.toLowerCase().includes(searchLower) ||
-           client.email?.toLowerCase().includes(searchLower);
-  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const nameMatch = item.name?.toLowerCase().includes(searchLower);
+    const emailMatch = item.email?.toLowerCase().includes(searchLower);
+    const pivaMatch = item.partitaIva?.toLowerCase().includes(searchLower);
+    
+    return nameMatch || emailMatch || pivaMatch;
+  }).sort((a, b) => {
+    // Ordina prima per tipo (clienti diretti, poi aziende, poi clienti sotto-aziende)
+    const typeOrder = { 'cliente_diretto': 1, 'azienda_cliente': 2, 'cliente_sottoadienda': 3 };
+    const aOrder = typeOrder[a.displayType as keyof typeof typeOrder] || 999;
+    const bOrder = typeOrder[b.displayType as keyof typeof typeOrder] || 999;
+    
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    
+    // Poi per nome
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   console.log('ClientSearchInput: Company selected:', companyId);
-  console.log('ClientSearchInput: Direct clients:', directClients.length);
-  console.log('ClientSearchInput: Client companies:', clientCompanies.length);
-  console.log('ClientSearchInput: Sub-company clients:', subCompanyClients.length);
+  console.log('ClientSearchInput: Available companies:', safeCompanies.map(c => ({ id: c.id, name: c.name, type: c.type, parent_id: c.parent_id })));
+  console.log('ClientSearchInput: Direct clients found:', directClients.length);
+  console.log('ClientSearchInput: Client companies found:', clientCompanies.length);
+  console.log('ClientSearchInput: Sub-company clients found:', subCompanyClients.length);
+  console.log('ClientSearchInput: All filtered options:', filteredOptions.length);
 
   // Funzione helper per verificare la gerarchia
   function isInClientHierarchy(targetCompanyId: string, currentCompanyId: string, depth: number = 0): boolean {
@@ -363,121 +391,72 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         disabled={!companyId}
       />
 
-      {isOpen && companyId && (directClients.length > 0 || clientCompanies.length > 0 || subCompanyClients.length > 0) && (
+      {isOpen && companyId && filteredOptions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
-          {/* Sezione Clienti Diretti */}
-          {directClients.length > 0 && (
-            <>
-              <div className="px-3 py-2 bg-green-50 border-b border-green-200">
-                <div className="text-xs font-medium text-green-800 uppercase tracking-wide">
-                  <i className="fas fa-user mr-1"></i>
-                  Clienti Diretti ({directClients.length})
-                </div>
-              </div>
-              {directClients.map((client: Client) => (
-                <div
-                  key={`direct-${client.id}`}
-                  onClick={() => handleClientSelect(client)}
-                  className="px-3 py-2 cursor-pointer hover:bg-green-50 border-b border-gray-100"
-                >
-                  <div className="flex flex-col">
-                    <div className="font-medium text-sm text-gray-900">
-                      <i className="fas fa-user mr-2 text-green-600"></i>
-                      {client.name}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {client.email}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
+          {filteredOptions.map((option: any) => {
+            const getBackgroundColor = () => {
+              switch (option.displayType) {
+                case 'cliente_diretto': return 'hover:bg-green-50';
+                case 'azienda_cliente': return 'hover:bg-purple-50';
+                case 'cliente_sottoadienda': return 'hover:bg-blue-50';
+                default: return 'hover:bg-gray-50';
+              }
+            };
 
-          {/* Sezione Aziende Cliente (Sotto-aziende) */}
-          {clientCompanies.length > 0 && (
-            <>
-              <div className="px-3 py-2 bg-purple-50 border-b border-purple-200">
-                <div className="text-xs font-medium text-purple-800 uppercase tracking-wide">
-                  <i className="fas fa-building mr-1"></i>
-                  Aziende Cliente ({clientCompanies.length})
-                </div>
-              </div>
-              {clientCompanies.map((company: any) => (
-                <div
-                  key={`company-${company.id}`}
-                  onClick={() => handleClientSelect({
-                    id: company.id,
-                    name: company.name,
-                    email: company.partitaIva ? `P.IVA: ${company.partitaIva}` : '',
-                    companyId: company.parent_id || company.parentId,
-                    company_id: company.parent_id || company.parentId,
-                    isCompany: true
-                  } as Client)}
-                  className="px-3 py-2 cursor-pointer hover:bg-purple-50 border-b border-gray-100"
-                >
-                  <div className="flex flex-col">
-                    <div className="font-medium text-sm text-gray-900">
-                      <i className="fas fa-building mr-2 text-purple-600"></i>
-                      {company.name}
-                      <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                        Azienda
-                      </span>
-                    </div>
-                    {company.partitaIva && (
-                      <div className="text-xs text-gray-600">
-                        P.IVA: {company.partitaIva}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
+            const getIconAndColor = () => {
+              switch (option.displayType) {
+                case 'cliente_diretto': return { icon: 'fas fa-user', color: 'text-green-600' };
+                case 'azienda_cliente': return { icon: 'fas fa-building', color: 'text-purple-600' };
+                case 'cliente_sottoadienda': return { icon: 'fas fa-user-friends', color: 'text-blue-600' };
+                default: return { icon: 'fas fa-user', color: 'text-gray-600' };
+              }
+            };
 
-          {/* Sezione Clienti delle Sotto-aziende */}
-          {subCompanyClients.length > 0 && (
-            <>
-              <div className="px-3 py-2 bg-blue-50 border-b border-blue-200">
-                <div className="text-xs font-medium text-blue-800 uppercase tracking-wide">
-                  <i className="fas fa-users mr-1"></i>
-                  Clienti delle Aziende Cliente ({subCompanyClients.length})
+            const getLabel = () => {
+              switch (option.displayType) {
+                case 'cliente_diretto': return 'Cliente Diretto';
+                case 'azienda_cliente': return 'Azienda Cliente';
+                case 'cliente_sottoadienda': {
+                  const clientCompanyId = option.companyId || option.company_id;
+                  const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
+                  return `da ${clientCompany?.name || 'Azienda'}`;
+                };
+                default: return '';
+              }
+            };
+
+            const { icon, color } = getIconAndColor();
+
+            return (
+              <div
+                key={`${option.displayType}-${option.id}`}
+                onClick={() => handleClientSelect(option)}
+                className={`px-3 py-2 cursor-pointer ${getBackgroundColor()} border-b border-gray-100 last:border-b-0`}
+              >
+                <div className="flex flex-col">
+                  <div className="font-medium text-sm text-gray-900 flex items-center">
+                    <i className={`${icon} mr-2 ${color}`}></i>
+                    {option.name}
+                    <span className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full">
+                      {getLabel()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {option.email}
+                  </div>
+                  {option.displayType === 'azienda_cliente' && option.partitaIva && (
+                    <div className="text-xs text-purple-600 font-medium">
+                      P.IVA: {option.partitaIva}
+                    </div>
+                  )}
                 </div>
               </div>
-              {subCompanyClients.map((client: Client) => {
-                const clientCompanyId = client.companyId || client.company_id;
-                const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
-                
-                return (
-                  <div
-                    key={`sub-${client.id}`}
-                    onClick={() => handleClientSelect(client)}
-                    className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-gray-100"
-                  >
-                    <div className="flex flex-col">
-                      <div className="font-medium text-sm text-gray-900">
-                        <i className="fas fa-user-friends mr-2 text-blue-600"></i>
-                        {client.name}
-                        <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                          da {clientCompany?.name}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {client.email}
-                      </div>
-                      <div className="text-xs text-blue-600 font-medium">
-                        Azienda: {clientCompany?.name}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
+            );
+          })}
         </div>
       )}
 
-      {isOpen && companyId && directClients.length === 0 && clientCompanies.length === 0 && subCompanyClients.length === 0 && (
+      {isOpen && companyId && filteredOptions.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
           <div className="px-3 py-2 text-sm text-gray-500 text-center">
             {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda"}
