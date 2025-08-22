@@ -253,81 +253,51 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
     }
   }, [companyId, initialClientId]); // Only depend on the key props
 
-  // Trova le aziende di tipo "cliente" che sono sotto-aziende dell'azienda selezionata
-  const clientCompanies = safeCompanies.filter((c: any) => 
-    c.type === 'cliente' && (c.parent_id === companyId || c.parentId === companyId)
-  ).map((company: any) => ({
-    id: company.id,
-    name: company.name,
-    email: company.partitaIva ? `P.IVA: ${company.partitaIva}` : '',
-    companyId: company.parent_id || company.parentId,
-    company_id: company.parent_id || company.parentId,
-    isCompany: true
-  }));
-
-  console.log('ClientSearchInput: Company selected:', companyId);
-  console.log('ClientSearchInput: Available companies:', safeCompanies.map(c => ({ id: c.id, name: c.name, type: c.type, parent_id: c.parent_id })));
-  console.log('ClientSearchInput: Client companies found:', clientCompanies);
-  console.log('ClientSearchInput: Available clients:', safeClients.map(c => ({ id: c.id, name: c.name, company_id: c.company_id || c.companyId })));
-
-  // Combina clienti diretti e aziende cliente
-  const allItems = [...safeClients, ...clientCompanies];
-
-  // Filtra i clienti per l'azienda selezionata
-  const filteredClients = allItems.filter((client: any) => {
+  // Trova i clienti diretti dell'azienda selezionata
+  const directClients = safeClients.filter((client: any) => {
     const clientCompanyId = client.companyId || client.company_id;
+    if (clientCompanyId !== companyId) return false;
     
-    // Se è una azienda di tipo cliente
-    if (client.isCompany) {
-      // Deve essere una sotto-azienda dell'azienda selezionata
-      if (clientCompanyId === companyId) {
-        if (!searchTerm) return true;
-        
-        const searchLower = searchTerm.toLowerCase();
-        return client.name?.toLowerCase().includes(searchLower) ||
-               client.email?.toLowerCase().includes(searchLower);
-      }
-      return false;
-    }
+    if (!searchTerm) return true;
     
-    // Se è un cliente normale, verifica se appartiene all'azienda selezionata o alle sue sotto-aziende di tipo cliente
-    if (clientCompanyId === companyId) {
-      // Cliente diretto dell'azienda selezionata
-      if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return client.name?.toLowerCase().includes(searchLower) ||
+           client.email?.toLowerCase().includes(searchLower);
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-      const searchLower = searchTerm.toLowerCase();
-      return client.name?.toLowerCase().includes(searchLower) ||
-             client.email?.toLowerCase().includes(searchLower);
-    }
+  // Trova le aziende di tipo "cliente" che sono sotto-aziende dell'azienda selezionata
+  const clientCompanies = safeCompanies.filter((c: any) => {
+    if (c.type !== 'cliente') return false;
+    if ((c.parent_id || c.parentId) !== companyId) return false;
+    
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return c.name?.toLowerCase().includes(searchLower) ||
+           c.partitaIva?.toLowerCase().includes(searchLower);
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
+  // Trova i clienti delle sotto-aziende di tipo "cliente"
+  const subCompanyClients = safeClients.filter((client: any) => {
+    const clientCompanyId = client.companyId || client.company_id;
+    if (!clientCompanyId) return false;
+    
     // Verifica se il cliente appartiene a una sotto-azienda di tipo "cliente"
     const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
-    if (clientCompany && clientCompany.type === 'cliente' && (clientCompany.parent_id === companyId || clientCompany.parentId === companyId)) {
-      if (!searchTerm) return true;
-
-      const searchLower = searchTerm.toLowerCase();
-      return client.name?.toLowerCase().includes(searchLower) ||
-             client.email?.toLowerCase().includes(searchLower);
-    }
-
-    return false;
-  }).sort((a, b) => {
-    // Ordina: prima aziende di tipo cliente, poi clienti diretti, poi clienti di sotto-aziende
-    if (a.isCompany && !b.isCompany) return -1;
-    if (!a.isCompany && b.isCompany) return 1;
+    if (!clientCompany || clientCompany.type !== 'cliente') return false;
+    if ((clientCompany.parent_id || clientCompany.parentId) !== companyId) return false;
     
-    const clientCompanyIdA = a.companyId || a.company_id;
-    const clientCompanyIdB = b.companyId || b.company_id;
+    if (!searchTerm) return true;
     
-    // Clienti diretti vengono prima dei clienti di sotto-aziende
-    if (clientCompanyIdA === companyId && clientCompanyIdB !== companyId) return -1;
-    if (clientCompanyIdB === companyId && clientCompanyIdA !== companyId) return 1;
-    
-    // Poi per nome
-    return (a.name || '').localeCompare(b.name || '');
-  });
+    const searchLower = searchTerm.toLowerCase();
+    return client.name?.toLowerCase().includes(searchLower) ||
+           client.email?.toLowerCase().includes(searchLower);
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  console.log('ClientSearchInput: Filtered clients:', filteredClients.map(c => ({ id: c.id, name: c.name, isCompany: c.isCompany })));
+  console.log('ClientSearchInput: Company selected:', companyId);
+  console.log('ClientSearchInput: Direct clients:', directClients.length);
+  console.log('ClientSearchInput: Client companies:', clientCompanies.length);
+  console.log('ClientSearchInput: Sub-company clients:', subCompanyClients.length);
 
   // Funzione helper per verificare la gerarchia
   function isInClientHierarchy(targetCompanyId: string, currentCompanyId: string, depth: number = 0): boolean {
@@ -393,54 +363,124 @@ function ClientSearchInput({ clients, companies, onClientSelect, companyId, plac
         disabled={!companyId}
       />
 
-      {isOpen && companyId && filteredClients.length > 0 && (
+      {isOpen && companyId && (directClients.length > 0 || clientCompanies.length > 0 || subCompanyClients.length > 0) && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto client-search-dropdown">
-          {filteredClients.map((client: Client) => {
-            const clientCompanyId = client.companyId || client.company_id;
-            const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
-            const isDirect = clientCompanyId === companyId;
-            const isFromClientSubcompany = clientCompany && clientCompany.type === 'client' && !isDirect;
-            
-            return (
-              <div
-                key={client.id}
-                onClick={() => handleClientSelect(client)}
-                className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-              >
-                <div className="flex flex-col">
-                  <div className="font-medium text-sm text-gray-900">
-                    <i className={`fas ${client.isCompany ? 'fa-building' : (isDirect ? 'fa-user' : 'fa-building-user')} mr-2 ${client.isCompany ? 'text-purple-600' : (isDirect ? 'text-green-600' : 'text-blue-600')}`}></i>
-                    {client.name}
-                    {client.isCompany && (
-                      <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                        Azienda Cliente
-                      </span>
-                    )}
-                    {isFromClientSubcompany && !client.isCompany && (
-                      <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                        da {clientCompany.name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {client.email}
-                  </div>
-                  {isFromClientSubcompany && !client.isCompany && (
-                    <div className="text-xs text-blue-600 font-medium">
-                      Azienda cliente: {clientCompany.name}
-                    </div>
-                  )}
+          {/* Sezione Clienti Diretti */}
+          {directClients.length > 0 && (
+            <>
+              <div className="px-3 py-2 bg-green-50 border-b border-green-200">
+                <div className="text-xs font-medium text-green-800 uppercase tracking-wide">
+                  <i className="fas fa-user mr-1"></i>
+                  Clienti Diretti ({directClients.length})
                 </div>
               </div>
-            );
-          })}
+              {directClients.map((client: Client) => (
+                <div
+                  key={`direct-${client.id}`}
+                  onClick={() => handleClientSelect(client)}
+                  className="px-3 py-2 cursor-pointer hover:bg-green-50 border-b border-gray-100"
+                >
+                  <div className="flex flex-col">
+                    <div className="font-medium text-sm text-gray-900">
+                      <i className="fas fa-user mr-2 text-green-600"></i>
+                      {client.name}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {client.email}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Sezione Aziende Cliente (Sotto-aziende) */}
+          {clientCompanies.length > 0 && (
+            <>
+              <div className="px-3 py-2 bg-purple-50 border-b border-purple-200">
+                <div className="text-xs font-medium text-purple-800 uppercase tracking-wide">
+                  <i className="fas fa-building mr-1"></i>
+                  Aziende Cliente ({clientCompanies.length})
+                </div>
+              </div>
+              {clientCompanies.map((company: any) => (
+                <div
+                  key={`company-${company.id}`}
+                  onClick={() => handleClientSelect({
+                    id: company.id,
+                    name: company.name,
+                    email: company.partitaIva ? `P.IVA: ${company.partitaIva}` : '',
+                    companyId: company.parent_id || company.parentId,
+                    company_id: company.parent_id || company.parentId,
+                    isCompany: true
+                  } as Client)}
+                  className="px-3 py-2 cursor-pointer hover:bg-purple-50 border-b border-gray-100"
+                >
+                  <div className="flex flex-col">
+                    <div className="font-medium text-sm text-gray-900">
+                      <i className="fas fa-building mr-2 text-purple-600"></i>
+                      {company.name}
+                      <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                        Azienda
+                      </span>
+                    </div>
+                    {company.partitaIva && (
+                      <div className="text-xs text-gray-600">
+                        P.IVA: {company.partitaIva}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Sezione Clienti delle Sotto-aziende */}
+          {subCompanyClients.length > 0 && (
+            <>
+              <div className="px-3 py-2 bg-blue-50 border-b border-blue-200">
+                <div className="text-xs font-medium text-blue-800 uppercase tracking-wide">
+                  <i className="fas fa-users mr-1"></i>
+                  Clienti delle Aziende Cliente ({subCompanyClients.length})
+                </div>
+              </div>
+              {subCompanyClients.map((client: Client) => {
+                const clientCompanyId = client.companyId || client.company_id;
+                const clientCompany = safeCompanies.find((c: any) => c.id === clientCompanyId);
+                
+                return (
+                  <div
+                    key={`sub-${client.id}`}
+                    onClick={() => handleClientSelect(client)}
+                    className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-gray-100"
+                  >
+                    <div className="flex flex-col">
+                      <div className="font-medium text-sm text-gray-900">
+                        <i className="fas fa-user-friends mr-2 text-blue-600"></i>
+                        {client.name}
+                        <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          da {clientCompany?.name}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {client.email}
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        Azienda: {clientCompany?.name}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 
-      {isOpen && companyId && filteredClients.length === 0 && (
+      {isOpen && companyId && directClients.length === 0 && clientCompanies.length === 0 && subCompanyClients.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg client-search-dropdown">
           <div className="px-3 py-2 text-sm text-gray-500 text-center">
-            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda e le sue sotto-aziende di tipo client"}
+            {searchTerm ? "Nessun cliente trovato" : "Nessun cliente disponibile per questa azienda"}
           </div>
         </div>
       )}
