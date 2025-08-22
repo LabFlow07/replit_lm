@@ -44,7 +44,6 @@ function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
         throw new Error('Failed to fetch registrations');
       }
       const data = await response.json();
-      // Filtra solo le registrazioni con questa licenza e che hanno computer_key
       return data.filter((reg: any) => 
         reg.licenzaAssegnata === licenseId && 
         reg.computerKey && 
@@ -54,106 +53,65 @@ function DeviceKeysSection({ licenseId }: DeviceKeysSectionProps) {
   });
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-        <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-      </div>
-    );
+    return <div className="animate-pulse h-8 bg-gray-200 rounded"></div>;
   }
 
   if (registrations.length === 0) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-        <div className="flex items-center">
-          <i className="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
-          <div>
-            <p className="text-sm font-medium text-yellow-800">Nessun Dispositivo Autorizzato</p>
-            <p className="text-xs text-yellow-700 mt-1">
-              Non ci sono dispositivi con Computer Key assegnata per questa licenza.
-            </p>
-          </div>
+      <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+        <div className="flex items-center text-yellow-800">
+          <i className="fas fa-exclamation-triangle mr-2"></i>
+          <span className="text-sm font-medium">Nessun Dispositivo Autorizzato</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="bg-green-50 border border-green-200 p-3 rounded-lg mb-3">
+    <div className="space-y-2">
+      <div className="bg-green-50 border border-green-200 p-2 rounded-lg">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <i className="fas fa-shield-alt text-green-600 mr-2"></i>
-            <span className="text-sm font-medium text-green-800">
-              {registrations.length} Dispositivo{registrations.length !== 1 ? 'i' : ''} Autorizzato{registrations.length !== 1 ? 'i' : ''}
-            </span>
-          </div>
-          <Badge variant="secondary" className="text-xs">
-            Attivi
-          </Badge>
+          <span className="text-sm font-medium text-green-800">
+            <i className="fas fa-shield-alt mr-1"></i>
+            {registrations.length} Dispositivo{registrations.length !== 1 ? 'i' : ''} Autorizzato{registrations.length !== 1 ? 'i' : ''}
+          </span>
+          <Badge variant="secondary" className="text-xs">Attivi</Badge>
         </div>
       </div>
 
-      <div className="space-y-3 max-h-60 overflow-y-auto">
+      <div className="space-y-2 max-h-40 overflow-y-auto">
         {registrations.map((registration: DeviceRegistration, index: number) => (
-          <div key={registration.id} className="bg-white border border-gray-200 rounded-lg p-3">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <i className="fas fa-desktop text-blue-500 text-sm"></i>
-                  <span className="font-medium text-sm text-gray-900">
-                    Dispositivo #{index + 1}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {registration.status === 'classificato' ? 'Attivo' : registration.status}
-                  </Badge>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
-                  <div>
-                    <span className="font-medium">Azienda:</span> {registration.ragioneSociale}
-                  </div>
-                  <div>
-                    <span className="font-medium">Software:</span> {registration.nomeSoftware} v{registration.versione}
-                  </div>
-                  <div>
-                    <span className="font-medium">Sistema:</span> {registration.sistemaOperativo || 'N/A'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Registrato:</span> {new Date(registration.primaRegistrazione).toLocaleDateString('it-IT')}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 border border-gray-200 rounded p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-700">Computer Key:</span>
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(registration.computerKey)}
-                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                      title="Copia Computer Key"
-                    >
-                      <i className="fas fa-copy mr-1"></i>
-                      Copia
-                    </button>
-                  </div>
-                  <p className="text-xs font-mono text-gray-900 mt-1 break-all bg-white px-2 py-1 rounded border">
-                    {registration.computerKey}
-                  </p>
-                </div>
+          <div key={registration.id} className="bg-white border border-gray-200 rounded p-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1">
+                <i className="fas fa-desktop text-blue-500 text-xs"></i>
+                <span className="font-medium text-xs">Dispositivo #{index + 1}</span>
               </div>
+              <Badge variant="outline" className="text-xs py-0">Attivo</Badge>
+            </div>
+            
+            <div className="text-xs text-gray-600 mb-1">
+              <span className="font-medium">{registration.ragioneSociale}</span> • 
+              <span className="ml-1">{registration.nomeSoftware} v{registration.versione}</span>
+            </div>
+
+            <div className="bg-gray-50 border rounded p-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">Computer Key:</span>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(registration.computerKey)}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                  title="Copia Computer Key"
+                >
+                  <i className="fas fa-copy"></i>
+                </button>
+              </div>
+              <p className="text-xs font-mono text-gray-900 mt-0.5 break-all bg-white px-1 py-0.5 rounded border">
+                {registration.computerKey}
+              </p>
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-3">
-        <div className="flex items-start">
-          <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
-          <p className="text-sm text-blue-800">
-            <strong>Gestione Dispositivi:</strong> Le Computer Key vengono assegnate tramite la sezione 
-            "Qlm Register" durante la classificazione delle registrazioni software.
-          </p>
-        </div>
       </div>
     </div>
   );
@@ -205,8 +163,8 @@ export default function LicenseModal({ license, isOpen, onClose }: LicenseModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-5xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader className="pb-3">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <i className="fas fa-key text-blue-600"></i>
@@ -220,226 +178,228 @@ export default function LicenseModal({ license, isOpen, onClose }: LicenseModalP
         </DialogHeader>
 
         {/* Chiave di Attivazione */}
-        <div className="bg-gray-50 p-3 rounded-lg text-center mb-4">
+        <div className="bg-gray-50 p-2 rounded-lg text-center mb-3">
           <Label className="text-xs font-medium text-gray-700">Chiave di Attivazione</Label>
-          <p className="text-lg font-mono font-semibold text-gray-900 mt-1 tracking-wider">
+          <p className="text-lg font-mono font-semibold text-gray-900 mt-0.5 tracking-wider">
             {license.activationKey}
           </p>
         </div>
 
-        {/* Layout migliorato organizzato */}
-        <div className="space-y-6">
-          {/* Sezione Informazioni Generali - Layout orizzontale */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <i className="fas fa-info-circle text-blue-600 mr-2"></i>
-              Informazioni Generali
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Cliente */}
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <i className="fas fa-user text-blue-500 mr-2"></i>
-                  <h4 className="font-medium text-gray-900">Cliente</h4>
+        {/* Layout compatto a grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          
+          {/* Colonna Sinistra */}
+          <div className="space-y-4">
+            
+            {/* Informazioni Generali */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h3 className="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                <i className="fas fa-info-circle text-blue-600 mr-2"></i>
+                Informazioni Generali
+              </h3>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Cliente */}
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-user text-blue-500 text-sm mr-1"></i>
+                    <h4 className="font-medium text-xs text-gray-900">Cliente</h4>
+                  </div>
+                  <div className="space-y-1">
+                    <div>
+                      <p className="text-xs font-medium text-gray-900">{license.client?.name || 'N/A'}</p>
+                      <p className="text-xs text-gray-600">{license.client?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-blue-600">{license.company?.name || 'N/A'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Nome</span>
-                    <p className="text-sm font-medium text-gray-900">{license.client?.name || 'N/A'}</p>
+
+                {/* Prodotto */}
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-box text-green-500 text-sm mr-1"></i>
+                    <h4 className="font-medium text-xs text-gray-900">Prodotto</h4>
                   </div>
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Email</span>
-                    <p className="text-sm text-gray-700">{license.client?.email || 'N/A'}</p>
+                  <div className="space-y-1">
+                    <div>
+                      <p className="text-xs font-medium text-gray-900">
+                        {license.product?.name} {license.product?.version}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {getLicenseTypeLabel(license.licenseType)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Azienda</span>
-                    <p className="text-sm font-medium text-gray-900">{license.company?.name || 'N/A'}</p>
+                </div>
+
+                {/* Prezzo e Limiti */}
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-tags text-purple-500 text-sm mr-1"></i>
+                    <h4 className="font-medium text-xs text-gray-900">Prezzo & Limiti</h4>
+                  </div>
+                  <div className="space-y-1">
+                    <div>
+                      <p className="text-xs font-medium text-gray-900">
+                        {license.priceType === 'prezzo' 
+                          ? `€${parseFloat((license.price || 0).toString()).toFixed(2)}` 
+                          : `${Math.round(parseFloat((license.price || 0).toString()))} crediti`}
+                        {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
+                          <span className="text-green-600 ml-1 text-xs">
+                            (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <span>{license.maxUsers || 1} utenti</span>
+                      <span>{license.maxDevices || 1} dispositivi</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Prodotto */}
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <i className="fas fa-box text-green-500 mr-2"></i>
-                  <h4 className="font-medium text-gray-900">Prodotto</h4>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Software</span>
-                    <p className="text-sm font-medium text-gray-900">
-                      {license.product?.name} {license.product?.version}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Tipologia</span>
-                    <p className="text-sm text-gray-700">
-                      {getLicenseTypeLabel(license.licenseType)}
-                    </p>
-                  </div>
-                </div>
+              
+              {/* Avviso */}
+              <div className="bg-blue-50 border border-blue-200 p-2 rounded mt-2">
+                <p className="text-xs text-blue-800">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  <strong>Configurazione Ereditata:</strong> Prezzo, sconto e limiti sono ereditati dal prodotto associato.
+                </p>
               </div>
+            </div>
 
-              {/* Prezzo e Limiti */}
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <i className="fas fa-tags text-purple-500 mr-2"></i>
-                  <h4 className="font-medium text-gray-900">Prezzo & Limiti</h4>
+            {/* Date e Status */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <h3 className="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                <i className="fas fa-calendar-alt text-green-600 mr-2"></i>
+                Date e Status
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-plus-circle text-blue-500 text-xs mr-1"></i>
+                    <span className="text-xs text-gray-500 uppercase">Creata il</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">
+                    {license.createdAt 
+                      ? new Date(license.createdAt).toLocaleDateString('it-IT')
+                      : 'N/A'
+                    }
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">Prezzo</span>
-                    <p className="text-sm font-medium text-gray-900">
-                      {license.priceType === 'prezzo' 
-                        ? `€${parseFloat((license.price || 0).toString()).toFixed(2)}` 
-                        : `${Math.round(parseFloat((license.price || 0).toString()))} crediti`}
-                      {license.discount && parseFloat((license.discount || 0).toString()) > 0 && (
-                        <span className="text-green-600 ml-1 text-xs">
-                          (-{parseFloat((license.discount || 0).toString()).toFixed(1)}%)
+
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-play-circle text-green-500 text-xs mr-1"></i>
+                    <span className="text-xs text-gray-500 uppercase">Attivata il</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">
+                    {license.activationDate 
+                      ? new Date(license.activationDate).toLocaleDateString('it-IT')
+                      : 'Non attivata'
+                    }
+                  </p>
+                </div>
+
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-stop-circle text-red-500 text-xs mr-1"></i>
+                    <span className="text-xs text-gray-500 uppercase">Scade il</span>
+                  </div>
+                  <p className={`text-xs font-medium ${
+                    license.expiryDate ? (
+                      new Date(license.expiryDate) < new Date() ? 'text-red-600' :
+                      new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
+                      'text-green-600'
+                    ) : 'text-gray-900'
+                  }`}>
+                    {license.expiryDate 
+                      ? new Date(license.expiryDate).toLocaleDateString('it-IT')
+                      : (license.licenseType === 'permanente' ? 'Permanente' : 'N/A')
+                    }
+                  </p>
+                </div>
+
+                <div className="bg-white rounded p-2">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-sync-alt text-purple-500 text-xs mr-1"></i>
+                    <span className="text-xs text-gray-500 uppercase">Rinnovo Auto</span>
+                  </div>
+                  <div className="flex items-center">
+                    {license.renewalEnabled ? (
+                      <span className="flex items-center text-green-600">
+                        <i className="fas fa-check-circle mr-1 text-xs"></i>
+                        <span className="text-xs font-medium">
+                          {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
                         </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Utenti</span>
-                      <p className="text-sm font-medium text-gray-900">{license.maxUsers || 1}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Dispositivi</span>
-                      <p className="text-sm font-medium text-gray-900">{license.maxDevices || 1}</p>
-                    </div>
-                  </div>
-                </div>
-                {/* Avviso per l'utente */}
-                <div className="bg-blue-50 border border-blue-200 p-2 rounded-lg mt-3">
-                  <div className="flex items-start">
-                    <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
-                    <p className="text-xs text-blue-800">
-                      <strong>Configurazione Ereditata:</strong> Prezzo, sconto e limiti sono ereditati dal prodotto associato. 
-                      Per modificarli, aggiorna la configurazione del prodotto nella sezione "Prodotti".
-                    </p>
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-600">
+                        <i className="fas fa-times-circle mr-1 text-xs"></i>
+                        <span className="text-xs font-medium">Disattivo</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Sezione Date e Status */}
-          <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <i className="fas fa-calendar-alt text-green-600 mr-2"></i>
-              Date e Status
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-1">
-                  <i className="fas fa-plus-circle text-blue-500 text-sm mr-2"></i>
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Creata il</span>
-                </div>
-                <p className="text-sm font-medium text-gray-900">
-                  {license.createdAt 
-                    ? new Date(license.createdAt).toLocaleDateString('it-IT')
-                    : 'N/A'
-                  }
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-1">
-                  <i className="fas fa-play-circle text-green-500 text-sm mr-2"></i>
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Attivata il</span>
-                </div>
-                <p className="text-sm font-medium text-gray-900">
-                  {license.activationDate 
-                    ? new Date(license.activationDate).toLocaleDateString('it-IT')
-                    : 'Non attivata'
-                  }
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-1">
-                  <i className="fas fa-stop-circle text-red-500 text-sm mr-2"></i>
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Scade il</span>
-                </div>
-                <p className={`text-sm font-medium ${
-                  license.expiryDate ? (
-                    new Date(license.expiryDate) < new Date() ? 'text-red-600' :
-                    new Date(license.expiryDate) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-orange-600' :
-                    'text-green-600'
-                  ) : 'text-gray-900'
-                }`}>
-                  {license.expiryDate 
-                    ? new Date(license.expiryDate).toLocaleDateString('it-IT')
-                    : (license.licenseType === 'permanente' ? 'Permanente' : 'N/A')
-                  }
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center mb-1">
-                  <i className="fas fa-sync-alt text-purple-500 text-sm mr-2"></i>
-                  <span className="text-xs text-gray-500 uppercase tracking-wide">Rinnovo Auto</span>
-                </div>
-                <div className="flex items-center">
-                  {license.renewalEnabled ? (
-                    <span className="flex items-center text-green-600">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      <span className="text-sm font-medium">
-                        {license.renewalPeriod === 'monthly' ? 'Mensile' : license.renewalPeriod === 'yearly' ? 'Annuale' : 'Attivo'}
-                      </span>
-                    </span>
+            {/* Moduli Attivi */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <h3 className="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                <i className="fas fa-puzzle-piece text-yellow-600 mr-2"></i>
+                Moduli Attivi
+              </h3>
+              <div className="bg-white rounded p-2">
+                <div className="flex flex-wrap gap-1">
+                  {license.activeModules && license.activeModules.length > 0 ? (
+                    license.activeModules.map((module: string, index: number) => (
+                      <Badge key={index} variant="outline" className="text-xs px-2 py-0 bg-blue-50 border-blue-200 text-blue-700">
+                        <i className="fas fa-cog mr-1"></i>
+                        {module}
+                      </Badge>
+                    ))
                   ) : (
-                    <span className="flex items-center text-red-600">
-                      <i className="fas fa-times-circle mr-1"></i>
-                      <span className="text-sm font-medium">Disattivo</span>
-                    </span>
+                    <div className="flex items-center text-gray-500">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      <span className="text-xs">Nessun modulo attivo</span>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-        {/* Sezione Moduli Attivi */}
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <i className="fas fa-puzzle-piece text-yellow-600 mr-2"></i>
-              Moduli Attivi
-            </h3>
-            <div className="bg-white rounded-lg p-3 shadow-sm">
-              <div className="flex flex-wrap gap-2">
-                {license.activeModules && license.activeModules.length > 0 ? (
-                  license.activeModules.map((module: string, index: number) => (
-                    <Badge key={index} variant="outline" className="capitalize text-sm h-7 px-3 bg-blue-50 border-blue-200 text-blue-700">
-                      <i className="fas fa-cog mr-1"></i>
-                      {module}
-                    </Badge>
-                  ))
-                ) : (
-                  <div className="flex items-center text-gray-500">
-                    <i className="fas fa-exclamation-circle mr-2"></i>
-                    <span className="text-sm">Nessun modulo attivo</span>
-                  </div>
-                )}
+          {/* Colonna Destra */}
+          <div className="space-y-4">
+            
+            {/* Dispositivi Autorizzati */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <h3 className="text-md font-semibold text-gray-900 mb-2 flex items-center">
+                <i className="fas fa-desktop text-purple-600 mr-2"></i>
+                Dispositivi Autorizzati
+              </h3>
+              <div className="bg-white rounded p-2">
+                <DeviceKeysSection licenseId={license.id} />
               </div>
             </div>
-          </div>
 
-          {/* Sezione Dispositivi Autorizzati */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <i className="fas fa-desktop text-purple-600 mr-2"></i>
-              Dispositivi Autorizzati
-            </h3>
-            <div className="bg-white rounded-lg p-3 shadow-sm">
-              <DeviceKeysSection licenseId={license.id} />
+            {/* Info Gestione Dispositivi */}
+            <div className="bg-blue-50 border border-blue-200 p-2 rounded-lg">
+              <div className="flex items-start">
+                <i className="fas fa-info-circle text-blue-600 mt-0.5 mr-2 flex-shrink-0"></i>
+                <p className="text-xs text-blue-800">
+                  <strong>Gestione Dispositivi:</strong> Le Computer Key vengono assegnate tramite la sezione 
+                  "Qlm Register" durante la classificazione delle registrazioni software.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-2 pt-3 border-t">
+        <div className="flex justify-end pt-2 border-t">
           <Button variant="outline" onClick={onClose} size="sm">
             Chiudi
           </Button>
