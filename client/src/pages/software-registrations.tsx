@@ -1524,11 +1524,20 @@ export default function SoftwareRegistrations() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nessun cliente</SelectItem>
+                                {/* Clienti diretti dell'azienda selezionata */}
                                 {safeClients.filter((client: any) => 
                                   (client.company_id || client.companyId) === watch('aziendaAssegnata')
                                 ).map((client: any) => (
                                   <SelectItem key={client.id} value={client.id}>
-                                    {client.name} - {client.email}
+                                    👤 {client.name} - {client.email}
+                                  </SelectItem>
+                                ))}
+                                {/* Sotto-aziende configurate come clienti */}
+                                {safeCompanies.filter((company: any) => 
+                                  company.parent_id === watch('aziendaAssegnata') && company.type === 'cliente'
+                                ).map((subCompany: any) => (
+                                  <SelectItem key={`company-${subCompany.id}`} value={`company-${subCompany.id}`}>
+                                    🏢 {subCompany.name} - {subCompany.partitaIva || 'N/A'}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1572,15 +1581,33 @@ export default function SoftwareRegistrations() {
                             );
                           }
 
-                          const clientLicenses = safeLicenses.filter((license: License) => {
-                            const licenseClientId = license.client?.id;
-                            if (licenseClientId !== selectedClientId) return false;
+                          // Gestisce sia clienti che sotto-aziende
+                          const isSubCompanySelection = selectedClientId?.startsWith('company-');
+                          
+                          let clientLicenses: License[] = [];
+                          
+                          if (isSubCompanySelection) {
+                            // Se è selezionata una sotto-azienda, mostra un messaggio appropriato
+                            return (
+                              <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+                                <p className="text-sm text-blue-700">
+                                  <i className="fas fa-building mr-2"></i>
+                                  Sotto-azienda selezionata. Le licenze devono essere assegnate ai clienti individuali.
+                                </p>
+                              </div>
+                            );
+                          } else {
+                            // Filtro normale per clienti
+                            clientLicenses = safeLicenses.filter((license: License) => {
+                              const licenseClientId = license.client?.id;
+                              if (licenseClientId !== selectedClientId) return false;
 
-                            const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
-                            if (licenseClientCompanyId !== selectedCompanyId) return false;
+                              const licenseClientCompanyId = license.client?.company_id || license.client?.companyId;
+                              if (licenseClientCompanyId !== selectedCompanyId) return false;
 
-                            return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
-                          });
+                              return ['attiva', 'in_attesa_convalida', 'sospesa'].includes(license.status);
+                            });
+                          }
 
                           if (clientLicenses.length === 0) {
                             return (
